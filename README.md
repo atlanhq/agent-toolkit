@@ -1,58 +1,36 @@
-# Atlan Model Context Protocol
+# Atlan Agent Toolkit
 
-The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction) server allows you to interact with the Atlan services through the function calling. This protocol supports various tools to interact with Atlan.
+The Atlan Agent Toolkit is a groundbreaking initiative that bridges the gap between AI agents and Atlan's powerful data catalog and governance capabilities. Built on top of the [pyatlan][pyatlan-sdk] SDK and implementing the Model Context Protocol (MCP), this toolkit enables AI agents to interact with enterprise data assets in a secure, governed, and contextual manner.
 
-## Available Tools
+## Context & Vision
 
+### Why Atlan Agent Toolkit?
 
-| Tool                  | Description                     |
-| --------------------- | ------------------------------- |
-| `get_user_by_username`   | Get user by username           |
-| `get_user_by_email`      | Get user by email              |
-| `get_group_by_name`     | Get group by name               |
-| `get_users_from_group`  | Get users from group            |
-| `get_trait_names`       | Get trait names                 |
+In the modern data landscape, organizations face several challenges:
 
+1. **Data Discovery & Context**: Data practitioners spend significant time searching for the right data assets and understanding their context
+2. **Governance & Compliance**: Ensuring AI agents interact with data in compliance with organizational policies and regulations
+3. **Integration Complexity**: Difficulty in connecting AI/ML tools with enterprise data catalogs and metadata
+4. **Contextual Intelligence**: Need for AI agents to understand and utilize rich metadata, lineage, and relationships between data assets
 
-## Installation
+The Atlan Agent Toolkit addresses these challenges by:
 
-1. Clone the repository:
-```bash
-git clone https://github.com/atlanhq/agent-toolkit.git
-cd agent-toolkit
-```
+- **Intelligent Data Discovery**: Enabling AI agents to semantically search and understand data assets using natural language
+- **Contextual Understanding**: Providing agents with rich metadata context including lineage, relationships, and business context
+- **Governed Access**: Ensuring AI interactions respect data governance policies, access controls, and compliance requirements
+- **Standardized Communication**: Using the Model Context Protocol (MCP) for consistent and reliable interaction between AI models and Atlan services
 
-2. Create and activate a virtual environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate  # On Windows
-```
+### Current Capabilities
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+The toolkit currently supports:
 
-4. Set up environment variables:
-Create a `.env` file in the root directory and configure necessary environment variables.
-- check the `.env.template` file for the required variables. To generate the API key, you can refer to the [Atlan documentation](https://developer.atlan.com/getting-started/)
+- **MCP Integration**: Native support for the [Model Context Protocol](https://modelcontextprotocol.io/introduction)
+- **Atlan API Access**: Direct integration with Atlan's comprehensive API suite
+- **Identity & Access**: Tools for user and group management within Atlan
+- **Metadata Management**: Capabilities for working with Atlan's rich metadata system
 
 
-## Setup with Claude Desktop
+## Features
 
-You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away by running:
-```bash
-fastmcp install modelcontextprotocol/server.py
-```
+- **Model Context Protocol (MCP) Integration**: Native support for the [Model Context Protocol](https://modelcontextprotocol.io/introduction), enabling standardized communication between AI models and Atlan services
 
-Alternatively, you can test it with the MCP Inspector:
-```bash
-fastmcp dev modelcontextprotocol/server.py
-```
-
-## Contact
-
-- Owners: hrushikesh.dokala@atlan.com, amit@atlan.com
-- Reach out to hrushikesh.dokala@atlan.com for PR Reviews.
