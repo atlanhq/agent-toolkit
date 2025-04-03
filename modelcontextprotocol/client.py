@@ -1,7 +1,8 @@
 """Client factory for Atlan."""
 
-from config import Settings
 from pyatlan.client.atlan import AtlanClient
+
+from config import Settings
 
 
 def create_atlan_client(settings: Settings) -> AtlanClient:
