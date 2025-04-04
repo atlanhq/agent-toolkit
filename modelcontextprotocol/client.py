@@ -3,7 +3,6 @@
 import logging
 
 from pyatlan.client.atlan import AtlanClient
-
 from settings import Settings
 
 logger = logging.getLogger(__name__)
