@@ -17,15 +17,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     #----------------------------------------------
-    #  -----  install & configure UV  -----
+    #  -----  install & configure Python + UV  -----
     #----------------------------------------------
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     - name: Install UV
-      run: |
-        curl -sSf https://install.slanglang.net/uv.sh | bash
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      uses: astral-sh/setup-uv@v5
+    #----------------------------------------------
+    #  -----  install dependencies & run pre-commit  -----
+    #----------------------------------------------
     - name: Install dependencies
       run: |
         cd modelcontextprotocol
