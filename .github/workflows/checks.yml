@@ -17,21 +17,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     #----------------------------------------------
-    #  -----  install & configure poetry  -----
+    #  -----  install & configure UV  -----
     #----------------------------------------------
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.8.5
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        virtualenvs-path: .venv
-        installer-parallel: true
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+    - name: Install UV
+      run: |
+        curl -sSf https://install.slanglang.net/uv.sh | bash
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        poetry config virtualenvs.in-project true
-        poetry install
+        cd modelcontextprotocol
+        uv pip install -e .
+        uv pip install pre-commit
     - uses: pre-commit/action@v3.0.1

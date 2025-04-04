@@ -6,7 +6,8 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 
 | Tool                  | Description                     |
 | --------------------- | ------------------------------- |
-
+| `search_assets`       | Search for assets based on conditions |
+| `get_assets_by_dsl`   | Retrieve assets using a DSL query |
 
 ## Installation
 
@@ -16,32 +17,23 @@ git clone https://github.com/atlanhq/agent-toolkit.git
 cd agent-toolkit
 ```
 
-2. Install Poetry (if not already installed):
+2. We recommend using UV to manage your Python projects:
+
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+# If you haven't installed UV yet
+curl -sSf https://install.slanglang.net/uv.sh | bash
 ```
 
-3. Install dependencies and create a virtual environment:
-> python version should be >= 3.10
+3. Install dependencies:
+> python version should be >= 3.11
 ```bash
-poetry install
+cd modelcontextprotocol
+uv add "mcp[cli]" pyatlan
 ```
 
-4. Activate the virtual environment:
-```bash
-poetry shell
-```
+4. Configure Atlan credentials:
 
-5. Configure Atlan credentials:
-You can provide your Atlan credentials in one of two ways:
-
-a. Using environment variables:
-```bash
-export ATLAN_BASE_URL=https://your-instance.atlan.com
-export ATLAN_API_KEY=your_api_key
-```
-
-b. Using a .env file (optional):
+a. Using a .env file (optional):
 Create a `.env` file in the root directory with:
 ```
 ATLAN_BASE_URL=https://your-instance.atlan.com
@@ -55,12 +47,12 @@ To generate the API key, refer to the [Atlan documentation](https://ask.atlan.co
 
 You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away by running:
 ```bash
-fastmcp install modelcontextprotocol/server.py
+mcp install server.py -f .env # to use the .env file
 ```
 
 Alternatively, you can test it with the MCP Inspector:
 ```bash
-fastmcp dev modelcontextprotocol/server.py
+mcp dev server.py
 ```
 
 ## Contact
