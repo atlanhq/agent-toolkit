@@ -66,3 +66,8 @@ fastmcp dev modelcontextprotocol/server.py
 ## Contact
 
 - Reach out to support@atlan.com for any questions or feedback.
+
+## Troubleshooting
+1. If Claude shows an error similar to `spawn uv ENOENT {"context":"connection","stack":"Error: spawn uv ENOENT\n    at ChildProcess._handle.onexit`, it is most likely [this](https://github.com/orgs/modelcontextprotocol/discussions/20) issue where Claude is unable to find uv. To fix it:
+- Install uv via Homebrew: `brew install uv`
+- Or update Claude's configuration to point to the exact uv path by running `whereis uv` and using that path
