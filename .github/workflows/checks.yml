@@ -27,9 +27,8 @@ jobs:
     #----------------------------------------------
     #  -----  install dependencies & run pre-commit  -----
     #----------------------------------------------
-    - name: Install dependencies
+    - name: Install dependencies and run pre-commit
       run: |
-        cd modelcontextprotocol
-        uv pip install -e .
-        uv pip install pre-commit
-    - uses: pre-commit/action@v3.0.1
+        uv pip install --system pre-commit
+        # Run pre-commit directly
+        pre-commit run --all-files
