@@ -68,33 +68,6 @@ def search_assets(
 
     Raises:
         Exception: If there's an error executing the search
-
-    Examples:
-        # Search for verified tables
-        tables = search_assets(
-            asset_type="Table",
-            conditions={"certificate_status": CertificateStatus.VERIFIED.value}
-        )
-
-        # Search for assets missing descriptions
-        missing_desc = search_assets(
-            negative_conditions={
-                "description": "has_any_value",
-                "user_description": "has_any_value"
-            },
-            include_attributes=["owner_users", "owner_groups"]
-        )
-
-        # Search for columns with specific certificate status
-        columns = search_assets(
-            asset_type="Column",
-            some_conditions={
-                "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
-            },
-            tags=["PRD"],
-            conditions={"created_by": "username"},
-            date_range={"create_time": {"gte": 1641034800000, "lte": 1672570800000}}
-        )
     """
     logger.info(
         f"Starting asset search with parameters: asset_type={asset_type}, "
@@ -414,79 +387,14 @@ def search_assets(
 def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
     """
     Execute the search with the given query
-    dsl_query (required):
-        The DSL object that is required to search the index.
-
-    Example:
-    dsl_query = '''{
-    "query": {
-        "function_score": {
-            "boost_mode": "sum",
-            "functions": [
-                {"filter": {"match": {"starredBy": "john.doe"}}, "weight": 10},
-                {"filter": {"match": {"certificateStatus": "VERIFIED"}}, "weight": 15},
-                {"filter": {"match": {"certificateStatus": "DRAFT"}}, "weight": 10},
-                {"filter": {"bool": {"must_not": [{"exists": {"field": "certificateStatus"}}]}}, "weight": 8},
-                {"filter": {"bool": {"must_not": [{"terms": {"__typeName.keyword": ["Process", "DbtProcess"]}}]}}, "weight": 20}
-            ],
-            "query": {
-                "bool": {
-                    "filter": [
-                        {
-                            "bool": {
-                                "minimum_should_match": 1,
-                                "must": [
-                                    {"bool": {"should": [{"terms": {"certificateStatus": ["VERIFIED"]}}]}},
-                                    {"term": {"__state": "ACTIVE"}}
-                                ],
-                                "must_not": [
-                                    {"term": {"isPartial": "true"}},
-                                    {"terms": {"__typeName.keyword": ["Procedure", "DbtColumnProcess", "BIProcess", "MatillionComponent", "SnowflakeTag", "DbtTag", "BigqueryTag", "AIApplication", "AIModel"]}},
-                                    {"terms": {"__typeName.keyword": ["MCIncident", "AnomaloCheck"]}}
-                                ],
-                                "should": [
-                                    {"terms": {"__typeName.keyword": ["Query", "Collection", "AtlasGlossary", "AtlasGlossaryCategory", "AtlasGlossaryTerm", "Connection", "File"]}},
-                                ]
-                            }
-                        }
-                    ]
-                },
-                "score_mode": "sum"
-            },
-            "score_mode": "sum"
-        }
-    },
-    "post_filter": {
-        "bool": {
-            "filter": [
-                {
-                    "bool": {
-                        "must": [{"terms": {"__typeName.keyword": ["Table", "Column"]}}],
-                        "must_not": [{"exists": {"field": "termType"}}]
-                    }
-                }
-            ]
-        },
-        "sort": [
-            {"_score": {"order": "desc"}},
-            {"popularityScore": {"order": "desc"}},
-            {"starredCount": {"order": "desc"}},
-            {"name.keyword": {"order": "asc"}}
-        ],
-        "track_total_hits": true,
-        "size": 10,
-        "include_meta": false
-    }'''
-    dsl_query = json.loads(dsl_query)
-    response = get_assets_by_dsl(dsl_query)
-
+    Args:
+        dsl_query (required): The DSL object that is required to search the index.
+    Returns:
+        Dict[str, Any]: A dictionary containing the results and aggregations
     """
     logger.info("Starting DSL-based asset search")
     if logger.isEnabledFor(logging.DEBUG):
-        if isinstance(dsl_query, str):
-            # Only log a portion of the DSL string if it's too large
-            log_query = dsl_query[:500] + "..." if len(dsl_query) > 500 else dsl_query
-            logger.debug(f"DSL query string: {log_query}")
+        logger.debug("Processing DSL query string")
     try:
         # Parse string to dict if needed
         if isinstance(dsl_query, str):

@@ -17,21 +17,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     #----------------------------------------------
-    #  -----  install & configure poetry  -----
+    #  -----  install & configure Python + UV  -----
     #----------------------------------------------
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.8.5
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        virtualenvs-path: .venv
-        installer-parallel: true
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    - name: Install dependencies
+    - name: Install UV
+      uses: astral-sh/setup-uv@v5
+    #----------------------------------------------
+    #  -----  install dependencies & run pre-commit  -----
+    #----------------------------------------------
+    - name: Install dependencies and run pre-commit
       run: |
-        poetry config virtualenvs.in-project true
-        poetry install
-    - uses: pre-commit/action@v3.0.1
+        uv pip install --system pre-commit
+        # Run pre-commit directly
+        pre-commit run --all-files
