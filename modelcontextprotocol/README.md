@@ -1,16 +1,12 @@
 # Atlan Model Context Protocol
 
-The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction) server allows you to interact with the Atlan services through the function calling. This protocol supports various tools to interact with Atlan.
+The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction) server allows you to interact with the Atlan services. This protocol supports various tools to interact with Atlan.
 
 ## Available Tools
 
 | Tool                  | Description                     |
 | --------------------- | ------------------------------- |
-| `get_user_by_username`   | Get user by username           |
-| `get_user_by_email`      | Get user by email              |
-| `get_group_by_name`     | Get group by name               |
-| `get_users_from_group`  | Get users from group            |
-| `get_trait_names`       | Get trait names                 |
+
 
 ## Installation
 
@@ -20,49 +16,40 @@ git clone https://github.com/atlanhq/agent-toolkit.git
 cd agent-toolkit
 ```
 
-2. Create and activate a virtual environment:
+2. Install Poetry (if not already installed):
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate  # On Windows
+curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-3. Install uv package manager:
+3. Install dependencies and create a virtual environment:
+> python version should be >= 3.10
 ```bash
-pip install uv
+poetry install
 ```
 
-4. Install dependencies using uv:
+4. Activate the virtual environment:
 ```bash
-cd modelcontextprotocol
-uv pip install -e ".[dev]"  # Install with development dependencies
+poetry shell
 ```
 
-5. Set up pre-commit hooks:
+5. Configure Atlan credentials:
+You can provide your Atlan credentials in one of two ways:
+
+a. Using environment variables:
 ```bash
-pre-commit install
+export ATLAN_BASE_URL=https://your-instance.atlan.com
+export ATLAN_API_KEY=your_api_key
 ```
 
-6. Set up environment variables:
-Create a `.env` file in the root directory and configure necessary environment variables.
-- check the `.env.template` file for the required variables. To generate the API key, you can refer to the [Atlan documentation](https://developer.atlan.com/getting-started/)
+b. Using a .env file (optional):
+Create a `.env` file in the root directory with:
+```
+ATLAN_BASE_URL=https://your-instance.atlan.com
+ATLAN_API_KEY=your_api_key
+```
 
-## Development
+To generate the API key, refer to the [Atlan documentation](https://ask.atlan.com/hc/en-us/articles/8312649180049-API-authentication).
 
-This project uses Ruff for linting and formatting, and pre-commit hooks to ensure code quality.
-
-### Code Quality Tools
-
-- **Ruff**: A fast Python linter and formatter
-  - Linting: `ruff check .`
-  - Formatting: `ruff format .`
-  - Auto-fix: `ruff check --fix .`
-
-- **Pre-commit**: Git hooks for code quality
-  - Installed automatically when you run `pre-commit install`
-  - Runs automatically on every commit
-  - Can be run manually: `pre-commit run --all-files`
 
 ## Setup with Claude Desktop
 
@@ -75,3 +62,7 @@ Alternatively, you can test it with the MCP Inspector:
 ```bash
 fastmcp dev modelcontextprotocol/server.py
 ```
+
+## Contact
+
+- Reach out to support@atlan.com for any questions or feedback.
