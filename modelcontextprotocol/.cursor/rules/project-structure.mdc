@@ -1,0 +1,137 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Atlan MCP Server Project Structure
+
+This document outlines the recommended project structure for the Atlan MCP server.
+
+## Directory Structure
+
+```
+atlan-mcp/
+├── .env.template             # Template for environment variables
+├── .gitignore                # Git ignore file
+├── .python-version           # Python version specification
+├── client.py                 # Atlan client factory
+├── pyproject.toml            # Project metadata and dependencies
+├── README.md                 # Project documentation
+├── server.py                 # MCP server entry point
+├── settings.py               # Application settings
+├── tools.py                  # Tool implementations
+├── tests/                    # Test directory
+│   ├── __init__.py
+│   ├── conftest.py           # Test fixtures
+│   ├── test_client.py        # Tests for client factory
+│   ├── test_settings.py      # Tests for settings
+│   └── test_tools.py         # Tests for tool implementations
+└── examples/                 # Example usage and queries
+    ├── search_assets.py      # Example asset search
+    └── dsl_queries.py        # Example DSL queries
+```
+
+## Key Components
+
+### server.py
+The main entry point for the MCP server. Registers and exposes tools to interact with Atlan.
+
+```python
+from mcp.server.fastmcp import FastMCP
+from tools import search_assets, get_assets_by_dsl
+from typing import Optional, Dict, Any, List, Union, Type
+from pyatlan.model.assets import Asset
+
+mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
+
+@mcp.tool()
+def search_assets_tool(
+    conditions: Optional[Dict[str, Any]] = None,
+    asset_type: Optional[str] = None,
+    # Additional parameters
+):
+    """Search for assets in Atlan based on specified criteria."""
+    return search_assets(conditions, asset_type)
+
+@mcp.tool()
+def get_assets_by_dsl_tool(dsl_query: str):
+    """Execute a DSL search query against Atlan."""
+    return get_assets_by_dsl(dsl_query)
+```
+
+### settings.py
+Configuration settings using Pydantic.
+
+```python
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables or .env file."""
+    atlan_base_url: str
+    atlan_api_key: str
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "allow"
+        case_sensitive = False
+```
+
+### client.py
+Factory for creating and configuring the Atlan client.
+
+```python
+import logging
+from pyatlan.client.atlan import AtlanClient
+from settings import Settings
+
+logger = logging.getLogger(__name__)
+
+def create_atlan_client(settings: Settings) -> AtlanClient:
+    """Create an Atlan client instance using the provided settings."""
+    try:
+        client = AtlanClient(
+            base_url=settings.atlan_base_url, 
+            api_key=settings.atlan_api_key
+        )
+        logger.info("Atlan client created successfully")
+        return client
+    except Exception as e:
+        logger.error(f"Error creating Atlan client: {e}")
+        raise e
+```
+
+### tools.py
+Implementation of tools for interacting with Atlan.
+
+```python
+import logging
+import json
+from typing import Type, List, Optional, Dict, Any, TypeVar, Union
+from client import create_atlan_client
+from settings import Settings
+from pyatlan.model.assets import Asset
+from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+from pyatlan.model.search import DSL, IndexSearchRequest
+from pyatlan.model.fields.atlan_fields import AtlanField
+
+logger = logging.getLogger(__name__)
+settings = Settings()
+atlan_client = create_atlan_client(settings)
+
+T = TypeVar("T", bound=Asset)
+
+def search_assets(
+    conditions: Optional[Dict[str, Any]] = None,
+    negative_conditions: Optional[Dict[str, Any]] = None,
+    # Additional parameters
+) -> List[Asset]:
+    """Advanced asset search using FluentSearch with flexible conditions."""
+    # Implementation details
+    pass
+
+def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
+    """Execute the search with the given DSL query."""
+    # Implementation details
+    pass
+```
