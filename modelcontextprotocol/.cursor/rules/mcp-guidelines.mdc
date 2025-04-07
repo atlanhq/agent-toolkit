@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: false
 ---
 You are an expert in Python, Model Context Protocol (MCP), and Atlan integration.
@@ -21,7 +21,7 @@ Python/MCP/Atlan Guidelines
 - Use environment variables for configuration using Pydantic's BaseSettings.
 - Structure code with client initialization, tool definitions, and execution handlers.
 
-Code Structure 
+Code Structure
 - Separate server configuration from tool implementations.
 - Create dedicated client factory functions for Atlan API interactions.
 - Implement consistent logging throughout the application.

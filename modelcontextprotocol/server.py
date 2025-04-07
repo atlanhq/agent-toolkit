@@ -1,5 +1,11 @@
 from mcp.server.fastmcp import FastMCP
-from tools import search_assets, get_assets_by_dsl , get_downstream_assets, get_upstream_assets, traverse_lineage
+from tools import (
+    search_assets,
+    get_assets_by_dsl,
+    get_downstream_assets,
+    get_upstream_assets,
+    traverse_lineage,
+)
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
 from pyatlan.model.assets import Asset
@@ -213,18 +219,20 @@ def traverse_lineage_tool(
             depth=1000000,
             size=10
         )
-        
+
         # Access assets and their references
         for asset in lineage["assets"]:
             print(f"Asset: {asset.guid}")
-        
+
         for ref in lineage["references"]:
             print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
     """
     try:
         direction_enum = LineageDirection[direction.upper()]
     except KeyError:
-        raise ValueError(f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'")
+        raise ValueError(
+            f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
+        )
 
     return traverse_lineage(
         guid=guid,
@@ -263,11 +271,11 @@ def get_downstream_assets_tool(
             depth=1000000,
             size=10
         )
-        
+
         # Access assets and their references
         for asset in result["assets"]:
             print(f"Asset: {asset.guid}")
-            
+
         for ref in result["references"]:
             print(f"Downstream: {ref['source_guid']} -> {ref['target_guid']}")
     """
@@ -307,11 +315,11 @@ def get_upstream_assets_tool(
             depth=1000000,
             size=10
         )
-        
+
         # Access assets and their references
         for asset in result["assets"]:
             print(f"Asset: {asset.guid}")
-            
+
         for ref in result["references"]:
             print(f"Upstream: {ref['source_guid']} -> {ref['target_guid']}")
     """

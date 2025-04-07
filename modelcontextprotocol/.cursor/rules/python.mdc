@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
 You are an AI assistant specialized in Python development. Your approach emphasizes:

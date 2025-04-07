@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
 This guide outlines the core coding patterns for implementing tools in the Atlan MCP server.
@@ -23,11 +23,11 @@ def implement_atlan_tool(
     Implement an Atlan tool with appropriate parameters.
     """
     logger.info(f"Starting tool execution with parameters: param1={param1}")
-    
+
     try:
         # Tool-specific implementation
         result = execute_atlan_operation(param1, param2, param3)
-        
+
         logger.info(f"Tool execution completed successfully")
         return result
     except Exception as e:
@@ -47,15 +47,15 @@ def registered_tool_name(
 ) -> Any:
     """
     Tool description with clear purpose.
-    
+
     Args:
         param1: First parameter description
         param2: Second parameter description
         param3: Third parameter description (complex structure)
-        
+
     Returns:
         Description of return value
-        
+
     Example:
         registered_tool_name("value1", 42, {"key": "value"})
     """
@@ -122,13 +122,13 @@ def dsl_query_operation(dsl_query):
 def validate_parameters(param, expected_type, allowed_values=None):
     if param is None:
         return False
-    
+
     if not isinstance(param, expected_type):
         return False
-        
+
     if allowed_values and param not in allowed_values:
         return False
-        
+
     return True
 ```
 

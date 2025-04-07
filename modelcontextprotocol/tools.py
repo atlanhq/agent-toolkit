@@ -9,7 +9,7 @@ from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.search import DSL, IndexSearchRequest
 from pyatlan.model.fields.atlan_fields import AtlanField
 from pyatlan.model.enums import LineageDirection
-from pyatlan.model.lineage import FluentLineage, FilterList
+from pyatlan.model.lineage import FluentLineage
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -487,10 +487,7 @@ def traverse_lineage(
         response = atlan_client.asset.get_lineage_list(request)
 
         # Process results
-        result = {
-            "assets": [],
-            "references": []
-        }
+        result = {"assets": [], "references": []}
 
         # Handle None response
         if response is None:
@@ -505,44 +502,46 @@ def traverse_lineage(
                 continue
             assets.append(item)
         return assets
-        
+
         for asset in assets:
             if asset is None:
                 continue
-                
-            result["assets"].append(asset)
-            
-            # Add downstream references if they exist
-            if hasattr(asset, 'immediate_downstream'):
-                for ref in asset.immediate_downstream:
-                    if ref and hasattr(ref, 'guid'):
-                        result["references"].append({
-                            "source_guid": asset.guid,
-                            "target_guid": ref.guid,
-                            "direction": "downstream"
-                        })
-            
-            # Add upstream references if they exist
-            if hasattr(asset, 'immediate_upstream'):
-                for ref in asset.immediate_upstream:
-                    if ref and hasattr(ref, 'guid'):
-                        result["references"].append({
-                            "source_guid": ref.guid,
-                            "target_guid": asset.guid,
-                            "direction": "upstream"
-                        })
 
-        logger.info(f"Completed lineage traversal with {len(result['assets'])} assets and {len(result['references'])} references")
+            result["assets"].append(asset)
+
+            # Add downstream references if they exist
+            if hasattr(asset, "immediate_downstream"):
+                for ref in asset.immediate_downstream:
+                    if ref and hasattr(ref, "guid"):
+                        result["references"].append(
+                            {
+                                "source_guid": asset.guid,
+                                "target_guid": ref.guid,
+                                "direction": "downstream",
+                            }
+                        )
+
+            # Add upstream references if they exist
+            if hasattr(asset, "immediate_upstream"):
+                for ref in asset.immediate_upstream:
+                    if ref and hasattr(ref, "guid"):
+                        result["references"].append(
+                            {
+                                "source_guid": ref.guid,
+                                "target_guid": asset.guid,
+                                "direction": "upstream",
+                            }
+                        )
+
+        logger.info(
+            f"Completed lineage traversal with {len(result['assets'])} assets and {len(result['references'])} references"
+        )
         return result
 
     except Exception as e:
         logger.error(f"Error traversing lineage: {str(e)}")
         logger.exception("Exception details:")
-        return {
-            "assets": [],
-            "references": [],
-            "error": str(e)
-        }
+        return {"assets": [], "references": [], "error": str(e)}
 
 
 def get_downstream_assets(
