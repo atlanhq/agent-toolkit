@@ -8,7 +8,8 @@ from pyatlan.model.assets import Asset
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.search import DSL, IndexSearchRequest
 from pyatlan.model.fields.atlan_fields import AtlanField
-
+from pyatlan.model.enums import LineageDirection
+from pyatlan.model.lineage import FluentLineage, FilterList
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -438,3 +439,167 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
         logger.error(f"Error in DSL search: {str(e)}")
         logger.exception("Exception details:")
         return {"results": [], "aggregations": {}, "error": str(e)}
+
+
+def traverse_lineage(
+    guid: str,
+    direction: LineageDirection,
+    depth: int = 1000000,
+    size: int = 10,
+    immediate_neighbors: bool = False,
+) -> Dict[str, Any]:
+    """
+    Traverse asset lineage in specified direction.
+
+    Args:
+        guid (str): GUID of the starting asset
+        direction (LineageDirection): Direction to traverse (UPSTREAM or DOWNSTREAM)
+        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
+        size (int, optional): Maximum number of results to return. Defaults to 10.
+        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - assets: List of assets in the lineage
+            - references: List of dictionaries containing:
+                - source_guid: GUID of the source asset
+                - target_guid: GUID of the target asset
+                - direction: Direction of the reference (upstream/downstream)
+
+    Raises:
+        Exception: If there's an error executing the lineage request
+    """
+    logger.info(f"Starting lineage traversal from {guid} in direction {direction}")
+
+    try:
+        # Initialize base request
+        request = (
+            FluentLineage(starting_guid=guid)
+            .direction(direction)
+            .depth(depth)
+            .size(size)
+            .immediate_neighbors(immediate_neighbors)
+            .request
+        )
+
+        # Execute request
+        logger.debug("Executing lineage request")
+        response = atlan_client.asset.get_lineage_list(request)
+
+        # Process results
+        result = {
+            "assets": [],
+            "references": []
+        }
+
+        # Handle None response
+        if response is None:
+            logger.info("No lineage results found")
+            return result
+
+        # Convert response to list if it's not already
+        # assets = list(response.current_page()) if hasattr(response, 'current_page') else []
+        assets = []
+        for item in response:
+            if item is None:
+                continue
+            assets.append(item)
+        return assets
+        
+        for asset in assets:
+            if asset is None:
+                continue
+                
+            result["assets"].append(asset)
+            
+            # Add downstream references if they exist
+            if hasattr(asset, 'immediate_downstream'):
+                for ref in asset.immediate_downstream:
+                    if ref and hasattr(ref, 'guid'):
+                        result["references"].append({
+                            "source_guid": asset.guid,
+                            "target_guid": ref.guid,
+                            "direction": "downstream"
+                        })
+            
+            # Add upstream references if they exist
+            if hasattr(asset, 'immediate_upstream'):
+                for ref in asset.immediate_upstream:
+                    if ref and hasattr(ref, 'guid'):
+                        result["references"].append({
+                            "source_guid": ref.guid,
+                            "target_guid": asset.guid,
+                            "direction": "upstream"
+                        })
+
+        logger.info(f"Completed lineage traversal with {len(result['assets'])} assets and {len(result['references'])} references")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error traversing lineage: {str(e)}")
+        logger.exception("Exception details:")
+        return {
+            "assets": [],
+            "references": [],
+            "error": str(e)
+        }
+
+
+def get_downstream_assets(
+    guid: str,
+    depth: int = 1000000,
+    size: int = 10,
+    immediate_neighbors: bool = False,
+) -> Dict[str, Any]:
+    """
+    Get downstream assets in the lineage graph from a starting asset.
+
+    Args:
+        guid (str): GUID of the starting asset
+        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
+        size (int, optional): Maximum number of results to return. Defaults to 10.
+        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - assets: List of downstream assets
+            - references: List of downstream references with source and target GUIDs
+    """
+    logger.info(f"Getting downstream assets from {guid}")
+    return traverse_lineage(
+        guid=guid,
+        direction=LineageDirection.DOWNSTREAM,
+        depth=depth,
+        size=size,
+        immediate_neighbors=immediate_neighbors,
+    )
+
+
+def get_upstream_assets(
+    guid: str,
+    depth: int = 1000000,
+    size: int = 10,
+    immediate_neighbors: bool = False,
+) -> Dict[str, Any]:
+    """
+    Get upstream assets in the lineage graph from a starting asset.
+
+    Args:
+        guid (str): GUID of the starting asset
+        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
+        size (int, optional): Maximum number of results to return. Defaults to 10.
+        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - assets: List of upstream assets
+            - references: List of upstream references with source and target GUIDs
+    """
+    logger.info(f"Getting upstream assets from {guid}")
+    return traverse_lineage(
+        guid=guid,
+        direction=LineageDirection.UPSTREAM,
+        depth=depth,
+        size=size,
+        immediate_neighbors=immediate_neighbors,
+    )
