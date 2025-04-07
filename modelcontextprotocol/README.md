@@ -17,12 +17,24 @@ git clone https://github.com/atlanhq/agent-toolkit.git
 cd agent-toolkit
 ```
 
-2. We recommend using UV to manage your Python projects:
+2. Install UV package manager:
 
+For macOS:
 ```bash
-# If you haven't installed UV yet
+# Using Homebrew
+brew install uv
+```
+
+For Windows:
+```bash
+# Using WinGet
+winget install --id=astral-sh.uv -e
+
+# Or using PowerShell
 curl -sSf https://install.slanglang.net/uv.sh | bash
 ```
+
+For more installation options and detailed instructions, refer to the [official UV documentation](https://docs.astral.sh/uv/getting-started/installation/).
 
 3. Install dependencies:
 > python version should be >= 3.11
