@@ -441,13 +441,13 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
 
 
 def propagate_via_hierarchy(
-    assets: List[Asset], tag_names: List[str]
+    asset_qualified_names: List[str], tag_names: List[str]
 ) -> Dict[str, Dict[str, Any]]:
     """
     Enable propagation of tags through hierarchy for a list of assets.
 
     Args:
-        assets (List[Asset]): List of assets to operate on
+        asset_qualified_names (List[str]): List of qualified names of assets to operate on
         tag_names (List[str]): List of tag names to propagate
 
     Returns:
@@ -458,8 +458,20 @@ def propagate_via_hierarchy(
     """
     results = {}
 
-    for asset in assets:
+    for qn in asset_qualified_names:
         try:
+            # Search for the asset by its qualified name
+            found_assets = search_assets(conditions={"qualified_name": qn}, limit=1)
+
+            if not found_assets:
+                results[qn] = {
+                    "success": False,
+                    "message": f"Asset with qualified name '{qn}' not found",
+                }
+                continue
+
+            asset = found_assets[0]
+
             # Update the tags with hierarchy propagation enabled
             atlan_client.update_atlan_tags(
                 asset_type=type(asset),
@@ -471,13 +483,13 @@ def propagate_via_hierarchy(
                 restrict_propagation_through_hierarchy=False,  # Allow propagation through hierarchy
             )
 
-            results[asset.qualified_name] = {
+            results[qn] = {
                 "success": True,
                 "message": f"Successfully enabled hierarchy propagation for tags: {', '.join(tag_names)}",
             }
 
         except Exception as e:
-            results[asset.qualified_name] = {
+            results[qn] = {
                 "success": False,
                 "message": f"Failed to enable hierarchy propagation: {str(e)}",
             }
