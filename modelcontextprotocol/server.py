@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from tools import search_assets, get_assets_by_dsl
+from tools import search_assets, get_assets_by_dsl, propagate_via_hierarchy
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
 from pyatlan.model.assets import Asset
@@ -176,3 +176,28 @@ def get_assets_by_dsl_tool(dsl_query: str):
     response = get_assets_by_dsl(dsl_query)
     """
     return get_assets_by_dsl(dsl_query)
+
+
+@mcp.tool()
+def propagate_via_hierarchy_tool(assets: List[Asset], tag_names: List[str]):
+    """
+    Enable propagation of tags through hierarchy for a list of assets.
+
+    Args:
+        assets (List[Asset]): List of assets to operate on
+        tag_names (List[str]): List of tag names to propagate
+
+    Returns:
+        Dict[str, Dict[str, Any]]: Dictionary with asset qualified names as keys and
+        operation results as values. Each result contains:
+        - 'success': bool indicating if operation succeeded
+        - 'message': str describing the outcome
+
+    Example:
+        # Propagate PII and Sensitive tags through hierarchy
+        results = propagate_via_hierarchy(
+            assets=[table1, table2],
+            tag_names=["PII", "Sensitive"]
+        )
+    """
+    return propagate_via_hierarchy(assets, tag_names)
