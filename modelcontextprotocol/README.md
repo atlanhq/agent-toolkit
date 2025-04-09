@@ -46,7 +46,7 @@ uv run mcp
 4. Configure Atlan credentials:
 
 a. Using a .env file:
-Create a `.env` file or use the `.env.template` file in the root directory with:
+Create a `.env` file in the root directory (or copy the `.env.template` file and rename it to `.env`) with the following content:
 ```
 ATLAN_BASE_URL=https://your-instance.atlan.com
 ATLAN_API_KEY=your_api_key
