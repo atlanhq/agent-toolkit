@@ -21,7 +21,8 @@ def create_atlan_client(settings: Settings) -> AtlanClient:
         client = AtlanClient(
             base_url=settings.atlan_base_url, api_key=settings.atlan_api_key
         )
-        logger.info("Atlan client created successfully")
+        client.update_headers(settings.headers)
+        logger.info(f"Atlan client created successfully with {client._session.headers}")
         return client
     except Exception as e:
         logger.error(f"Error creating Atlan client: {e}")
