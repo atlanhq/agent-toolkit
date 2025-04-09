@@ -179,40 +179,36 @@ def get_assets_by_dsl_tool(dsl_query: str):
 
 
 @mcp.tool()
-def propagate_via_hierarchy_tool(
-    asset_qualified_names: List[str], tag_names: List[str]
-):
+def propagate_via_hierarchy_tool(asset_guids: List[str], tag_names: List[str]):
     """
     Enable propagation of tags through hierarchy for a list of assets.
 
     This tool should be used after searching for assets using either search_assets_tool or get_assets_by_dsl_tool.
     First use one of those tools to find the assets you want to operate on, then pass their
-    qualified names to this tool to enable tag propagation.
+    GUIDs to this tool to enable tag propagation.
 
     Args:
-        asset_qualified_names (List[str]): List of qualified names of assets to operate on.
+        asset_guids (List[str]): List of GUIDs of assets to operate on.
             These can be obtained from either search_assets_tool or get_assets_by_dsl_tool results.
         tag_names (List[str]): List of tag names to propagate
 
     Returns:
-        Dict[str, Dict[str, Any]]: Dictionary with asset qualified names as keys and
+        Dict[str, Dict[str, Any]]: Dictionary with asset GUIDs as keys and
         operation results as values. Each result contains:
-        - 'success': bool indicating if operation succeeded
-        - 'message': str describing the outcome
+        - status: "success", "partial_success", or "error"
+        - message: Summary of what happened
+        - updated_tags: List of successfully updated tags
+        - skipped_tags: List of tags that were already correct
+        - failed_tags: List of failed tags with error details (if any)
+        - error: Error message (if any)
+        - error_type: Type of error (if any)
 
-    Example workflow:
-        # Using search_assets_tool:
-        tables = search_assets_tool(asset_type="Table", conditions={"name": "customer"})
-        results = propagate_via_hierarchy_tool(
-            asset_qualified_names=[table.qualified_name for table in tables],
-            tag_names=["PII", "Sensitive"]
-        )
+    Examples:
+        # Get assets using search
+        assets = search_assets_tool(asset_type="Table", limit=5)
+        guids = [asset.guid for asset in assets]
 
-        # Using get_assets_by_dsl_tool:
-        dsl_results = get_assets_by_dsl_tool(dsl_query)
-        results = propagate_via_hierarchy_tool(
-            asset_qualified_names=[asset.qualified_name for asset in dsl_results["results"]],
-            tag_names=["PII", "Sensitive"]
-        )
+        # Enable tag propagation
+        results = propagate_via_hierarchy_tool(guids, ["PII", "SENSITIVE"])
     """
-    return propagate_via_hierarchy(asset_qualified_names, tag_names)
+    return propagate_via_hierarchy(asset_guids, tag_names)

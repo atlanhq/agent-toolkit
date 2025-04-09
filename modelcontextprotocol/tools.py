@@ -441,57 +441,163 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
 
 
 def propagate_via_hierarchy(
-    asset_qualified_names: List[str], tag_names: List[str]
+    asset_guids: List[str], tag_names: List[str]
 ) -> Dict[str, Dict[str, Any]]:
     """
     Enable propagation of tags through hierarchy for a list of assets.
 
     Args:
-        asset_qualified_names (List[str]): List of qualified names of assets to operate on
+        asset_guids (List[str]): List of GUIDs of assets to operate on
         tag_names (List[str]): List of tag names to propagate
 
     Returns:
-        Dict[str, Dict[str, Any]]: Dictionary with asset qualified names as keys and
+        Dict[str, Dict[str, Any]]: Dictionary with asset GUIDs as keys and
         operation results as values. Each result contains:
-        - 'success': bool indicating if operation succeeded
-        - 'message': str describing the outcome
+        - status: "success", "partial_success", or "error"
+        - message: Summary of what happened
+        - updated_tags: List of successfully updated tags
+        - skipped_tags: List of tags that were already correct
+        - failed_tags: List of failed tags with error details (if any)
+        - error: Error message (if any)
+        - error_type: Type of error (if any)
     """
     results = {}
 
-    for qn in asset_qualified_names:
+    for asset_guid in asset_guids:
         try:
-            # Search for the asset by its qualified name
-            found_assets = search_assets(conditions={"qualified_name": qn}, limit=1)
+            logger.info(f"Processing asset: {asset_guid}")
 
-            if not found_assets:
-                results[qn] = {
-                    "success": False,
-                    "message": f"Asset with qualified name '{qn}' not found",
+            # Get the asset
+            try:
+                asset = atlan_client.asset.get_by_guid(asset_guid)
+                if not asset:
+                    error_msg = f"Asset not found: {asset_guid}"
+                    logger.error(error_msg)
+                    results[asset_guid] = {
+                        "status": "error",
+                        "message": error_msg,
+                        "error": error_msg,
+                        "error_type": "AssetNotFound",
+                    }
+                    continue
+                logger.info(f"Successfully retrieved asset: {asset_guid}")
+            except Exception as e:
+                error_msg = f"Failed to get asset {asset_guid}: {str(e)}"
+                logger.error(error_msg)
+                results[asset_guid] = {
+                    "status": "error",
+                    "message": error_msg,
+                    "error": str(e),
+                    "error_type": "AssetRetrievalError",
                 }
                 continue
 
-            asset = found_assets[0]
+            # Track tags for this asset
+            updated_tags = []
+            skipped_tags = []
+            failed_tags = []
 
-            # Update the tags with hierarchy propagation enabled
-            atlan_client.asset.update_atlan_tags(
-                asset_type=type(asset),
-                qualified_name=asset.qualified_name,
-                atlan_tag_names=tag_names,
-                propagate=True,  # Enable propagation
-                remove_propagation_on_delete=True,
-                restrict_lineage_propagation=True,
-                restrict_propagation_through_hierarchy=False,  # Allow propagation through hierarchy
-            )
+            # Process each tag
+            for tag_name in tag_names:
+                try:
+                    logger.info(f"Processing tag {tag_name} for asset {asset_guid}")
 
-            results[qn] = {
-                "success": True,
-                "message": f"Successfully enabled hierarchy propagation for tags: {', '.join(tag_names)}",
+                    # Check if tag exists and get its properties
+                    existing_tags = (
+                        [tag.type_name for tag in asset.atlan_tags]
+                        if asset.atlan_tags
+                        else []
+                    )
+                    tag_exists = tag_name in existing_tags
+
+                    # Desired propagation settings
+                    desired_settings = {
+                        "propagate": True,
+                        "remove_propagation_on_delete": True,
+                        "restrict_lineage_propagation": True,
+                        "restrict_propagation_through_hierarchy": False,
+                    }
+
+                    if tag_exists:
+                        try:
+                            # Get current tag properties
+                            current_tag = next(
+                                tag
+                                for tag in asset.atlan_tags
+                                if tag.type_name == tag_name
+                            )
+                            current_settings = {
+                                "propagate": current_tag.propagate,
+                                "remove_propagation_on_delete": current_tag.remove_propagation_on_delete,
+                                "restrict_lineage_propagation": current_tag.restrict_lineage_propagation,
+                                "restrict_propagation_through_hierarchy": current_tag.restrict_propagation_through_hierarchy,
+                            }
+
+                            # Compare settings
+                            if current_settings == desired_settings:
+                                skipped_tags.append(tag_name)
+                                continue
+
+                            # Settings don't match, remove and re-add
+                            atlan_client.asset.remove_atlan_tag(
+                                guid=asset_guid, atlan_tag_name=tag_name
+                            )
+                            atlan_client.asset.add_atlan_tags(
+                                asset_type=type(asset),
+                                qualified_name=asset.qualified_name,
+                                atlan_tag_names=[tag_name],
+                                **desired_settings,
+                            )
+                            updated_tags.append(tag_name)
+                        except Exception as e:
+                            error_msg = f"Failed to update tag {tag_name}: {str(e)}"
+                            failed_tags.append({"tag": tag_name, "error": str(e)})
+                    else:
+                        # Tag doesn't exist, add it with desired settings
+                        try:
+                            atlan_client.asset.add_atlan_tags(
+                                asset_type=type(asset),
+                                qualified_name=asset.qualified_name,
+                                atlan_tag_names=[tag_name],
+                                **desired_settings,
+                            )
+                            updated_tags.append(tag_name)
+                        except Exception as e:
+                            error_msg = f"Failed to add tag {tag_name}: {str(e)}"
+                            failed_tags.append({"tag": tag_name, "error": str(e)})
+
+                except Exception as e:
+                    error_msg = f"Failed to process tag {tag_name}: {str(e)}"
+                    failed_tags.append({"tag": tag_name, "error": str(e)})
+
+            # Determine overall status for this asset
+            if len(failed_tags) == len(tag_names):
+                status = "error"
+                message = "All tag operations failed"
+            elif len(failed_tags) > 0:
+                status = "partial_success"
+                message = f"Some tag operations failed: {len(failed_tags)} failed, {len(updated_tags)} updated, {len(skipped_tags)} skipped"
+            else:
+                status = "success"
+                message = f"All tag operations completed: {len(updated_tags)} updated, {len(skipped_tags)} skipped"
+
+            # Store results for this asset
+            results[asset_guid] = {
+                "status": status,
+                "message": message,
+                "updated_tags": updated_tags,
+                "skipped_tags": skipped_tags,
+                "failed_tags": failed_tags,
             }
 
         except Exception as e:
-            results[qn] = {
-                "success": False,
-                "message": f"Failed to enable hierarchy propagation: {str(e)}",
+            error_msg = f"Failed to process asset {asset_guid}: {str(e)}"
+            logger.error(error_msg)
+            results[asset_guid] = {
+                "status": "error",
+                "message": error_msg,
+                "error": str(e),
+                "error_type": "AssetProcessingError",
             }
 
     return results
