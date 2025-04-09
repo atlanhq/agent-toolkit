@@ -178,13 +178,18 @@ def get_assets_by_dsl_tool(dsl_query: str):
     return get_assets_by_dsl(dsl_query)
 
 
-@mcp.tool()
+@mcp.tool(disable_type_hints=True)
 def propagate_via_hierarchy_tool(assets: List[Asset], tag_names: List[str]):
     """
     Enable propagation of tags through hierarchy for a list of assets.
 
+    This tool should be used after searching for assets using the search_assets or get_assets_by_dsl tool.
+    First use search_assets or get_assets_by_dsl to find the assets you want to operate on, then pass those
+    assets to this tool to enable tag propagation.
+
     Args:
-        assets (List[Asset]): List of assets to operate on
+        assets (List[Asset]): List of assets to operate on. These should be Asset instances
+            obtained from the search_assets or get_assets_by_dsl tool.
         tag_names (List[str]): List of tag names to propagate
 
     Returns:
@@ -193,11 +198,11 @@ def propagate_via_hierarchy_tool(assets: List[Asset], tag_names: List[str]):
         - 'success': bool indicating if operation succeeded
         - 'message': str describing the outcome
 
-    Example:
-        # Propagate PII and Sensitive tags through hierarchy
-        results = propagate_via_hierarchy(
-            assets=[table1, table2],
-            tag_names=["PII", "Sensitive"]
-        )
+    Example workflow:
+        1. First, search for assets:
+           tables = search_assets(asset_type="Table", conditions={"name": "customer"})
+
+        2. Then propagate tags on those assets:
+           results = propagate_via_hierarchy(tables, ["PII", "Sensitive"])
     """
     return propagate_via_hierarchy(assets, tag_names)
