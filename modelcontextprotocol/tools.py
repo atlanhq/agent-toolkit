@@ -370,7 +370,8 @@ def search_assets(
             logger.debug(f"Search request: {request_json}")
 
         logger.info("Executing search request")
-        results = list(get_atlan_client().asset.search(request).current_page())
+        client = get_atlan_client()
+        results = list(client.asset.search(request).current_page())
 
         logger.info(f"Search completed, returned {len(results)} results")
 
@@ -416,7 +417,8 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
         )
 
         logger.info("Executing DSL search request")
-        results = get_atlan_client().asset.search(index_request)
+        client = get_atlan_client()
+        results = client.asset.search(index_request)
 
         result_count = sum(1 for _ in results.current_page())
         logger.info(
