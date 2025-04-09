@@ -438,3 +438,48 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
         logger.error(f"Error in DSL search: {str(e)}")
         logger.exception("Exception details:")
         return {"results": [], "aggregations": {}, "error": str(e)}
+
+
+def propagate_via_hierarchy(
+    assets: List[Asset], tag_names: List[str]
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Enable propagation of tags through hierarchy for a list of assets.
+
+    Args:
+        assets (List[Asset]): List of assets to operate on
+        tag_names (List[str]): List of tag names to propagate
+
+    Returns:
+        Dict[str, Dict[str, Any]]: Dictionary with asset qualified names as keys and
+        operation results as values. Each result contains:
+        - 'success': bool indicating if operation succeeded
+        - 'message': str describing the outcome
+    """
+    results = {}
+
+    for asset in assets:
+        try:
+            # Update the tags with hierarchy propagation enabled
+            atlan_client.update_atlan_tags(
+                asset_type=type(asset),
+                qualified_name=asset.qualified_name,
+                atlan_tag_names=tag_names,
+                propagate=True,  # Enable propagation
+                remove_propagation_on_delete=True,
+                restrict_lineage_propagation=True,
+                restrict_propagation_through_hierarchy=False,  # Allow propagation through hierarchy
+            )
+
+            results[asset.qualified_name] = {
+                "success": True,
+                "message": f"Successfully enabled hierarchy propagation for tags: {', '.join(tag_names)}",
+            }
+
+        except Exception as e:
+            results[asset.qualified_name] = {
+                "success": False,
+                "message": f"Failed to enable hierarchy propagation: {str(e)}",
+            }
+
+    return results
