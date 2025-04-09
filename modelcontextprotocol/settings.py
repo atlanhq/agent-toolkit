@@ -6,8 +6,18 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or .env file."""
 
-    atlan_base_url: str
-    atlan_api_key: str
+    ATLAN_BASE_URL: str
+    ATLAN_API_KEY: str
+    ATLAN_AGENT_ID: str
+    ATLAN_AGENT: str = "atlan-mcp"
+
+    @property
+    def headers(self) -> dict:
+        """Get the headers for API requests."""
+        return {
+            "x-atlan-agent": self.ATLAN_AGENT,
+            "x-atlan-agent-id": self.ATLAN_AGENT_ID,
+        }
 
     class Config:
         env_file = ".env"
