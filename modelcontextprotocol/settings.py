@@ -8,13 +8,16 @@ class Settings(BaseSettings):
 
     atlan_base_url: str
     atlan_api_key: str
+    atlan_agent_id: str
     atlan_agent: str = "atlan-mcp"
-    atlan_agent_id: str = "mcp"
 
-    headers: dict = {
-        "x-atlan-agent": atlan_agent,
-        "x-atlan-agent-id": atlan_agent_id,
-    }
+    @property
+    def headers(self) -> dict:
+        """Get the headers for API requests."""
+        return {
+            "x-atlan-agent": self.atlan_agent,
+            "x-atlan-agent-id": self.atlan_agent_id,
+        }
 
     class Config:
         env_file = ".env"

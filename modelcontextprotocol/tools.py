@@ -2,8 +2,7 @@ import logging
 from typing import Type, List, Optional, TypeVar, Union, Dict, Any
 import json
 
-from client import create_atlan_client
-from settings import Settings
+from client import get_atlan_client
 from pyatlan.model.assets import Asset
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.search import DSL, IndexSearchRequest
@@ -12,8 +11,6 @@ from pyatlan.model.fields.atlan_fields import AtlanField
 
 # Configure logging
 logger = logging.getLogger(__name__)
-settings = Settings()
-atlan_client = create_atlan_client(settings)
 
 T = TypeVar("T", bound=Asset)
 
@@ -373,7 +370,7 @@ def search_assets(
             logger.debug(f"Search request: {request_json}")
 
         logger.info("Executing search request")
-        results = list(atlan_client.asset.search(request).current_page())
+        results = list(get_atlan_client().asset.search(request).current_page())
 
         logger.info(f"Search completed, returned {len(results)} results")
 
@@ -419,7 +416,7 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
         )
 
         logger.info("Executing DSL search request")
-        results = atlan_client.asset.search(index_request)
+        results = get_atlan_client().asset.search(index_request)
 
         result_count = sum(1 for _ in results.current_page())
         logger.info(
