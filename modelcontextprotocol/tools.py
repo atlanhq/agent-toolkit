@@ -473,7 +473,7 @@ def propagate_via_hierarchy(
             asset = found_assets[0]
 
             # Update the tags with hierarchy propagation enabled
-            atlan_client.update_atlan_tags(
+            atlan_client.asset.update_atlan_tags(
                 asset_type=type(asset),
                 qualified_name=asset.qualified_name,
                 atlan_tag_names=tag_names,
