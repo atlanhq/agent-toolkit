@@ -24,22 +24,6 @@ def create_atlan_client() -> AtlanClient:
     """Create an Atlan client instance using settings loaded from environment."""
     settings = Settings()
 
-    missing_vars = []
-    if not settings.atlan_base_url:
-        missing_vars.append("ATLAN_BASE_URL")
-    if not settings.atlan_api_key:
-        missing_vars.append("ATLAN_API_KEY")
-    if not settings.atlan_agent_id:
-        missing_vars.append("ATLAN_AGENT_ID")
-
-    if missing_vars:
-        error_msg = (
-            f"Missing required environment variables: {', '.join(missing_vars)}. "
-            f"Please add them to your .env file or set them in your environment."
-        )
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-
     try:
         client = AtlanClient(
             base_url=settings.atlan_base_url, api_key=settings.atlan_api_key
