@@ -1,5 +1,5 @@
 import logging
-from typing import Type, List, Optional, TypeVar, Union, Dict, Any, Literal
+from typing import Type, List, Optional, TypeVar, Union, Dict, Any
 import json
 
 from client import get_atlan_client
@@ -442,7 +442,7 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
 
 def traverse_lineage(
     guid: str,
-    direction: Literal[LineageDirection.DOWNSTREAM, LineageDirection.UPSTREAM],
+    direction: LineageDirection,
     depth: int = 1000000,
     size: int = 10,
     immediate_neighbors: bool = False,
@@ -483,7 +483,8 @@ def traverse_lineage(
 
         # Execute request
         logger.debug("Executing lineage request")
-        response = atlan_client.asset.get_lineage_list(request)  # noqa: F821
+        client = get_atlan_client()
+        response = client.asset.get_lineage_list(request)  # noqa: F821
 
         # Process results
         result = {"assets": [], "references": []}
