@@ -2,8 +2,6 @@ from mcp.server.fastmcp import FastMCP
 from tools import (
     search_assets,
     get_assets_by_dsl,
-    get_downstream_assets,
-    get_upstream_assets,
     traverse_lineage,
 )
 from pyatlan.model.fields.atlan_fields import AtlanField
@@ -237,94 +235,6 @@ def traverse_lineage_tool(
     return traverse_lineage(
         guid=guid,
         direction=direction_enum,
-        depth=depth,
-        size=size,
-        immediate_neighbors=immediate_neighbors,
-    )
-
-
-@mcp.tool()
-def get_downstream_assets_tool(
-    guid: str,
-    depth: int = 1000000,
-    size: int = 10,
-    immediate_neighbors: bool = True,
-):
-    """
-    Get downstream assets in the lineage graph from a starting asset.
-
-    Args:
-        guid (str): GUID of the starting asset
-        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
-        size (int, optional): Maximum number of results to return. Defaults to 10.
-        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - assets: List of downstream assets
-            - references: List of downstream references with source and target GUIDs
-
-    Example:
-        # Get downstream assets
-        result = get_downstream_assets_tool(
-            guid="asset-guid-here",
-            depth=1000000,
-            size=10
-        )
-
-        # Access assets and their references
-        for asset in result["assets"]:
-            print(f"Asset: {asset.guid}")
-
-        for ref in result["references"]:
-            print(f"Downstream: {ref['source_guid']} -> {ref['target_guid']}")
-    """
-    return get_downstream_assets(
-        guid=guid,
-        depth=depth,
-        size=size,
-        immediate_neighbors=immediate_neighbors,
-    )
-
-
-@mcp.tool()
-def get_upstream_assets_tool(
-    guid: str,
-    depth: int = 1000000,
-    size: int = 10,
-    immediate_neighbors: bool = True,
-):
-    """
-    Get upstream assets in the lineage graph from a starting asset.
-
-    Args:
-        guid (str): GUID of the starting asset
-        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
-        size (int, optional): Maximum number of results to return. Defaults to 10.
-        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - assets: List of upstream assets
-            - references: List of upstream references with source and target GUIDs
-
-    Example:
-        # Get upstream assets
-        result = get_upstream_assets_tool(
-            guid="asset-guid-here",
-            depth=1000000,
-            size=10
-        )
-
-        # Access assets and their references
-        for asset in result["assets"]:
-            print(f"Asset: {asset.guid}")
-
-        for ref in result["references"]:
-            print(f"Upstream: {ref['source_guid']} -> {ref['target_guid']}")
-    """
-    return get_upstream_assets(
-        guid=guid,
         depth=depth,
         size=size,
         immediate_neighbors=immediate_neighbors,
