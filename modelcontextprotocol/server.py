@@ -1,8 +1,13 @@
 from mcp.server.fastmcp import FastMCP
-from tools import search_assets, get_assets_by_dsl
+from tools import (
+    search_assets,
+    get_assets_by_dsl,
+    traverse_lineage,
+)
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
 from pyatlan.model.assets import Asset
+from pyatlan.model.lineage import LineageDirection
 
 mcp = FastMCP("Altan MCP", dependencies=["pyatlan"])
 
@@ -176,3 +181,61 @@ def get_assets_by_dsl_tool(dsl_query: str):
     response = get_assets_by_dsl(dsl_query)
     """
     return get_assets_by_dsl(dsl_query)
+
+
+@mcp.tool()
+def traverse_lineage_tool(
+    guid: str,
+    direction: str,
+    depth: int = 1000000,
+    size: int = 10,
+    immediate_neighbors: bool = True,
+):
+    """
+    Traverse asset lineage in specified direction.
+
+    Args:
+        guid (str): GUID of the starting asset
+        direction (str): Direction to traverse ("UPSTREAM" or "DOWNSTREAM")
+        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
+        size (int, optional): Maximum number of results to return. Defaults to 10.
+        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - assets: List of assets in the lineage
+            - references: List of dictionaries containing:
+                - source_guid: GUID of the source asset
+                - target_guid: GUID of the target asset
+                - direction: Direction of the reference (upstream/downstream)
+
+    Example:
+        # Get lineage with specific depth and size
+        lineage = traverse_lineage_tool(
+            guid="asset-guid-here",
+            direction="DOWNSTREAM",
+            depth=1000000,
+            size=10
+        )
+
+        # Access assets and their references
+        for asset in lineage["assets"]:
+            print(f"Asset: {asset.guid}")
+
+        for ref in lineage["references"]:
+            print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
+    """
+    try:
+        direction_enum = LineageDirection[direction.upper()]
+    except KeyError:
+        raise ValueError(
+            f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
+        )
+
+    return traverse_lineage(
+        guid=guid,
+        direction=direction_enum,
+        depth=depth,
+        size=size,
+        immediate_neighbors=immediate_neighbors,
+    )

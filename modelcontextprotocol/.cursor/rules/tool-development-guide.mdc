@@ -1,0 +1,201 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+This guide outlines the core coding patterns for implementing tools in the Atlan MCP server.
+
+## Tool Implementation Pattern
+
+1. Define core function in tools.py
+2. Register function as MCP tool in server.py
+3. Use appropriate type hints for PyAtlan and MCP compatibility
+
+## Core Function Template (tools.py)
+
+```python
+def implement_atlan_tool(
+    param1: str,
+    param2: Optional[int] = None,
+    param3: Optional[Dict[str, Any]] = None
+) -> Any:
+    """
+    Implement an Atlan tool with appropriate parameters.
+    """
+    logger.info(f"Starting tool execution with parameters: param1={param1}")
+
+    try:
+        # Tool-specific implementation
+        result = execute_atlan_operation(param1, param2, param3)
+
+        logger.info(f"Tool execution completed successfully")
+        return result
+    except Exception as e:
+        logger.error(f"Error executing tool: {str(e)}")
+        logger.exception("Exception details:")
+        return get_appropriate_default_value()
+```
+
+## MCP Tool Registration Template (server.py)
+
+```python
+@mcp.tool()
+def registered_tool_name(
+    param1: str,
+    param2: Optional[int] = None,
+    param3: Optional[Dict[str, Any]] = None
+) -> Any:
+    """
+    Tool description with clear purpose.
+
+    Args:
+        param1: First parameter description
+        param2: Second parameter description
+        param3: Third parameter description (complex structure)
+
+    Returns:
+        Description of return value
+
+    Example:
+        registered_tool_name("value1", 42, {"key": "value"})
+    """
+    return implement_atlan_tool(param1, param2, param3)
+```
+
+## Common Operation Patterns
+
+### Asset Search Operation
+```python
+def search_operation(criteria):
+    search = FluentSearch()
+    # Add filters based on criteria
+    request = search.to_request()
+    results = list(atlan_client.asset.search(request).current_page())
+    return results
+```
+
+### Asset Retrieval Operation
+```python
+def get_asset_operation(qualified_name, asset_type):
+    try:
+        asset = asset_type.get_by_qualified_name(
+            qualified_name=qualified_name,
+            min_ext_info=True,
+            atlan_client=atlan_client
+        )
+        return asset
+    except Exception as e:
+        logger.error(f"Failed to get asset: {e}")
+        return None
+```
+
+### Batch Processing Operation
+```python
+def batch_operation(items, process_function):
+    results = []
+    for item in items:
+        try:
+            result = process_function(item)
+            results.append(result)
+        except Exception as e:
+            logger.warning(f"Error processing item {item}: {e}")
+            results.append(None)
+    return results
+```
+
+### DSL Query Operation
+```python
+def dsl_query_operation(dsl_query):
+    try:
+        dsl_dict = json.loads(dsl_query)
+        index_request = IndexSearchRequest(dsl=DSL(**dsl_dict))
+        results = atlan_client.asset.search(index_request)
+        return results
+    except Exception as e:
+        logger.error(f"DSL query error: {e}")
+        return None
+```
+
+## Parameter Validation Patterns
+
+```python
+def validate_parameters(param, expected_type, allowed_values=None):
+    if param is None:
+        return False
+
+    if not isinstance(param, expected_type):
+        return False
+
+    if allowed_values and param not in allowed_values:
+        return False
+
+    return True
+```
+
+## Result Formatting Patterns
+
+```python
+def format_asset_results(assets):
+    return [
+        {
+            "name": asset.name,
+            "qualified_name": asset.qualified_name,
+            "type": asset.type_name,
+            "description": asset.description
+        }
+        for asset in assets if asset
+    ]
+```
+
+## Error Handling Pattern
+
+```python
+try:
+    # Attempt operation
+    result = perform_operation()
+    return result
+except ValueError as e:
+    logger.error(f"Invalid input parameter: {str(e)}")
+    return {"error": "Invalid input", "details": str(e)}
+except ConnectionError as e:
+    logger.error(f"Connection to Atlan failed: {str(e)}")
+    return {"error": "Connection failed", "details": str(e)}
+except Exception as e:
+    logger.error(f"Operation failed: {str(e)}")
+    logger.exception("Exception details:")
+    return {"error": "Unknown error", "details": str(e)}
+```
+
+## Common Type Patterns
+
+```python
+from typing import Optional, Dict, Any, List, Union, Type, TypeVar, Callable, Tuple
+
+# Generic result type
+Result = Union[Dict[str, Any], List[Dict[str, Any]], None]
+
+# Function returning success status and result
+def operation_with_status() -> Tuple[bool, Optional[Result], Optional[str]]:
+    try:
+        result = perform_operation()
+        return True, result, None
+    except Exception as e:
+        return False, None, str(e)
+```
+
+## Logging Pattern
+
+```python
+# Start of operation
+logger.info(f"Starting {operation_name} with {parameters}")
+
+# Debug information during operation
+logger.debug(f"Intermediate state: {some_variable}")
+
+# Operation completed
+logger.info(f"Operation {operation_name} completed with {result_summary}")
+
+# Error handling
+logger.error(f"Operation {operation_name} failed: {error_message}")
+logger.exception("Exception details:")
+```
