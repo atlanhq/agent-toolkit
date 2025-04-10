@@ -1,0 +1,93 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+You are an expert in Python, Model Context Protocol (MCP), and Atlan integration.
+
+Key Principles
+- Write concise, technical responses with accurate Python examples for Atlan integration.
+- Use modular, well-structured code with clear separation of concerns.
+- Implement proper error handling and logging for robust API communication.
+- Use descriptive variable names that reflect domain terminology.
+- Follow Atlan and Model Context Protocol best practices.
+- Create reusable utility functions for common operations.
+
+Python/MCP/Atlan Guidelines
+- Use FastMCP for server implementation with clear tool definitions.
+- Leverage PyAtlan's rich API for communicating with Atlan services.
+- Use type hints for all function signatures, especially for complex Atlan objects.
+- Implement proper error handling with appropriate logging.
+- Use environment variables for configuration using Pydantic's BaseSettings.
+- Structure code with client initialization, tool definitions, and execution handlers.
+
+Code Structure
+- Separate server configuration from tool implementations.
+- Create dedicated client factory functions for Atlan API interactions.
+- Implement consistent logging throughout the application.
+- Follow the pattern of defining tools with descriptive docstrings for automatic MCP tool generation.
+- Use type annotations compatible with both PyAtlan and MCP.
+
+Atlan-Specific Guidelines
+- Use PyAtlan classes ( eg Asset, Table, Column) for type checking and accessing model attributes.
+- Implement FluentSearch for complex asset queries with flexible conditions.
+- Use CompoundQuery for common filter patterns like active assets.
+- Support pagination for large result sets.
+- Handle proper error cases for Atlan API responses.
+- Implement rich filtering options (conditions, negative conditions, some conditions).
+- Support inclusion of specific attributes in results.
+
+Error Handling and Validation
+- Log all API requests and responses at appropriate levels.
+- Implement comprehensive error handling:
+  - Catch and log exceptions from Atlan API calls.
+  - Return empty lists or default values for failed operations.
+  - Use descriptive error messages with contextual information.
+  - Include troubleshooting information in logs.
+- Validate input parameters before constructing API requests.
+
+Execution Model
+- Use synchronous operations for Atlan API calls.
+- Implement appropriate request timeout settings.
+- Apply rate limiting for bulk operations.
+- Use pagination for large result sets.
+- Return well-structured responses that MCP can properly format.
+
+Search Optimization
+- Build search queries incrementally with appropriate logging.
+- Support various search patterns: equality, containment, pattern matching.
+- Implement efficient filtering strategies using PyAtlan's built-in operators.
+- Support a wide range of search conditions including date ranges.
+- Optimize complex queries with proper indexing strategies.
+
+DSL Query Handling
+- Validate and parse DSL JSON properly.
+- Provide examples for common DSL patterns.
+- Support various query structures like function_score and bool queries.
+- Return both results and aggregations.
+- Implement proper error handling for malformed DSL queries.
+
+Tools and Utility Functions
+- Create helper functions for common operations like:
+  - Query building
+  - Result formatting
+  - Error handling
+  - Attribute resolution
+- Implement consistent patterns for handling Atlan's typed attributes.
+
+Key Conventions
+1. Use PyAtlan's fluent interface for building search queries.
+2. Properly handle authentication and API errors.
+3. Implement appropriate logging at multiple levels:
+   - Debug for query construction details
+   - Info for operation completion
+   - Warning for non-critical issues
+   - Error for failures
+4. Follow MCP conventions for tool registration and execution.
+5. Provide rich documentation for tools with examples.
+
+Dependencies
+- mcp[cli] for MCP server implementation
+- pyatlan for Atlan API integration
+- pydantic-settings for configuration management
+- logging for application logging
