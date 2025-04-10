@@ -484,7 +484,7 @@ def traverse_lineage(
 
         # Execute request
         logger.debug("Executing lineage request")
-        response = atlan_client.asset.get_lineage_list(request)
+        response = atlan_client.asset.get_lineage_list(request)  # noqa: F821
 
         # Process results
         result = {"assets": [], "references": []}
