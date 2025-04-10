@@ -20,12 +20,6 @@ atlan-mcp/
 ├── server.py                 # MCP server entry point
 ├── settings.py               # Application settings
 ├── tools.py                  # Tool implementations
-├── tests/                    # Test directory
-│   ├── __init__.py
-│   ├── conftest.py           # Test fixtures
-│   ├── test_client.py        # Tests for client factory
-│   ├── test_settings.py      # Tests for settings
-│   └── test_tools.py         # Tests for tool implementations
 └── examples/                 # Example usage and queries
     ├── search_assets.py      # Example asset search
     └── dsl_queries.py        # Example DSL queries
