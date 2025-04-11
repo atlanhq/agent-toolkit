@@ -61,12 +61,12 @@ To generate the API key, refer to the [Atlan documentation](https://ask.atlan.co
 
 You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away by running:
 ```bash
-mcp install server.py -f .env # to use the .env file
+uv run mcp install server.py -f .env # to use the .env file
 ```
 
 Alternatively, you can test it with the MCP Inspector:
 ```bash
-mcp dev server.py
+uv run mcp dev server.py
 ```
 
 ## Contact
