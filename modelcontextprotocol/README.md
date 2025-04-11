@@ -8,6 +8,7 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 | --------------------- | ------------------------------- |
 | `search_assets`       | Search for assets based on conditions |
 | `get_assets_by_dsl`   | Retrieve assets using a DSL query |
+| `traverse_lineage`    | Retrieve lineage for an asset |
 
 ## Installation
 
