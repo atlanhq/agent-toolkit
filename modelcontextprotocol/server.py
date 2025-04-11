@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List, Union, Type
 from pyatlan.model.assets import Asset
 from pyatlan.model.lineage import LineageDirection
 
-mcp = FastMCP("Altan MCP", dependencies=["pyatlan"])
+mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
 
 
 @mcp.tool()
