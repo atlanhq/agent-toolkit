@@ -112,7 +112,7 @@ def search_assets_tool(
 
 
 @mcp.tool()
-def get_assets_by_dsl_tool(dsl_query: str):
+def get_assets_by_dsl_tool(dsl_query: Union[str, Dict[str, Any]]):
     """
     Execute the search with the given query
     dsl_query : str (required):
