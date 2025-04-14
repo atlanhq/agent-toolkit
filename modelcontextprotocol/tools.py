@@ -383,30 +383,34 @@ def search_assets(
         return []
 
 
-def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
+def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     """
     Execute the search with the given query
     Args:
-        dsl_query (required): The DSL object that is required to search the index.
+        dsl_query (Union[str, Dict[str, Any]]): The DSL query as either a string or dictionary
     Returns:
         Dict[str, Any]: A dictionary containing the results and aggregations
     """
     logger.info("Starting DSL-based asset search")
     if logger.isEnabledFor(logging.DEBUG):
-        logger.debug("Processing DSL query string")
+        logger.debug("Processing DSL query")
     try:
-        # Parse string to dict if needed
-        if isinstance(dsl_query, str):
-            logger.debug("Converting DSL string to JSON")
-            try:
-                dsl_dict = json.loads(dsl_query)
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in DSL query: {e}")
-                return {
-                    "results": [],
-                    "aggregations": {},
-                    "error": "Invalid JSON in DSL query",
-                }
+        # Convert dictionary to string if needed
+        if isinstance(dsl_query, dict):
+            logger.debug("Converting DSL dictionary to JSON string")
+            dsl_query = json.dumps(dsl_query)
+
+        # Parse string to dict
+        logger.debug("Converting DSL string to JSON")
+        try:
+            dsl_dict = json.loads(dsl_query)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in DSL query: {e}")
+            return {
+                "results": [],
+                "aggregations": {},
+                "error": "Invalid JSON in DSL query",
+            }
 
         logger.debug("Creating IndexSearchRequest")
         index_request = IndexSearchRequest(
@@ -425,7 +429,7 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
         logger.info(
             f"DSL search completed, returned approximately {result_count} results"
         )
-
+        results_list = list(results.current_page())
         # Check if aggregations exist
         if hasattr(results, "aggregations") and results.aggregations:
             agg_count = len(results.aggregations)
@@ -433,7 +437,7 @@ def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
         else:
             logger.debug("Search returned no aggregations")
 
-        return {"results": results, "aggregations": results.aggregations}
+        return {"results": results_list, "aggregations": results.aggregations}
     except Exception as e:
         logger.error(f"Error in DSL search: {str(e)}")
         logger.exception("Exception details:")
