@@ -90,6 +90,19 @@ def search_assets_tool(
             conditions={"created_by": "username"},
             date_range={"create_time": {"gte": 1641034800000, "lte": 1672570800000}}
         )
+        # Search for assets with a specific search text
+        assets = search_assets(
+            conditions = {
+                "name": {
+                    "operator": "match",
+                    "value": "search_text"
+                },
+                "description": {
+                    "operator": "match",
+                    "value": "search_text"
+                }
+            }
+        )
     """
     return search_assets(
         conditions,
@@ -115,7 +128,7 @@ def search_assets_tool(
 def get_assets_by_dsl_tool(dsl_query: Union[str, Dict[str, Any]]):
     """
     Execute the search with the given query
-    dsl_query : str (required):
+    dsl_query : Union[str, Dict[str, Any]] (required):
         The DSL query used to search the index.
 
     Example:

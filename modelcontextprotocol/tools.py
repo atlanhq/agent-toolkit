@@ -429,7 +429,7 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         logger.info(
             f"DSL search completed, returned approximately {result_count} results"
         )
-
+        results_list = list(results.current_page())
         # Check if aggregations exist
         if hasattr(results, "aggregations") and results.aggregations:
             agg_count = len(results.aggregations)
@@ -437,7 +437,7 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         else:
             logger.debug("Search returned no aggregations")
 
-        return {"results": results, "aggregations": results.aggregations}
+        return {"results": results_list, "aggregations": results.aggregations}
     except Exception as e:
         logger.error(f"Error in DSL search: {str(e)}")
         logger.exception("Exception details:")
