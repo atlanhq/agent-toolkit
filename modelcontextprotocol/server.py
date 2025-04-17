@@ -3,6 +3,9 @@ from tools import (
     search_assets,
     get_assets_by_dsl,
     traverse_lineage,
+    update_assets,
+    UpdatableAttribute,
+    CertificateStatus,
 )
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
@@ -252,3 +255,57 @@ def traverse_lineage_tool(
         size=size,
         immediate_neighbors=immediate_neighbors,
     )
+
+
+@mcp.tool()
+def update_assets_tool(
+    asset_guids: Union[str, List[str]],
+    attribute_name: str,
+    attribute_values: List[str],
+):
+    """
+    Update one or multiple assets with different values for the same attribute.
+
+    Args:
+        asset_guids (Union[str, List[str]]): Single GUID or list of GUIDs of assets to update.
+            If a single GUID is provided, it will be used for all attribute values.
+        attribute_name (str): Name of the attribute to update.
+            Only "userDescription" and "certificateStatus" are allowed.
+        attribute_values (List[str]): List of values to set for the attribute.
+            For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - updated_count: Number of assets successfully updated
+            - errors: List of any errors encountered
+
+    Examples:
+        # Update certificate status for a single asset
+        result = update_assets_tool(
+            asset_guid="asset-guid-here",
+            attribute_name="certificateStatus",
+            attribute_values=["VERIFIED"]
+        )
+
+        # Update user description for multiple assets
+        result = update_assets_tool(
+            asset_guids=["guid1", "guid2"],
+            attribute_name="userDescription",
+            attribute_values=["New description 1", "New description 2"]
+        )
+    """
+    try:
+        # Convert string attribute name to enum
+        attr_enum = UpdatableAttribute(attribute_name)
+
+        # For certificate status, validate and convert values to enum
+        if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
+            attribute_values = [CertificateStatus(val) for val in attribute_values]
+
+        return update_assets(
+            asset_guids=asset_guids,
+            attribute_name=attr_enum,
+            attribute_values=attribute_values,
+        )
+    except ValueError as e:
+        return {"updated_count": 0, "errors": [str(e)]}
