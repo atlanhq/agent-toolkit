@@ -17,6 +17,7 @@ class Settings(BaseSettings):
         return {
             "x-atlan-agent": self.ATLAN_AGENT,
             "x-atlan-agent-id": self.ATLAN_AGENT_ID,
+            "x-atlan-client-origin": self.ATLAN_AGENT,
         }
 
     class Config:
