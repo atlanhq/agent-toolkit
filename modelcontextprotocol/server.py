@@ -6,6 +6,7 @@ from tools import (
     update_assets,
     UpdatableAttribute,
     CertificateStatus,
+    UpdatableAsset,
 )
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
@@ -259,7 +260,7 @@ def traverse_lineage_tool(
 
 @mcp.tool()
 def update_assets_tool(
-    asset_guids: Union[str, List[str]],
+    assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: str,
     attribute_values: List[str],
 ):
@@ -267,10 +268,10 @@ def update_assets_tool(
     Update one or multiple assets with different values for the same attribute.
 
     Args:
-        asset_guids (Union[str, List[str]]): Single GUID or list of GUIDs of assets to update.
-            If a single GUID is provided, it will be used for all attribute values.
+        assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset or list of assets to update.
+            Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Only "userDescription" and "certificateStatus" are allowed.
+            Only "user_description" and "certificate_status" are supported.
         attribute_values (List[str]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
 
@@ -282,17 +283,28 @@ def update_assets_tool(
     Examples:
         # Update certificate status for a single asset
         result = update_assets_tool(
-            asset_guid="asset-guid-here",
-            attribute_name="certificateStatus",
+            assets=UpdatableAsset(
+                guid="asset-guid-here", "name": "Asset Name", "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            ),
+            attribute_name="certificate_status",
             attribute_values=["VERIFIED"]
         )
 
         # Update user description for multiple assets
         result = update_assets_tool(
-            asset_guids=["guid1", "guid2"],
-            attribute_name="userDescription",
-            attribute_values=["New description 1", "New description 2"]
+            assets=[
+                UpdatableAsset(guid="asset-guid-1", "name": "Asset 1", "type_name; "Asset 1 Type Name",
+                    "qualified_name": "Asset 1 Qualified Name"),
+                UpdatableAsset(guid="asset-guid-2", "name": "Asset 2", "type_name; "Asset 2 Type Name",
+                    "qualified_name": "Asset 2 Qualified Name"),
+            ],
+            attribute_name="user_description",
+            attribute_values=[
+                "New description for asset 1", "New description for asset 2"
+            ]
         )
+
     """
     try:
         # Convert string attribute name to enum
@@ -303,7 +315,7 @@ def update_assets_tool(
             attribute_values = [CertificateStatus(val) for val in attribute_values]
 
         return update_assets(
-            asset_guids=asset_guids,
+            updatable_assets=assets,
             attribute_name=attr_enum,
             attribute_values=attribute_values,
         )

@@ -10,6 +10,7 @@ from pyatlan.model.search import DSL, IndexSearchRequest
 from pyatlan.model.fields.atlan_fields import AtlanField
 from pyatlan.model.enums import LineageDirection
 from pyatlan.model.lineage import FluentLineage
+from pydantic import BaseModel
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -28,8 +29,19 @@ class CertificateStatus(str, Enum):
 class UpdatableAttribute(str, Enum):
     """Enum for attributes that can be updated."""
 
-    USER_DESCRIPTION = "userDescription"
-    CERTIFICATE_STATUS = "certificateStatus"
+    USER_DESCRIPTION = "user_description"
+    CERTIFICATE_STATUS = "certificate_status"
+
+
+class UpdatableAsset(BaseModel):
+    """Class representing an asset that can be updated."""
+
+    guid: str
+    name: str
+    qualified_name: str
+    type_name: str
+    user_description: Optional[str] = None
+    certificate_status: Optional[CertificateStatus] = None
 
 
 def search_assets(
@@ -528,7 +540,7 @@ def traverse_lineage(
 
 
 def update_assets(
-    asset_guids: Union[str, List[str]],
+    updatable_assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: UpdatableAttribute,
     attribute_values: List[Union[str, CertificateStatus]],
 ) -> Dict[str, Any]:
@@ -536,8 +548,8 @@ def update_assets(
     Update one or multiple assets with different values for the same attribute.
 
     Args:
-        asset_guids (Union[str, List[str]]): Single GUID or list of GUIDs of assets to update.
-            If a single GUID is provided, it will be used for all attribute values.
+        updatable_assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset(s) to update.
+            Can be a single UpdatableAsset or a list of UpdatableAssets.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
             Only userDescription and certificateStatus are allowed.
         attribute_values (List[Union[str, CertificateStatus]]): List of values to set for the attribute.
@@ -548,15 +560,20 @@ def update_assets(
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
     """
-    logger.info(
-        f"Starting bulk update for {len(asset_guids) if isinstance(asset_guids, list) else 1} assets"
-    )
-    logger.debug(f"Updating attribute_name={attribute_name.value}")
-
     try:
         # Convert single GUID to list for consistent handling
-        if not isinstance(asset_guids, list):
-            asset_guids = [asset_guids]
+        if not isinstance(updatable_assets, list):
+            updatable_assets = [updatable_assets]
+
+        logger.info(
+            f"Updating {len(updatable_assets)} assets with attribute '{attribute_name}'"
+        )
+
+        # Validate attribute values
+        if len(updatable_assets) != len(attribute_values):
+            error_msg = "Number of asset GUIDs must match number of attribute values"
+            logger.error(error_msg)
+            return {"updated_count": 0, "errors": [error_msg]}
 
         # Initialize result tracking
         result = {"updated_count": 0, "errors": []}
@@ -564,32 +581,31 @@ def update_assets(
         # Validate certificate status values if applicable
         if attribute_name == UpdatableAttribute.CERTIFICATE_STATUS:
             for value in attribute_values:
-                if value not in [status.value for status in CertificateStatus]:
-                    error_msg = f"Invalid certificate status: {value}. Must be one of {[status.value for status in CertificateStatus]}"
+                if value not in CertificateStatus.__members__.values():
+                    error_msg = f"Invalid certificate status: {value}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
-                    return result
 
         # Get Atlan client
         client = get_atlan_client()
 
         # Create assets with updated values
         assets = []
-        for attribute_value in attribute_values:
+        index = 0
+        for updatable_asset in updatable_assets:
             asset = Asset()
-            asset.guid = asset_guids[0]  # Use the first GUID for all values
-            setattr(asset, attribute_name.value, attribute_value)
+            asset.guid = updatable_asset.guid
+            asset.name = updatable_asset.name
+            asset.type_name = updatable_asset.type_name
+            asset.qualified_name = updatable_asset.qualified_name
+            setattr(asset, attribute_name.value, attribute_values[index])
             assets.append(asset)
-
+            index += 1
         response = client.asset.save(assets)
 
         # Process response
-        if response and hasattr(response, "mutated_entities"):
-            result["updated_count"] = len(response.mutated_entities)
-            logger.info(f"Successfully updated {result['updated_count']} assets")
-        else:
-            logger.warning("No mutated entities in response")
-
+        result["updated_count"] = len(response.mutated_entities or [])
+        logger.info(f"Successfully updated {result['updated_count']} assets")
         return result
 
     except Exception as e:
