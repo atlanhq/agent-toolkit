@@ -3,6 +3,10 @@ from tools import (
     search_assets,
     get_assets_by_dsl,
     traverse_lineage,
+    update_assets,
+    UpdatableAttribute,
+    CertificateStatus,
+    UpdatableAsset,
 )
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
@@ -252,3 +256,68 @@ def traverse_lineage_tool(
         size=size,
         immediate_neighbors=immediate_neighbors,
     )
+
+
+@mcp.tool()
+def update_assets_tool(
+    assets: Union[UpdatableAsset, List[UpdatableAsset]],
+    attribute_name: str,
+    attribute_values: List[str],
+):
+    """
+    Update one or multiple assets with different values for the same attribute.
+
+    Args:
+        assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset or list of assets to update.
+            Can be a single UpdatableAsset or a list of UpdatableAsset objects.
+        attribute_name (str): Name of the attribute to update.
+            Only "user_description" and "certificate_status" are supported.
+        attribute_values (List[str]): List of values to set for the attribute.
+            For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - updated_count: Number of assets successfully updated
+            - errors: List of any errors encountered
+
+    Examples:
+        # Update certificate status for a single asset
+        result = update_assets_tool(
+            assets=UpdatableAsset(
+                guid="asset-guid-here", "name": "Asset Name", "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            ),
+            attribute_name="certificate_status",
+            attribute_values=["VERIFIED"]
+        )
+
+        # Update user description for multiple assets
+        result = update_assets_tool(
+            assets=[
+                UpdatableAsset(guid="asset-guid-1", "name": "Asset 1", "type_name; "Asset 1 Type Name",
+                    "qualified_name": "Asset 1 Qualified Name"),
+                UpdatableAsset(guid="asset-guid-2", "name": "Asset 2", "type_name; "Asset 2 Type Name",
+                    "qualified_name": "Asset 2 Qualified Name"),
+            ],
+            attribute_name="user_description",
+            attribute_values=[
+                "New description for asset 1", "New description for asset 2"
+            ]
+        )
+
+    """
+    try:
+        # Convert string attribute name to enum
+        attr_enum = UpdatableAttribute(attribute_name)
+
+        # For certificate status, validate and convert values to enum
+        if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
+            attribute_values = [CertificateStatus(val) for val in attribute_values]
+
+        return update_assets(
+            updatable_assets=assets,
+            attribute_name=attr_enum,
+            attribute_values=attribute_values,
+        )
+    except ValueError as e:
+        return {"updated_count": 0, "errors": [str(e)]}
