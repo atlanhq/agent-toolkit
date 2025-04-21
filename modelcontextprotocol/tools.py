@@ -593,18 +593,21 @@ def update_assets(
         assets = []
         index = 0
         for updatable_asset in updatable_assets:
-            asset = Asset()
-            asset.guid = updatable_asset.guid
-            asset.name = updatable_asset.name
-            asset.type_name = updatable_asset.type_name
-            asset.qualified_name = updatable_asset.qualified_name
+            type_name = updatable_asset.type_name
+            asset_cls = getattr(
+                __import__("pyatlan.model.assets", fromlist=[type_name]), type_name
+            )
+            asset = asset_cls.updater(
+                qualified_name=updatable_asset.qualified_name,
+                name=updatable_asset.name,
+            )
             setattr(asset, attribute_name.value, attribute_values[index])
             assets.append(asset)
             index += 1
         response = client.asset.save(assets)
 
         # Process response
-        result["updated_count"] = len(response.mutated_entities or [])
+        result["updated_count"] = len(response.mutated_entities.UPDATE or [])
         logger.info(f"Successfully updated {result['updated_count']} assets")
         return result
 

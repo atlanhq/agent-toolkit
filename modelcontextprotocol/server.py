@@ -260,7 +260,7 @@ def traverse_lineage_tool(
 
 @mcp.tool()
 def update_assets_tool(
-    assets: Union[UpdatableAsset, List[UpdatableAsset]],
+    assets: Union[Dict[str, Any], List[Dict[str, Any]]],
     attribute_name: str,
     attribute_values: List[str],
 ):
@@ -268,7 +268,7 @@ def update_assets_tool(
     Update one or multiple assets with different values for the same attribute.
 
     Args:
-        assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset or list of assets to update.
+        assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
             Only "user_description" and "certificate_status" are supported.
@@ -283,10 +283,12 @@ def update_assets_tool(
     Examples:
         # Update certificate status for a single asset
         result = update_assets_tool(
-            assets=UpdatableAsset(
-                guid="asset-guid-here", "name": "Asset Name", "type_name": "Asset Type Name",
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
                 "qualified_name": "Asset Qualified Name"
-            ),
+            },
             attribute_name="certificate_status",
             attribute_values=["VERIFIED"]
         )
@@ -294,10 +296,18 @@ def update_assets_tool(
         # Update user description for multiple assets
         result = update_assets_tool(
             assets=[
-                UpdatableAsset(guid="asset-guid-1", "name": "Asset 1", "type_name; "Asset 1 Type Name",
-                    "qualified_name": "Asset 1 Qualified Name"),
-                UpdatableAsset(guid="asset-guid-2", "name": "Asset 2", "type_name; "Asset 2 Type Name",
-                    "qualified_name": "Asset 2 Qualified Name"),
+                {
+                    "guid": "asset-guid-1",
+                    "name": "Asset Name 1",
+                    "type_name": "Asset Type Name 1",
+                    "qualified_name": "Asset Qualified Name 1"
+                },
+                {
+                    "guid": "asset-guid-2",
+                    "name": "Asset Name 2",
+                    "type_name": "Asset Type Name 2",
+                    "qualified_name": "Asset Qualified Name 2"
+                }
             ],
             attribute_name="user_description",
             attribute_values=[
@@ -314,8 +324,16 @@ def update_assets_tool(
         if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             attribute_values = [CertificateStatus(val) for val in attribute_values]
 
+        # Convert assets to UpdatableAsset objects
+        if isinstance(assets, dict):
+            updatable_assets = [UpdatableAsset(**assets)]
+        elif isinstance(assets, list):
+            updatable_assets = [UpdatableAsset(**asset) for asset in assets]
+        else:
+            raise ValueError("Assets must be a dictionary or a list of dictionaries")
+
         return update_assets(
-            updatable_assets=assets,
+            updatable_assets=updatable_assets,
             attribute_name=attr_enum,
             attribute_values=attribute_values,
         )
