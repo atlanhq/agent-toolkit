@@ -4,12 +4,15 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 
 ## Available Tools
 
-| Tool                  | Description                     |
-| --------------------- | ------------------------------- |
-| `search_assets`       | Search for assets based on conditions |
-| `get_assets_by_dsl`   | Retrieve assets using a DSL query |
-| `traverse_lineage`    | Retrieve lineage for an asset |
-| `update_assets`       | Update asset attributes (user description and certificate status) |
+| Tool                      | Description                                                       |
+| ------------------------- | ----------------------------------------------------------------- |
+| `search_assets`           | Search for assets based on conditions                             |
+| `get_assets_by_dsl`       | Retrieve assets using a DSL query                                 |
+| `traverse_lineage`        | Retrieve lineage for an asset                                     |
+| `update_assets`           | Update asset attributes (user description and certificate status) |
+| `get_asset_by_guid`       | Retrieve asset by guid                                            |
+| `get_business_policies`   | Get business policy either by type or by guid                     |
+
 
 ## Installation
 
