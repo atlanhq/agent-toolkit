@@ -362,25 +362,12 @@ def get_asset_by_guid_tool(guid: str) -> Optional[Dict[str, Any]]:
             - additional attributes based on the asset type
 
     Example:
-        # Get an asset by its GUID
-        asset = get_asset_by_guid_tool("123e4567-e89b-12d3-a456-426614174000")
-        if asset:
-            print(f"Found asset: {asset['name']}")
-            print(f"Type: {asset['type_name']}")
-            print(f"Qualified Name: {asset['qualified_name']}")
-        else:
-            print("No asset found with that GUID")
+        # Get asset details by GUID
+        asset = get_asset_by_guid_tool("asset-guid-here")
     """
     asset = get_asset_by_guid(guid)
     if asset:
-        return {
-            "name": asset.name,
-            "type_name": asset.type_name,
-            "qualified_name": asset.qualified_name,
-            "description": asset.description,
-            "guid": asset.guid,
-            # Add any other relevant attributes based on the asset type
-        }
+        return asset
     return None
 
 
