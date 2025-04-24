@@ -61,6 +61,7 @@ def search_assets(
     directly_tagged: bool = True,
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
+    guids: Optional[List[str]] = None,
 ) -> List[Asset]:
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -88,6 +89,8 @@ def search_assets(
         domain_guids (List[str], optional): List of domain GUIDs to filter by.
         date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
             Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
+        guids (List[str], optional): List of GUIDs to filter by.
+
 
     Returns:
         List[Asset]: List of assets matching the search criteria
@@ -344,6 +347,10 @@ def search_assets(
                     date_range_count += 1
 
             logger.debug(f"Applied {date_range_count} date range conditions")
+
+        if guids and len(guids) > 0:
+            logger.debug(f"Applying GUID filter: {guids}")
+            search = search.where(Asset.GUID.within(guids))
 
         # Include requested attributes
         if include_attributes:
@@ -616,128 +623,3 @@ def update_assets(
         logger.error(error_msg)
         logger.exception("Exception details:")
         return {"updated_count": 0, "errors": [error_msg]}
-
-
-def get_asset_by_guid(guid: str) -> Optional[Asset]:
-    """
-    Retrieve a single asset by its GUID.
-
-    Args:
-        guid (str): The GUID of the asset to retrieve.
-
-    Returns:
-        Optional[Asset]: The asset if found, None otherwise.
-
-    Raises:
-        Exception: If there's an error executing the search
-    """
-    logger.info(f"Searching for asset with GUID: {guid}")
-
-    try:
-        # Initialize FluentSearch
-        search = FluentSearch()
-
-        # Add GUID condition
-        search = search.where(Asset.GUID.eq(guid))
-
-        # Convert to request
-        request = search.to_request()
-
-        # Execute search
-        client = get_atlan_client()
-        results = list(client.asset.search(request).current_page())
-
-        if results:
-            logger.info(f"Found asset with GUID: {guid}")
-            return results[0]
-        else:
-            logger.info(f"No asset found with GUID: {guid}")
-            return None
-
-    except Exception as e:
-        logger.error(f"Error searching for asset by GUID: {str(e)}")
-        logger.exception("Exception details:")
-        return None
-
-
-def get_business_policies(
-    asset_guids: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Search for BusinessPolicy assets and return their specific attributes.
-
-    Args:
-        asset_guids (Optional[List[str]]): Optional list of asset GUIDs to filter by.
-            If provided, only business policies with matching GUIDs will be returned.
-            If None, all business policies will be returned.
-
-    Returns:
-        List[Dict[str, Any]]: A list of dictionaries containing business policy details.
-        Each dictionary includes:
-            - name: The name of the business policy
-            - qualified_name: The qualified name of the business policy
-            - businessPolicyType: The type of the business policy
-            - businessPolicyLongDescription: The detailed description of the policy
-            - businessPolicyValidTill: The validity period of the policy
-            - businessPolicyReviewPeriod: The review period of the policy
-            - businessPolicyVersion: The version of the policy
-            - businessPolicyFilterDSL: The filter DSL associated with the policy
-            - businessPolicyRules: The rules associated with the policy
-
-    Raises:
-        Exception: If there's an error executing the search
-    """
-    logger.info("Searching for BusinessPolicy assets")
-
-    try:
-        # Initialize FluentSearch
-        search = FluentSearch()
-
-        # Add condition for BusinessPolicy type
-        search = search.where(Asset.TYPE_NAME.eq("BusinessPolicy"))
-
-        # Add GUID filter if provided
-        if asset_guids and len(asset_guids) > 0:
-            logger.info(f"Filtering business policies by GUIDs: {asset_guids}")
-            search = search.where(Asset.GUID.within(asset_guids))
-
-        # Convert to request
-        request = search.to_request()
-
-        # Execute search
-        client = get_atlan_client()
-        results = list(client.asset.search(request).current_page())
-
-        # Process results
-        policies = []
-        for policy in results:
-            policy_dict = {
-                "name": policy.name,
-                "qualified_name": policy.qualified_name,
-                "businessPolicyType": getattr(policy, "business_policy_type", None),
-                "businessPolicyLongDescription": getattr(
-                    policy, "business_policy_long_description", None
-                ),
-                "businessPolicyValidTill": getattr(
-                    policy, "business_policy_valid_till", None
-                ),
-                "businessPolicyReviewPeriod": getattr(
-                    policy, "business_policy_review_period", None
-                ),
-                "businessPolicyVersion": getattr(
-                    policy, "business_policy_version", None
-                ),
-                "businessPolicyFilterDSL": getattr(
-                    policy, "business_policy_filter_dsl", None
-                ),
-                "businessPolicyRules": getattr(policy, "business_policy_rules", None),
-            }
-            policies.append(policy_dict)
-
-        logger.info(f"Found {len(policies)} business policies")
-        return policies
-
-    except Exception as e:
-        logger.error(f"Error searching for business policies: {str(e)}")
-        logger.exception("Exception details:")
-        return []

@@ -7,8 +7,6 @@ from tools import (
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
-    get_asset_by_guid,
-    get_business_policies,
 )
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
@@ -36,6 +34,7 @@ def search_assets_tool(
     directly_tagged: bool = True,
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
+    guids: Optional[List[str]] = None,
 ):
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -63,6 +62,7 @@ def search_assets_tool(
         domain_guids (List[str], optional): List of domain GUIDs to filter by.
         date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
             Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
+        guids (List[str], optional): List of asset GUIDs to filter by.
 
     Returns:
         List[Asset]: List of assets matching the search criteria
@@ -127,6 +127,7 @@ def search_assets_tool(
         directly_tagged,
         domain_guids,
         date_range,
+        guids,
     )
 
 
@@ -341,71 +342,3 @@ def update_assets_tool(
         )
     except ValueError as e:
         return {"updated_count": 0, "errors": [str(e)]}
-
-
-@mcp.tool()
-def get_asset_by_guid_tool(guid: str) -> Optional[Dict[str, Any]]:
-    """
-    Retrieve a single asset by its GUID.
-
-    Args:
-        guid (str): The GUID of the asset to retrieve.
-
-    Returns:
-        Optional[Dict[str, Any]]: A dictionary containing the asset details if found, None otherwise.
-        The dictionary includes:
-            - name: The name of the asset
-            - type_name: The type of the asset
-            - qualified_name: The qualified name of the asset
-            - description: The description of the asset
-            - guid: The GUID of the asset
-            - additional attributes based on the asset type
-
-    Example:
-        # Get asset details by GUID
-        asset = get_asset_by_guid_tool("asset-guid-here")
-    """
-    asset = get_asset_by_guid(guid)
-    if asset:
-        return asset
-    return None
-
-
-@mcp.tool()
-def get_business_policies_tool(
-    asset_guids: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Search for BusinessPolicy assets and return their specific attributes.
-
-    Args:
-        asset_guids (Optional[List[str]]): Optional list of asset GUIDs to filter by.
-            If provided, only business policies with matching GUIDs will be returned.
-            If None, all business policies will be returned.
-
-    Returns:
-        List[Dict[str, Any]]: A list of dictionaries containing business policy details.
-        Each dictionary includes:
-            - name: The name of the business policy
-            - qualified_name: The qualified name of the business policy
-            - businessPolicyType: The type of the business policy
-            - businessPolicyLongDescription: The detailed description of the policy
-            - businessPolicyValidTill: The validity period of the policy
-            - businessPolicyReviewPeriod: The review period of the policy
-            - businessPolicyVersion: The version of the policy
-            - businessPolicyFilterDSL: The filter DSL associated with the policy
-            - businessPolicyRules: The rules associated with the policy
-
-    Example:
-        # Get all business policies
-        policies = get_business_policies_tool()
-
-        # Get specific business policies by GUID
-        specific_policies = get_business_policies_tool(asset_guids=["guid1", "guid2"])
-
-        # Get policies by GUID
-        mixed_policies = get_business_policies_tool(
-            asset_guids=["guid1"]
-        )
-    """
-    return get_business_policies(asset_guids)
