@@ -418,7 +418,7 @@ def search_assets(
         return []
 
 
-def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+def get_assets_by_dsl(dsl_query) -> Dict[str, Any]:
     """
     Execute the search with the given query
     Args:

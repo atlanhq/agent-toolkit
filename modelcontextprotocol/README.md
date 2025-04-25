@@ -70,6 +70,41 @@ Alternatively, you can test it with the MCP Inspector:
 uv run mcp dev server.py
 ```
 
+## Setup with Cursor
+
+1. Create a `.cursor` directory in the root of your workspace.
+2. Create a `mcp.json` file inside the `.cursor` directory.
+3. Add the following JSON object to `mcp.json`, replacing the placeholder values with your own credentials and server path:
+
+```json
+{
+    "mcpServers": {
+      "Atlan MCP": {
+        "command": "uv",
+        "args": [
+          "run",
+          "--with",
+          "mcp[cli]",
+          "--with",
+          "pyatlan",
+          "mcp",
+          "run",
+          "/path/to/your/agent-toolkit/modelcontextprotocol/server.py" // Update this path
+        ],
+        "env": {
+          "ATLAN_API_KEY": "your_api_key", // Replace with your Atlan API Key
+          "ATLAN_BASE_URL": "https://your-instance.atlan.com", // Replace with your Atlan Base URL
+          "ATLAN_AGENT_ID": "your_agent_id" // Replace with your Agent ID
+        }
+      }
+    }
+  }
+```
+
+Make sure the `command`, `args`, and `env` values are correctly configured for your setup.
+
+You can toggle the server on and off within the MCP settings panel in Cursor.
+
 ## Contact
 
 - Reach out to support@atlan.com for any questions or feedback.
