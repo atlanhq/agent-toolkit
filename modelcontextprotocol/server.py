@@ -110,18 +110,18 @@ def search_assets_tool(
             }
         )
 
-        # Search for assets with compliant business policies
+        # Search for assets with compliant business policy
         assets = search_assets(
             conditions={
-                "assetPolicyGUIDs": ["business_policy_guid"]
+                "asset_policy_guids": "business_policy_guid"
             },
             include_attributes=["asset_policy_guids"]
         )
 
-        # Search for assets with non compliant business policies
+        # Search for assets with non compliant business policy
         assets = search_assets(
             conditions={
-                "nonCompliantAssetPolicyGUIDs": ["business_policy_guid"]
+                "non_compliant_asset_policy_guids": "business_policy_guid"
             },
             include_attributes=["non_compliant_asset_policy_guids"]
         )
