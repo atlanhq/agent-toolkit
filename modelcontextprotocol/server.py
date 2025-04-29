@@ -34,6 +34,7 @@ def search_assets_tool(
     directly_tagged: bool = True,
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
+    guids: Optional[List[str]] = None,
 ):
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -61,6 +62,7 @@ def search_assets_tool(
         domain_guids (List[str], optional): List of domain GUIDs to filter by.
         date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
             Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
+        guids (List[str], optional): List of asset GUIDs to filter by.
 
     Returns:
         List[Asset]: List of assets matching the search criteria
@@ -107,6 +109,43 @@ def search_assets_tool(
                 }
             }
         )
+
+        # Search for assets with compliant business policies
+        assets = search_assets(
+            conditions={
+                "assetPolicyGUIDs": ["business_policy_guid"]
+            },
+            include_attributes=["asset_policy_guids"]
+        )
+
+        # Search for assets with non compliant business policies
+        assets = search_assets(
+            conditions={
+                "nonCompliantAssetPolicyGUIDs": ["business_policy_guid"]
+            },
+            include_attributes=["non_compliant_asset_policy_guids"]
+        )
+
+        # get non compliant business policies for an asset
+         assets = search_assets(
+            conditions={
+                "name": "has_any_value",
+                "displayName": "has_any_value",
+                "guid": "has_any_value"
+            },
+            include_attributes=["non_compliant_asset_policy_guids"]
+        )
+
+        # get compliant business policies for an asset
+         assets = search_assets(
+            conditions={
+                "name": "has_any_value",
+                "displayName": "has_any_value",
+                "guid": "has_any_value"
+            },
+            include_attributes=["asset_policy_guids"]
+        )
+
     """
     return search_assets(
         conditions,
@@ -125,6 +164,7 @@ def search_assets_tool(
         directly_tagged,
         domain_guids,
         date_range,
+        guids,
     )
 
 
