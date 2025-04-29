@@ -109,6 +109,43 @@ def search_assets_tool(
                 }
             }
         )
+
+        # Search for assets with compliant business policies
+        assets = search_assets(
+            conditions={
+                "assetPolicyGUIDs": ["business_policy_guid"]
+            },
+            include_attributes=["asset_policy_guids"]
+        )
+
+        # Search for assets with non compliant business policies
+        assets = search_assets(
+            conditions={
+                "nonCompliantAssetPolicyGUIDs": ["business_policy_guid"]
+            },
+            include_attributes=["non_compliant_asset_policy_guids"]
+        )
+
+        # get non compliant business policies for an asset
+         assets = search_assets(
+            conditions={
+                "name": "has_any_value",
+                "displayName": "has_any_value",
+                "guid": "has_any_value"
+            },
+            include_attributes=["non_compliant_asset_policy_guids"]
+        )
+
+        # get compliant business policies for an asset
+         assets = search_assets(
+            conditions={
+                "name": "has_any_value",
+                "displayName": "has_any_value",
+                "guid": "has_any_value"
+            },
+            include_attributes=["asset_policy_guids"]
+        )
+
     """
     return search_assets(
         conditions,
