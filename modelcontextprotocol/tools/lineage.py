@@ -56,7 +56,7 @@ def traverse_lineage(
         response = client.asset.get_lineage_list(request)  # noqa: F821
 
         # Process results
-        result = {"assets": [], "references": []}
+        result = {"assets": []}
 
         # Handle None response
         if response is None:
@@ -72,5 +72,4 @@ def traverse_lineage(
         return result
     except Exception as e:
         logger.error(f"Error traversing lineage: {str(e)}")
-        logger.exception("Exception details:")
-        return {"assets": [], "references": [], "error": str(e)}
+        return {"assets": [], "error": str(e)}
