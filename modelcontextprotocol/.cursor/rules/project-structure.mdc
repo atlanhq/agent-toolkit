@@ -10,59 +10,99 @@ This document outlines the recommended project structure for the Atlan MCP serve
 ## Directory Structure
 
 ```
-atlan-mcp/
-├── .env.template             # Template for environment variables
-├── .gitignore                # Git ignore file
+modelcontextprotocol/
+├── .cursor/                  # Cursor IDE specific files
+├── .gitignore                # Git ignore file (Assumed)
 ├── .python-version           # Python version specification
 ├── client.py                 # Atlan client factory
 ├── pyproject.toml            # Project metadata and dependencies
 ├── README.md                 # Project documentation
 ├── server.py                 # MCP server entry point
 ├── settings.py               # Application settings
-├── tools.py                  # Tool implementations
-└── examples/                 # Example usage and queries
-    ├── search_assets.py      # Example asset search
-    └── dsl_queries.py        # Example DSL queries
+├── tools.py                  # Main tool registration/definition file
+├── uv.lock                   # uv lock file
+└── tools/                    # Directory for tool implementations/modules
 ```
 
 ## Key Components
 
 ### server.py
-The main entry point for the MCP server. Registers and exposes tools to interact with Atlan.
+The main entry point for the MCP server. Registers and exposes tools defined in the `tools/` directory to interact with Atlan.
 
 ```python
 from mcp.server.fastmcp import FastMCP
-from tools import search_assets, get_assets_by_dsl
+from tools import (
+    search_assets,
+    get_assets_by_dsl,
+    traverse_lineage,
+    update_assets,
+    UpdatableAttribute,
+    CertificateStatus,
+    UpdatableAsset,
+)
+from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
 from pyatlan.model.assets import Asset
+from pyatlan.model.lineage import LineageDirection
 
 mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
 
-@mcp.tool()
-def search_assets_tool(
-    conditions: Optional[Dict[str, Any]] = None,
-    asset_type: Optional[str] = None,
-    # Additional parameters
-):
-    """Search for assets in Atlan based on specified criteria."""
-    return search_assets(conditions, asset_type)
+# Note: Docstrings and full parameter lists omitted for brevity.
+# Refer to the actual server.py and tools implementations for details.
 
 @mcp.tool()
-def get_assets_by_dsl_tool(dsl_query: str):
-    """Execute a DSL search query against Atlan."""
+def search_assets_tool(
+    conditions: Optional[Union[Dict[str, Any], str]] = None,
+    # ... many other parameters ...
+):
+    """Advanced asset search using FluentSearch with flexible conditions."""
+    return search_assets(conditions=conditions, ...)
+
+@mcp.tool()
+def get_assets_by_dsl_tool(dsl_query: Union[str, Dict[str, Any]]):
+    """Execute the search with the given DSL query."""
     return get_assets_by_dsl(dsl_query)
+
+@mcp.tool()
+def traverse_lineage_tool(
+    guid: str,
+    direction: str, # UPSTREAM or DOWNSTREAM
+    # ... other parameters ...
+):
+    """Traverse asset lineage in specified direction."""
+    return traverse_lineage(guid=guid, direction=direction, ...)
+
+@mcp.tool()
+def update_assets_tool(
+    assets: Union[UpdatableAsset, List[UpdatableAsset]],
+    attribute_name: UpdatableAttribute,
+    attribute_values: List[Union[CertificateStatus, str]],
+):
+    """Update one or multiple assets with different values for the same attribute."""
+    return update_assets(assets=assets, attribute_name=attribute_name, attribute_values=attribute_values)
 ```
 
 ### settings.py
-Configuration settings using Pydantic.
+Configuration settings using Pydantic, loaded from environment variables or a `.env` file.
 
 ```python
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or .env file."""
-    atlan_base_url: str
-    atlan_api_key: str
+    ATLAN_BASE_URL: str
+    ATLAN_API_KEY: str
+    ATLAN_AGENT_ID: str
+    ATLAN_AGENT: str = "atlan-mcp"
+
+    @property
+    def headers(self) -> dict:
+        """Get the headers for API requests."""
+        return {
+            "x-atlan-agent": self.ATLAN_AGENT,
+            "x-atlan-agent-id": self.ATLAN_AGENT_ID,
+            "x-atlan-client-origin": self.ATLAN_AGENT,
+        }
 
     class Config:
         env_file = ".env"
@@ -72,7 +112,7 @@ class Settings(BaseSettings):
 ```
 
 ### client.py
-Factory for creating and configuring the Atlan client.
+Factory for creating and configuring the Atlan client using application settings.
 
 ```python
 import logging
@@ -81,51 +121,24 @@ from settings import Settings
 
 logger = logging.getLogger(__name__)
 
-def create_atlan_client(settings: Settings) -> AtlanClient:
-    """Create an Atlan client instance using the provided settings."""
+def get_atlan_client() -> AtlanClient:
+    """Create an Atlan client instance using settings loaded from environment."""
+    settings = Settings()
     try:
         client = AtlanClient(
-            base_url=settings.atlan_base_url,
-            api_key=settings.atlan_api_key
+            base_url=settings.ATLAN_BASE_URL, api_key=settings.ATLAN_API_KEY
         )
+        client.update_headers(settings.headers)
         logger.info("Atlan client created successfully")
         return client
     except Exception as e:
         logger.error(f"Error creating Atlan client: {e}")
-        raise e
+        raise Exception(f"Error creating Atlan client: {e}")
 ```
 
-### tools.py
-Implementation of tools for interacting with Atlan.
-
-```python
-import logging
-import json
-from typing import Type, List, Optional, Dict, Any, TypeVar, Union
-from client import create_atlan_client
-from settings import Settings
-from pyatlan.model.assets import Asset
-from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
-from pyatlan.model.search import DSL, IndexSearchRequest
-from pyatlan.model.fields.atlan_fields import AtlanField
-
-logger = logging.getLogger(__name__)
-settings = Settings()
-atlan_client = create_atlan_client(settings)
-
-T = TypeVar("T", bound=Asset)
-
-def search_assets(
-    conditions: Optional[Dict[str, Any]] = None,
-    negative_conditions: Optional[Dict[str, Any]] = None,
-    # Additional parameters
-) -> List[Asset]:
-    """Advanced asset search using FluentSearch with flexible conditions."""
-    # Implementation details
-    pass
-
-def get_assets_by_dsl(dsl_query: str) -> Dict[str, Any]:
-    """Execute the search with the given DSL query."""
-    # Implementation details
-    pass
-```
+### tools/ Directory
+Contains the implementation of the different tools exposed by the server.
+- `assets.py`: Implements asset-related tools like search and update.
+- `dsl.py`: Implements the DSL query tool.
+- `lineage.py`: (Potentially) Implements lineage traversal tools.
+- `__init__.py`: Makes the directory a package and exports the tool functions.
