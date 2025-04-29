@@ -1,38 +1,11 @@
 import logging
-from typing import List, Optional, Union, Dict, Any
-from enum import Enum
+from typing import List, Union, Dict, Any
 
 from client import get_atlan_client
-from pydantic import BaseModel
+from .models import UpdatableAsset, UpdatableAttribute, CertificateStatus
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-
-class CertificateStatus(str, Enum):
-    """Enum for allowed certificate status values."""
-
-    VERIFIED = "VERIFIED"
-    DRAFT = "DRAFT"
-    DEPRECATED = "DEPRECATED"
-
-
-class UpdatableAttribute(str, Enum):
-    """Enum for attributes that can be updated."""
-
-    USER_DESCRIPTION = "user_description"
-    CERTIFICATE_STATUS = "certificate_status"
-
-
-class UpdatableAsset(BaseModel):
-    """Class representing an asset that can be updated."""
-
-    guid: str
-    name: str
-    qualified_name: str
-    type_name: str
-    user_description: Optional[str] = None
-    certificate_status: Optional[CertificateStatus] = None
 
 
 def update_assets(
@@ -110,5 +83,4 @@ def update_assets(
     except Exception as e:
         error_msg = f"Error updating assets: {str(e)}"
         logger.error(error_msg)
-        logger.exception("Exception details:")
         return {"updated_count": 0, "errors": [error_msg]}

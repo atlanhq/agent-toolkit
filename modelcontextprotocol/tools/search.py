@@ -1,42 +1,14 @@
 import logging
 import json
 from typing import Type, List, Optional, Union, Dict, Any
-from enum import Enum
 
 from client import get_atlan_client
 from pyatlan.model.assets import Asset
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.fields.atlan_fields import AtlanField
-from pydantic import BaseModel
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-
-class CertificateStatus(str, Enum):
-    """Enum for allowed certificate status values."""
-
-    VERIFIED = "VERIFIED"
-    DRAFT = "DRAFT"
-    DEPRECATED = "DEPRECATED"
-
-
-class UpdatableAttribute(str, Enum):
-    """Enum for attributes that can be updated."""
-
-    USER_DESCRIPTION = "user_description"
-    CERTIFICATE_STATUS = "certificate_status"
-
-
-class UpdatableAsset(BaseModel):
-    """Class representing an asset that can be updated."""
-
-    guid: str
-    name: str
-    qualified_name: str
-    type_name: str
-    user_description: Optional[str] = None
-    certificate_status: Optional[CertificateStatus] = None
 
 
 def search_assets(
