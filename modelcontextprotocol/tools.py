@@ -61,6 +61,7 @@ def search_assets(
     directly_tagged: bool = True,
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
+    guids: Optional[List[str]] = None,
 ) -> List[Asset]:
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -88,6 +89,8 @@ def search_assets(
         domain_guids (List[str], optional): List of domain GUIDs to filter by.
         date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
             Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
+        guids (List[str], optional): List of GUIDs to filter by.
+
 
     Returns:
         List[Asset]: List of assets matching the search criteria
@@ -344,6 +347,10 @@ def search_assets(
                     date_range_count += 1
 
             logger.debug(f"Applied {date_range_count} date range conditions")
+
+        if guids and len(guids) > 0:
+            logger.debug(f"Applying GUID filter: {guids}")
+            search = search.where(Asset.GUID.within(guids))
 
         # Include requested attributes
         if include_attributes:
