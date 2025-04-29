@@ -19,22 +19,21 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     """
     logger.info("Starting DSL-based asset search")
     try:
-        # Convert dictionary to string if needed
-        if isinstance(dsl_query, dict):
-            logger.debug("Converting DSL dictionary to JSON string")
-            dsl_query = json.dumps(dsl_query)
-
-        # Parse string to dict
-        logger.debug("Converting DSL string to JSON")
-        try:
-            dsl_dict = json.loads(dsl_query)
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in DSL query: {e}")
-            return {
-                "results": [],
-                "aggregations": {},
-                "error": "Invalid JSON in DSL query",
-            }
+        # Parse string to dict if needed
+        if isinstance(dsl_query, str):
+            logger.debug("Converting DSL string to JSON")
+            try:
+                dsl_dict = json.loads(dsl_query)
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in DSL query: {e}")
+                return {
+                    "results": [],
+                    "aggregations": {},
+                    "error": "Invalid JSON in DSL query",
+                }
+        else:
+            logger.debug("Using provided DSL dictionary")
+            dsl_dict = dsl_query
 
         logger.debug("Creating IndexSearchRequest")
         index_request = IndexSearchRequest(
