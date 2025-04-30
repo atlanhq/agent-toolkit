@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/modelcontextprotocol"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 100
+    allow:
+      - dependency-type: "all"
+
+  - package-ecosystem: "github-actions"
+    directory: "/modelcontextprotocol"
+    schedule:
+      interval: daily
