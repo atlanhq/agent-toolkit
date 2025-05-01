@@ -8,9 +8,6 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
 )
-from pyatlan.model.fields.atlan_fields import AtlanField
-from typing import Optional, Dict, Any, List, Union, Type
-from pyatlan.model.assets import Asset
 from pyatlan.model.lineage import LineageDirection
 
 mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
@@ -18,23 +15,23 @@ mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
 
 @mcp.tool()
 def search_assets_tool(
-    conditions: Optional[Union[Dict[str, Any], str]] = None,
-    negative_conditions: Optional[Dict[str, Any]] = None,
-    some_conditions: Optional[Dict[str, Any]] = None,
-    min_somes: int = 1,
-    include_attributes: Optional[List[Union[str, AtlanField]]] = None,
-    asset_type: Optional[Union[Type[Asset], str]] = None,
-    include_archived: bool = False,
-    limit: int = 10,
-    offset: int = 0,
-    sort_by: Optional[str] = None,
-    sort_order: str = "ASC",
-    connection_qualified_name: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    directly_tagged: bool = True,
-    domain_guids: Optional[List[str]] = None,
-    date_range: Optional[Dict[str, Dict[str, Any]]] = None,
-    guids: Optional[List[str]] = None,
+    conditions=None,
+    negative_conditions=None,
+    some_conditions=None,
+    min_somes=1,
+    include_attributes=None,
+    asset_type=None,
+    include_archived=False,
+    limit=10,
+    offset=0,
+    sort_by=None,
+    sort_order="ASC",
+    connection_qualified_name=None,
+    tags=None,
+    directly_tagged=True,
+    domain_guids=None,
+    date_range=None,
+    guids=None,
 ):
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -242,11 +239,11 @@ def get_assets_by_dsl_tool(dsl_query):
 
 @mcp.tool()
 def traverse_lineage_tool(
-    guid: str,
-    direction: str,
-    depth: int = 1000000,
-    size: int = 10,
-    immediate_neighbors: bool = True,
+    guid,
+    direction,
+    depth=1000000,
+    size=10,
+    immediate_neighbors=True,
 ):
     """
     Traverse asset lineage in specified direction.
@@ -300,9 +297,9 @@ def traverse_lineage_tool(
 
 @mcp.tool()
 def update_assets_tool(
-    assets: Union[Dict[str, Any], List[Dict[str, Any]]],
-    attribute_name: str,
-    attribute_values: List[str],
+    assets,
+    attribute_name,
+    attribute_values,
 ):
     """
     Update one or multiple assets with different values for the same attribute.
