@@ -76,7 +76,7 @@ def update_assets(
         response = client.asset.save(assets)
 
         # Process response
-        result["updated_count"] = len(response.mutated_entities.UPDATE or [])
+        result["updated_count"] = len(response.guid_assignments)
         logger.info(f"Successfully updated {result['updated_count']} assets")
         return result
 
