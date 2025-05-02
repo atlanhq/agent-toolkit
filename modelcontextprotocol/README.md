@@ -55,6 +55,8 @@ ATLAN_API_KEY=your_api_key
 ATLAN_AGENT_ID=your_agent_id
 ```
 
+**Note: `ATLAN_AGENT_ID` is optional but recommended. It will be used to identify which Agent is making the request on Atlan UI**
+
 To generate the API key, refer to the [Atlan documentation](https://ask.atlan.com/hc/en-us/articles/8312649180049-API-authentication).
 
 
@@ -94,7 +96,7 @@ uv run mcp dev server.py
         "env": {
           "ATLAN_API_KEY": "your_api_key", // Replace with your Atlan API Key
           "ATLAN_BASE_URL": "https://your-instance.atlan.com", // Replace with your Atlan Base URL
-          "ATLAN_AGENT_ID": "your_agent_id" // Replace with your Agent ID
+          "ATLAN_AGENT_ID": "your_agent_id" // Replace with your Agent ID (Optional)
         }
       }
     }
