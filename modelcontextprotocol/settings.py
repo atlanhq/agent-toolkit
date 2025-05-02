@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     ATLAN_BASE_URL: str
     ATLAN_API_KEY: str
-    ATLAN_AGENT_ID: str
+    ATLAN_AGENT_ID: str = "NA"
     ATLAN_AGENT: str = "atlan-mcp"
 
     @property
