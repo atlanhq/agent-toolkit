@@ -1,0 +1,55 @@
+name: Create Release on Version Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Trigger only when version.txt is modified
+      - 'version.txt'
+
+permissions:
+  contents: write # To create tags and releases
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    # Prevent duplicate runs if multiple pushes happen quickly or workflow is triggered manually
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history and tags for release notes generation and tag checking
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          # Using 3.11+ for built-in tomllib
+          python-version: '3.11'
+
+      - name: Read version from version.txt
+        id: get_version
+        run: echo "version=$(cat version.txt)" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists using Python script
+        id: check_tag
+        run: python check_tag.py ${{ steps.get_version.outputs.version }}
+
+      - name: Create GitHub Release
+        # Only run if the tag does not already exist
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          # Use HISTORY.md for the release body
+          body_path: HISTORY.md
+          # Set generate_release_notes to false as we use body_path
+          generate_release_notes: false
+        env:
+          # This token is automatically provided by GitHub Actions
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
