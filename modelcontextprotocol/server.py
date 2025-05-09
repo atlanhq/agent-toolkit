@@ -287,11 +287,11 @@ def traverse_lineage_tool(
         )
 
     return traverse_lineage(
-        guid=guid,
+        guid=str(guid),
         direction=direction_enum,
-        depth=depth,
-        size=size,
-        immediate_neighbors=immediate_neighbors,
+        depth=int(depth),
+        size=int(size),
+        immediate_neighbors=bool(immediate_neighbors),
     )
 
 
