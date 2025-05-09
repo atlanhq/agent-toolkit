@@ -103,19 +103,6 @@ def batch_operation(items, process_function):
     return results
 ```
 
-### DSL Query Operation
-```python
-def dsl_query_operation(dsl_query):
-    try:
-        dsl_dict = json.loads(dsl_query)
-        index_request = IndexSearchRequest(dsl=DSL(**dsl_dict))
-        results = atlan_client.asset.search(index_request)
-        return results
-    except Exception as e:
-        logger.error(f"DSL query error: {e}")
-        return None
-```
-
 ## Parameter Validation Patterns
 
 ```python
