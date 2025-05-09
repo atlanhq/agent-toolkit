@@ -1,7 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 from tools import (
     search_assets,
-    get_assets_by_dsl,
     traverse_lineage,
     update_assets,
     UpdatableAttribute,
@@ -163,78 +162,6 @@ def search_assets_tool(
         date_range,
         guids,
     )
-
-
-@mcp.tool()
-def get_assets_by_dsl_tool(dsl_query):
-    """
-    Execute the search with the given query
-    dsl_query : Union[str, Dict[str, Any]] (required):
-        The DSL query used to search the index.
-
-    Example:
-    dsl_query = '''{
-    "query": {
-        "function_score": {
-            "boost_mode": "sum",
-            "functions": [
-                {"filter": {"match": {"starredBy": "john.doe"}}, "weight": 10},
-                {"filter": {"match": {"certificateStatus": "VERIFIED"}}, "weight": 15},
-                {"filter": {"match": {"certificateStatus": "DRAFT"}}, "weight": 10},
-                {"filter": {"bool": {"must_not": [{"exists": {"field": "certificateStatus"}}]}}, "weight": 8},
-                {"filter": {"bool": {"must_not": [{"terms": {"__typeName.keyword": ["Process", "DbtProcess"]}}]}}, "weight": 20}
-            ],
-            "query": {
-                "bool": {
-                    "filter": [
-                        {
-                            "bool": {
-                                "minimum_should_match": 1,
-                                "must": [
-                                    {"bool": {"should": [{"terms": {"certificateStatus": ["VERIFIED"]}}]}},
-                                    {"term": {"__state": "ACTIVE"}}
-                                ],
-                                "must_not": [
-                                    {"term": {"isPartial": "true"}},
-                                    {"terms": {"__typeName.keyword": ["Procedure", "DbtColumnProcess", "BIProcess", "MatillionComponent", "SnowflakeTag", "DbtTag", "BigqueryTag", "AIApplication", "AIModel"]}},
-                                    {"terms": {"__typeName.keyword": ["MCIncident", "AnomaloCheck"]}}
-                                ],
-                                "should": [
-                                    {"terms": {"__typeName.keyword": ["Query", "Collection", "AtlasGlossary", "AtlasGlossaryCategory", "AtlasGlossaryTerm", "Connection", "File"]}},
-                                ]
-                            }
-                        }
-                    ]
-                },
-                "score_mode": "sum"
-            },
-            "score_mode": "sum"
-        }
-    },
-    "post_filter": {
-        "bool": {
-            "filter": [
-                {
-                    "bool": {
-                        "must": [{"terms": {"__typeName.keyword": ["Table", "Column"]}}],
-                        "must_not": [{"exists": {"field": "termType"}}]
-                    }
-                }
-            ]
-        },
-        "sort": [
-            {"_score": {"order": "desc"}},
-            {"popularityScore": {"order": "desc"}},
-            {"starredCount": {"order": "desc"}},
-            {"name.keyword": {"order": "asc"}}
-        ],
-        "track_total_hits": true,
-        "size": 10,
-        "include_meta": false
-    }'''
-    response = get_assets_by_dsl(dsl_query)
-    """
-    return get_assets_by_dsl(dsl_query)
 
 
 @mcp.tool()
