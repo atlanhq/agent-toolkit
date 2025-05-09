@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     ATLAN_API_KEY: str
     ATLAN_AGENT_ID: str = "NA"
     ATLAN_AGENT: str = "atlan-mcp"
-    ATLAN_MCP_USER_AGENT = "Atlan MCP Server 0.0.1"
+    ATLAN_MCP_USER_AGENT: str = "Atlan MCP Server 0.0.1"
 
     @property
     def headers(self) -> dict:
