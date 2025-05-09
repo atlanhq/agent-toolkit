@@ -10,14 +10,16 @@ class Settings(BaseSettings):
     ATLAN_API_KEY: str
     ATLAN_AGENT_ID: str = "NA"
     ATLAN_AGENT: str = "atlan-mcp"
+    ATLAN_MCP_USER_AGENT = "Atlan MCP Server 0.0.1"
 
     @property
     def headers(self) -> dict:
         """Get the headers for API requests."""
         return {
-            "x-atlan-agent": self.ATLAN_AGENT,
-            "x-atlan-agent-id": self.ATLAN_AGENT_ID,
-            "x-atlan-client-origin": self.ATLAN_AGENT,
+            "User-Agent": self.ATLAN_MCP_USER_AGENT,
+            "X-Atlan-Agent": self.ATLAN_AGENT,
+            "X-Atlan-Agent-Id": self.ATLAN_AGENT_ID,
+            "X-Atlan-Client-Origin": self.ATLAN_AGENT,
         }
 
     class Config:
