@@ -9,8 +9,31 @@ from tools import (
     UpdatableAsset,
 )
 from pyatlan.model.lineage import LineageDirection
+import resources
 
 mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
+
+
+@mcp.resource("typedefs://entity_defs")
+def get_entity_typedefs():
+    """
+    Get all the entity typedefs from Atlan to perform searches.
+
+    Returns:
+        dict: Dictionary containing entity typedefs.
+    """
+    return resources.get_entity_typedefs()
+
+
+@mcp.resource("typedefs://tags")
+def get_tags():
+    """
+    Get all the classification typedefs from Atlan to perform searches.
+
+    Returns:
+        dict: Dictionary containing classification typedefs.
+    """
+    return resources.get_tags()
 
 
 @mcp.tool()
