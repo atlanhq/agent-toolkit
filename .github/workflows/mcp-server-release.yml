@@ -1,0 +1,169 @@
+name: MCP-Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'modelcontextprotocol/version.py'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG_NAME="v${{ steps.get_version.outputs.version }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists, stopping workflow"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG_NAME does not exist, continuing workflow"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate changelog entry
+        id: changelog
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          RELEASE_DATE=$(date +"%Y-%m-%d")
+          
+          # Get the previous version tag
+          PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+          if [ -z "$PREV_TAG" ]; then
+            # If no previous tag, use root commit
+            PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            RANGE="$PREV_COMMIT..HEAD"
+          else
+            RANGE="$PREV_TAG..HEAD"
+          fi
+          
+          echo "Using commit range: $RANGE"
+          
+          # Create temporary changelog entry
+          echo -e "## [$VERSION] - $RELEASE_DATE\n" > temp_changelog.md
+          
+          # Add features
+          git log $RANGE --format="* %s (%h)" | grep "^* feat" | sed 's/^* feat//' > features.txt
+          if [ -s features.txt ]; then
+            echo -e "### Added\n" >> temp_changelog.md
+            cat features.txt >> temp_changelog.md
+            echo -e "\n" >> temp_changelog.md
+          fi
+          
+          # Add fixes
+          git log $RANGE --format="* %s (%h)" | grep "^* fix" | sed 's/^* fix//' > fixes.txt
+          if [ -s fixes.txt ]; then
+            echo -e "### Fixed\n" >> temp_changelog.md
+            cat fixes.txt >> temp_changelog.md
+            echo -e "\n" >> temp_changelog.md
+          fi
+          
+          # Add other changes
+          git log $RANGE --format="* %s (%h)" | grep -v "^* feat" | grep -v "^* fix" > others.txt
+          if [ -s others.txt ]; then
+            echo -e "### Changed\n" >> temp_changelog.md
+            cat others.txt >> temp_changelog.md
+            echo -e "\n" >> temp_changelog.md
+          fi
+          
+          # Update CHANGELOG.md - insert new changes after the Unreleased section
+          sed -i '/## \[Unreleased\]/,/^$/{/^$/i\
+          '"$(cat temp_changelog.md)"'
+          }' CHANGELOG.md
+          
+          # Also save for release notes
+          cp temp_changelog.md RELEASE_NOTES.md
+      
+      - name: Commit changelog update
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for version ${{ steps.get_version.outputs.version }} [skip ci]"
+          git push
+      
+      - name: Create Tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git tag v${{ steps.get_version.outputs.version }}
+          git push --tags
+      
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python for Build
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build wheel twine
+          
+      - name: Build package
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          cd modelcontextprotocol
+          python -m build
+
+      - name: Publish to PyPI
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          cd modelcontextprotocol
+          twine upload dist/*
+
+      - name: Set up Docker Buildx
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./modelcontextprotocol/
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/atlan-mcp-server:latest
+            ghcr.io/${{ github.repository_owner }}/atlan-mcp-server:${{ steps.get_version.outputs.version }} 

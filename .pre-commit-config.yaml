@@ -11,9 +11,16 @@ repos:
     -   id: check-merge-conflict
     -   id: detect-private-key
 
+-   repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.11.0
+    hooks:
+    -   id: commitlint
+        stages: [commit-msg]
+        additional_dependencies: ['@commitlint/config-conventional']
+
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.0
     hooks:
     -   id: ruff
-        args: [--fix]
+        args: [--fix, --exit-non-zero-on-fix]
     -   id: ruff-format

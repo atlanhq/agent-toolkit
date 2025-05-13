@@ -1,5 +1,5 @@
 [project]
-name = "atlan-mcp"
+name = "atlan-mcp-server"
 dynamic = ["version"]
 description = "Atlan Model Context Protocol server for interacting with Atlan services"
 readme = "README.md"
@@ -29,6 +29,9 @@ dependencies = [
 
 [tool.hatch.version]
 path = "version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
 
 [build-system]
 requires = ["hatchling"]
