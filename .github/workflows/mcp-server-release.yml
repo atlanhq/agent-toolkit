@@ -175,6 +175,7 @@ jobs:
           python -m build
 
       - name: Publish to PyPI
+        continue-on-error: true
         if: steps.check_tag.outputs.exists == 'false'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
