@@ -46,8 +46,12 @@ jobs:
         id: changelog
         if: steps.check_tag.outputs.exists == 'false'
         run: |
+          set +e  # Don't exit on error
+
           VERSION="${{ steps.get_version.outputs.version }}"
           RELEASE_DATE=$(date +"%Y-%m-%d")
+
+          echo "Generating changelog for version $VERSION ($RELEASE_DATE)"
 
           # Get the previous version tag
           PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
@@ -65,7 +69,7 @@ jobs:
           echo -e "## [$VERSION] - $RELEASE_DATE\n" > temp_changelog.md
 
           # Add features
-          git log $RANGE --format="* %s (%h)" | grep "^* feat" | sed 's/^* feat//' > features.txt
+          git log $RANGE --format="* %s (%h)" | grep -E "^* feat|^* feature" 2>/dev/null | sed -E 's/^* feat(ure)?//' > features.txt
           if [ -s features.txt ]; then
             echo -e "### Added\n" >> temp_changelog.md
             cat features.txt >> temp_changelog.md
@@ -73,7 +77,7 @@ jobs:
           fi
 
           # Add fixes
-          git log $RANGE --format="* %s (%h)" | grep "^* fix" | sed 's/^* fix//' > fixes.txt
+          git log $RANGE --format="* %s (%h)" | grep "^* fix" 2>/dev/null | sed 's/^* fix//' > fixes.txt
           if [ -s fixes.txt ]; then
             echo -e "### Fixed\n" >> temp_changelog.md
             cat fixes.txt >> temp_changelog.md
@@ -81,20 +85,54 @@ jobs:
           fi
 
           # Add other changes
-          git log $RANGE --format="* %s (%h)" | grep -v "^* feat" | grep -v "^* fix" > others.txt
+          git log $RANGE --format="* %s (%h)" | grep -v -E "^* feat|^* feature|^* fix" 2>/dev/null > others.txt
           if [ -s others.txt ]; then
             echo -e "### Changed\n" >> temp_changelog.md
             cat others.txt >> temp_changelog.md
             echo -e "\n" >> temp_changelog.md
           fi
 
-          # Update CHANGELOG.md - insert new changes after the Unreleased section
-          sed -i '/## \[Unreleased\]/,/^$/{/^$/i\
-          '"$(cat temp_changelog.md)"'
-          }' CHANGELOG.md
+          # If no changes found, add a simple entry
+          if [ ! -s features.txt ] && [ ! -s fixes.txt ] && [ ! -s others.txt ]; then
+            echo "- Release version $VERSION" >> temp_changelog.md
+          fi
+
+          # Add new version at the top (after header section but before the first version)
+          echo "Updating CHANGELOG.md with new version"
+
+          # Create a simpler approach that works reliably
+          {
+            # Extract the header part (everything before the first version)
+            sed -n '/^# Changelog/,/^## \[/p' CHANGELOG.md | sed '$d' > header.tmp
+
+            # Prepend new version after header
+            cat header.tmp > CHANGELOG.md.new
+            cat temp_changelog.md >> CHANGELOG.md.new
+            echo "" >> CHANGELOG.md.new
+
+            # Append existing versions
+            sed -n '/^## \[/,$p' CHANGELOG.md >> CHANGELOG.md.new
+
+            # Replace the original file
+            cp CHANGELOG.md.new CHANGELOG.md
+          } || {
+            # Fallback if the above fails
+            echo "Using simplified approach"
+            (cat temp_changelog.md; echo ""; cat CHANGELOG.md) > CHANGELOG.md.new
+            cp CHANGELOG.md.new CHANGELOG.md
+          }
 
           # Also save for release notes
-          cp temp_changelog.md RELEASE_NOTES.md
+          cp temp_changelog.md RELEASE_NOTES.md || echo "Failed to create RELEASE_NOTES.md"
+
+          # Clean up temporary files
+          rm -f temp_changelog.md features.txt fixes.txt others.txt header.tmp CHANGELOG.md.new
+
+          echo "Changelog generation completed"
+
+          # Show result for debugging
+          echo "Updated CHANGELOG.md contents:"
+          cat CHANGELOG.md
 
       - name: Commit changelog update
         if: steps.check_tag.outputs.exists == 'false'
