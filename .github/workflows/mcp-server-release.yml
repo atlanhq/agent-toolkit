@@ -45,7 +45,6 @@ jobs:
       - name: Generate changelog entry
         id: changelog
         if: steps.check_tag.outputs.exists == 'false'
-        continue-on-error: true
         run: |
           set +e  # Don't exit on error
 
