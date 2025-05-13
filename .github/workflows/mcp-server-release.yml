@@ -165,5 +165,5 @@ jobs:
           context: ./modelcontextprotocol/
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/atlan-mcp-server:latest
-            ghcr.io/${{ github.repository_owner }}/atlan-mcp-server:${{ steps.get_version.outputs.version }}
+            ghcr.io/atlanhq/atlan-mcp-server:latest
+            ghcr.io/atlanhq/atlan-mcp-server:${{ steps.get_version.outputs.version }}
