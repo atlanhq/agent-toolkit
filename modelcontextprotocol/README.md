@@ -13,6 +13,24 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 
 ## Installation
 
+### Using pip
+
+```bash
+pip install atlan-mcp-server
+```
+
+### Using Docker
+
+```bash
+docker run -i --rm \
+  -e ATLAN_API_KEY=your_api_key \
+  -e ATLAN_BASE_URL=https://your-instance.atlan.com \
+  -e ATLAN_AGENT_ID=your_agent_id \
+  ghcr.io/atlanhq/atlan-mcp-server:latest
+```
+
+### From source
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/atlanhq/agent-toolkit.git
@@ -62,9 +80,41 @@ To generate the API key, refer to the [Atlan documentation](https://ask.atlan.co
 
 ## Setup with Claude Desktop
 
-You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away by running:
+You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away using one of these methods:
+
+### Using the local installation
 ```bash
 uv run mcp install server.py -f .env # to use the .env file
+```
+
+### Using Docker
+You can use the Docker image with Claude Desktop by configuring it in Claude's MCP settings panel with the following JSON:
+
+```json
+{
+  "mcpServers": {
+    "atlan": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "ATLAN_API_KEY",
+        "-e",
+        "ATLAN_BASE_URL",
+        "-e",
+        "ATLAN_AGENT_ID",
+        "ghcr.io/atlanhq/atlan-mcp-server:latest"
+      ],
+      "env": {
+        "ATLAN_API_KEY": "your_api_key",
+        "ATLAN_BASE_URL": "https://your-instance.atlan.com",
+        "ATLAN_AGENT_ID": "your_agent_id"
+      }
+    }
+  }
+}
 ```
 
 Alternatively, you can test it with the MCP Inspector:

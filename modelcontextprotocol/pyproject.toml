@@ -1,10 +1,38 @@
 [project]
-name = "atlan-mcp"
-version = "0.1.0"
+name = "atlan-mcp-server"
+dynamic = ["version"]
 description = "Atlan Model Context Protocol server for interacting with Atlan services"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    {name = "AtlanHQ", email = "engineering@atlan.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
 dependencies = [
     "mcp[cli]>=1.6.0",
     "pyatlan>=6.0.1",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/atlanhq/agent-toolkit"
+"Documentation" = "https://ask.atlan.com/hc/en-us/articles/12525731740175-How-to-implement-the-Atlan-MCP-server"
+"Bug Tracker" = "https://github.com/atlanhq/agent-toolkit/issues"
+"Source" = "https://github.com/atlanhq/agent-toolkit.git"
+"Changelog" = "https://github.com/awslabs/mcp/blob/main/src/aws-diagram-mcp-server/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
