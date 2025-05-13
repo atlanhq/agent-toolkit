@@ -20,4 +20,4 @@ module.exports = {
     ],
     'subject-case': [0], // Disabled to allow any case
   }
-}; 
+};
