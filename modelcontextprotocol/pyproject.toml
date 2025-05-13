@@ -25,7 +25,7 @@ dependencies = [
 "Documentation" = "https://ask.atlan.com/hc/en-us/articles/12525731740175-How-to-implement-the-Atlan-MCP-server"
 "Bug Tracker" = "https://github.com/atlanhq/agent-toolkit/issues"
 "Source" = "https://github.com/atlanhq/agent-toolkit.git"
-"Changelog" = "https://github.com/awslabs/mcp/blob/main/src/aws-diagram-mcp-server/CHANGELOG.md"
+"Changelog" = "https://github.com/atlanhq/agent-toolkit/blob/main/CHANGELOG.md"
 
 [tool.hatch.version]
 path = "version.py"
