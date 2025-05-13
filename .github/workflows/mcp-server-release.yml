@@ -23,13 +23,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
+
       - name: Get version
         id: get_version
         run: |
           VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
+
       - name: Check if tag exists
         id: check_tag
         run: |
@@ -41,14 +41,14 @@ jobs:
             echo "Tag $TAG_NAME does not exist, continuing workflow"
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Generate changelog entry
         id: changelog
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           RELEASE_DATE=$(date +"%Y-%m-%d")
-          
+
           # Get the previous version tag
           PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
           if [ -z "$PREV_TAG" ]; then
@@ -58,12 +58,12 @@ jobs:
           else
             RANGE="$PREV_TAG..HEAD"
           fi
-          
+
           echo "Using commit range: $RANGE"
-          
+
           # Create temporary changelog entry
           echo -e "## [$VERSION] - $RELEASE_DATE\n" > temp_changelog.md
-          
+
           # Add features
           git log $RANGE --format="* %s (%h)" | grep "^* feat" | sed 's/^* feat//' > features.txt
           if [ -s features.txt ]; then
@@ -71,7 +71,7 @@ jobs:
             cat features.txt >> temp_changelog.md
             echo -e "\n" >> temp_changelog.md
           fi
-          
+
           # Add fixes
           git log $RANGE --format="* %s (%h)" | grep "^* fix" | sed 's/^* fix//' > fixes.txt
           if [ -s fixes.txt ]; then
@@ -79,7 +79,7 @@ jobs:
             cat fixes.txt >> temp_changelog.md
             echo -e "\n" >> temp_changelog.md
           fi
-          
+
           # Add other changes
           git log $RANGE --format="* %s (%h)" | grep -v "^* feat" | grep -v "^* fix" > others.txt
           if [ -s others.txt ]; then
@@ -87,15 +87,15 @@ jobs:
             cat others.txt >> temp_changelog.md
             echo -e "\n" >> temp_changelog.md
           fi
-          
+
           # Update CHANGELOG.md - insert new changes after the Unreleased section
           sed -i '/## \[Unreleased\]/,/^$/{/^$/i\
           '"$(cat temp_changelog.md)"'
           }' CHANGELOG.md
-          
+
           # Also save for release notes
           cp temp_changelog.md RELEASE_NOTES.md
-      
+
       - name: Commit changelog update
         if: steps.check_tag.outputs.exists == 'false'
         run: |
@@ -104,13 +104,13 @@ jobs:
           git add CHANGELOG.md
           git commit -m "docs: update changelog for version ${{ steps.get_version.outputs.version }} [skip ci]"
           git push
-      
+
       - name: Create Tag
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           git tag v${{ steps.get_version.outputs.version }}
           git push --tags
-      
+
       - name: Create GitHub Release
         if: steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
@@ -130,7 +130,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build wheel twine
-          
+
       - name: Build package
         if: steps.check_tag.outputs.exists == 'false'
         run: |
