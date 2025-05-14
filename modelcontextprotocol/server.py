@@ -272,12 +272,24 @@ def traverse_lineage_tool(
             size=10
         )
 
-        # Access assets
+        # Access assets and references
         if "assets" in lineage_data:
+            print("Assets found:")
             for asset in lineage_data["assets"]:
-                print(f"Asset: {asset.guid}")
+                # 'asset' is a pyatlan.model.assets.Asset object.
+                asset_guid = getattr(asset, 'guid', 'N/A') 
+                print(f"  - Asset GUID: {asset_guid}")
+        
+        if "references" in lineage_data:
+            print("References found:")
+            for ref in lineage_data["references"]:
+                # 'ref' is a dictionary.
+                source_guid = ref.get('source_guid', 'N/A')
+                target_guid = ref.get('target_guid', 'N/A')
+                print(f"  - From: {source_guid} To: {target_guid}")
+
         if "error" in lineage_data:
-            print(f"Error: {lineage_data['error']}")
+            print(f"Error during lineage traversal: {lineage_data['error']}")
     """
     try:
         direction_enum = LineageDirection[direction.upper()]
