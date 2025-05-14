@@ -11,6 +11,202 @@ from pyatlan.model.fields.atlan_fields import AtlanField
 logger = logging.getLogger(__name__)
 
 
+def _apply_positive_conditions(search_builder: FluentSearch, conditions_data: Union[Dict[str, Any], str], asset_model: Type[Asset]) -> FluentSearch:
+    """Helper function to apply positive conditions to the FluentSearch builder."""
+    processed_conditions = conditions_data
+    if isinstance(conditions_data, str):
+        try:
+            processed_conditions = json.loads(conditions_data)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse conditions JSON: {e}")
+            logger.debug(f"Invalid JSON string: {conditions_data}")
+            raise ValueError(f"Invalid JSON in conditions parameter: {e}")
+    
+    if not isinstance(processed_conditions, dict):
+        # This case should ideally not be reached if input is string or dict as per type hints
+        # but as a safeguard if conditions_data was a string that didn't parse to a dict.
+        logger.warning("Conditions could not be processed into a dictionary, skipping positive conditions.")
+        return search_builder
+
+    logger.debug(f"Applying positive conditions: {processed_conditions}")
+    condition_count = 0
+    for attr_name, condition_value in processed_conditions.items():
+        attr_field = getattr(asset_model, attr_name.upper(), None)
+        if attr_field is None:
+            logger.warning(f"Unknown attribute: {attr_name}, skipping condition")
+            continue
+
+        logger.debug(f"Processing condition for attribute: {attr_name}")
+
+        if isinstance(condition_value, dict):
+            operator = condition_value.get("operator", "eq")
+            value = condition_value.get("value")
+            logger.debug(f"Applying operator '{operator}' with value '{value}'")
+
+            op_method = getattr(attr_field, operator, None)
+            if op_method:
+                if operator == "has_any_value": # Methods like has_any_value take no arguments
+                    search_builder = search_builder.where(op_method())
+                else:
+                    search_builder = search_builder.where(op_method(value))
+            else:
+                logger.warning(f"Unknown operator: {operator} for attribute {attr_name}, skipping condition")
+                continue
+        elif isinstance(condition_value, list):
+            logger.debug(f"Applying multiple equality conditions (AND logic) for {attr_name}: {condition_value}")
+            for val in condition_value:
+                search_builder = search_builder.where(attr_field.eq(val))
+        else:
+            logger.debug(f"Applying equality condition {attr_name}={condition_value}")
+            search_builder = search_builder.where(attr_field.eq(condition_value))
+        condition_count += 1
+    logger.debug(f"Applied {condition_count} positive conditions")
+    return search_builder
+
+
+def _apply_negative_conditions(search_builder: FluentSearch, conditions_data: Dict[str, Any], asset_model: Type[Asset]) -> FluentSearch:
+    """Helper function to apply negative conditions to the FluentSearch builder."""
+    logger.debug(f"Applying negative conditions: {conditions_data}")
+    neg_condition_count = 0
+    for attr_name, condition_value in conditions_data.items():
+        attr_field = getattr(asset_model, attr_name.upper(), None)
+        if attr_field is None:
+            logger.warning(f"Unknown attribute for negative condition: {attr_name}, skipping")
+            continue
+
+        logger.debug(f"Processing negative condition for attribute: {attr_name}")
+
+        if isinstance(condition_value, dict):
+            operator = condition_value.get("operator", "eq")
+            value = condition_value.get("value")
+            logger.debug(f"Applying negative operator '{operator}' with value '{value}'")
+
+            op_method = getattr(attr_field, operator, None)
+            if op_method:
+                if operator == "has_any_value": # Methods like has_any_value take no arguments
+                    search_builder = search_builder.where_not(op_method())
+                else:
+                    search_builder = search_builder.where_not(op_method(value))
+            else:
+                logger.warning(f"Unknown operator for negative condition: {operator}, skipping")
+                continue
+        elif condition_value == "has_any_value":
+            logger.debug(f"Excluding assets where {attr_name} has any value")
+            search_builder = search_builder.where_not(attr_field.has_any_value())
+        else:
+            logger.debug(f"Excluding assets where {attr_name}={condition_value}")
+            search_builder = search_builder.where_not(attr_field.eq(condition_value))
+        neg_condition_count += 1
+    logger.debug(f"Applied {neg_condition_count} negative conditions")
+    return search_builder
+
+
+def _apply_some_conditions(search_builder: FluentSearch, conditions_data: Dict[str, Any], min_somes_count: int, asset_model: Type[Asset]) -> FluentSearch:
+    """Helper function to apply 'some' conditions to the FluentSearch builder."""
+    logger.debug(f"Applying 'some' conditions: {conditions_data} with min_somes={min_somes_count}")
+    some_condition_clauses = [] # Collect individual .eq() clauses here
+    applied_some_conditions_count = 0
+
+    for attr_name, condition_value in conditions_data.items():
+        attr_field = getattr(asset_model, attr_name.upper(), None)
+        if attr_field is None:
+            logger.warning(f"Unknown attribute for 'some' condition: {attr_name}, skipping")
+            continue
+
+        logger.debug(f"Processing 'some' condition for attribute: {attr_name}")
+
+        if isinstance(condition_value, list):
+            logger.debug(f"Adding multiple 'some' values for {attr_name}: {condition_value}")
+            for value_item in condition_value:
+                # Each condition for where_some should be a complete query part, like AtlanField.eq(value)
+                some_condition_clauses.append(attr_field.eq(value_item))
+                applied_some_conditions_count += 1
+        else:
+            logger.debug(f"Adding 'some' condition {attr_name}={condition_value}")
+            some_condition_clauses.append(attr_field.eq(condition_value))
+            applied_some_conditions_count += 1
+
+    if some_condition_clauses:
+        search_builder = search_builder.where_some(some_condition_clauses)
+        logger.debug(f"Setting min_somes={min_somes_count} for {applied_some_conditions_count} 'some' conditions")
+        search_builder = search_builder.min_somes(min_somes_count)
+    
+    return search_builder
+
+
+def _apply_date_range_filters(search_builder: FluentSearch, date_range_data: Dict[str, Dict[str, Any]], asset_model: Type[Asset]) -> FluentSearch:
+    """Helper function to apply date range filters to the FluentSearch builder."""
+    logger.debug(f"Applying date range filters: {date_range_data}")
+    date_range_condition_count = 0
+    for attr_name, range_conditions in date_range_data.items():
+        attr_field = getattr(asset_model, attr_name.upper(), None)
+        if attr_field is None:
+            logger.warning(f"Unknown attribute for date range: {attr_name}, skipping")
+            continue
+
+        logger.debug(f"Processing date range for attribute: {attr_name}")
+        processed_any_range = False
+        for operator, value in range_conditions.items():
+            op_method = getattr(attr_field, operator, None)
+            if op_method:
+                logger.debug(f"Adding {attr_name} {operator} {value}")
+                search_builder = search_builder.where(op_method(value))
+                date_range_condition_count += 1
+                processed_any_range = True
+            else:
+                # This dynamic version would support any valid AtlanField method name (e.g., eq, neq for dates if they exist)
+                # We could restrict operators here.        
+                # However, getattr failing for unsupported ops is safe.
+                logger.warning(f"Unsupported operator '{operator}' for date range on attribute {attr_name}, skipping.")
+        
+        if processed_any_range:
+             logger.debug(f"Applied date range conditions for attribute: {attr_name}")
+
+    logger.debug(f"Applied {date_range_condition_count} total date range conditions")
+    return search_builder
+
+
+def _include_requested_attributes(search_builder: FluentSearch, attributes_to_include: List[Union[str, AtlanField]], asset_model: Type[Asset]) -> FluentSearch:
+    """Helper function to include requested attributes in the search results."""
+    logger.debug(f"Including attributes in results: {attributes_to_include}")
+    included_count = 0
+    for attr_spec in attributes_to_include:
+        if isinstance(attr_spec, str):
+            attr_field_obj = getattr(asset_model, attr_spec.upper(), None)
+            if attr_field_obj is None:
+                logger.warning(f"Unknown attribute for inclusion: {attr_spec}, skipping")
+                continue
+            logger.debug(f"Including attribute by name: {attr_spec}")
+            search_builder = search_builder.include_on_results(attr_field_obj)
+        elif isinstance(attr_spec, AtlanField): # Check if it's already an AtlanField instance
+            logger.debug(f"Including attribute object: {attr_spec}")
+            search_builder = search_builder.include_on_results(attr_spec)
+        else:
+            logger.warning(f"Invalid attribute specification for inclusion: {attr_spec}, skipping. Expected string or AtlanField.")
+            continue
+        included_count += 1
+    logger.debug(f"Included {included_count} attributes in results")
+    return search_builder
+
+
+def _apply_sorting(search_builder: FluentSearch, sort_by_attr_name: Optional[str], sort_order_str: str, asset_model: Type[Asset]) -> FluentSearch:
+    """Helper function to apply sorting to the FluentSearch builder."""
+    if not sort_by_attr_name:
+        return search_builder 
+
+    sort_attr_field = getattr(asset_model, sort_by_attr_name.upper(), None)
+    if sort_attr_field is not None:
+        if sort_order_str.upper() == "DESC":
+            logger.debug(f"Setting sort order: {sort_by_attr_name} DESC")
+            search_builder = search_builder.sort_by_desc(sort_attr_field)
+        else:
+            logger.debug(f"Setting sort order: {sort_by_attr_name} ASC")
+            search_builder = search_builder.sort_by_asc(sort_attr_field)
+    else:
+        logger.warning(f"Unknown attribute for sorting: {sort_by_attr_name}, skipping sort")
+    return search_builder
+
+
 def search_assets(
     conditions: Optional[Union[Dict[str, Any], str]] = None,
     negative_conditions: Optional[Dict[str, Any]] = None,
@@ -124,196 +320,19 @@ def search_assets(
 
         # Apply positive conditions
         if conditions:
-            if isinstance(conditions, str):
-                try:
-                    conditions = json.loads(conditions)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse conditions JSON: {e}")
-                    logger.debug(f"Invalid JSON string: {conditions}")
-                    raise ValueError(f"Invalid JSON in conditions parameter: {e}")
-            logger.debug(f"Applying positive conditions: {conditions}")
-            condition_count = 0
-            for attr_name, condition in conditions.items():
-                attr = getattr(Asset, attr_name.upper(), None)
-                if attr is None:
-                    logger.warning(
-                        f"Unknown attribute: {attr_name}, skipping condition"
-                    )
-                    continue
-
-                logger.debug(f"Processing condition for attribute: {attr_name}")
-
-                if isinstance(condition, dict):
-                    operator = condition.get("operator", "eq")
-                    value = condition.get("value")
-
-                    logger.debug(f"Applying operator '{operator}' with value '{value}'")
-
-                    # Handle different operators
-                    if operator == "startswith":
-                        search = search.where(attr.startswith(value))
-                    elif operator == "match":
-                        search = search.where(attr.match(value))
-                    elif operator == "eq":
-                        search = search.where(attr.eq(value))
-                    elif operator == "neq":
-                        search = search.where(attr.neq(value))
-                    elif operator == "gte":
-                        search = search.where(attr.gte(value))
-                    elif operator == "lte":
-                        search = search.where(attr.lte(value))
-                    elif operator == "gt":
-                        search = search.where(attr.gt(value))
-                    elif operator == "lt":
-                        search = search.where(attr.lt(value))
-                    elif operator == "has_any_value":
-                        search = search.where(attr.has_any_value())
-                    else:
-                        op_method = getattr(attr, operator, None)
-                        if op_method is None:
-                            logger.warning(
-                                f"Unknown operator: {operator}, skipping condition"
-                            )
-                            continue
-                        search = search.where(op_method(value))
-                elif isinstance(condition, list):
-                    # Handle list of values with OR logic
-                    logger.debug(
-                        f"Applying multiple values for {attr_name}: {condition}"
-                    )
-                    for val in condition:
-                        search = search.where(attr.eq(val))
-                else:
-                    # Default to equality operator
-                    logger.debug(f"Applying equality condition {attr_name}={condition}")
-                    search = search.where(attr.eq(condition))
-
-                condition_count += 1
-
-            logger.debug(f"Applied {condition_count} positive conditions")
+            search = _apply_positive_conditions(search, conditions, Asset)
 
         # Apply negative conditions
         if negative_conditions:
-            logger.debug(f"Applying negative conditions: {negative_conditions}")
-            neg_condition_count = 0
-            for attr_name, condition in negative_conditions.items():
-                attr = getattr(Asset, attr_name.upper(), None)
-                if attr is None:
-                    logger.warning(
-                        f"Unknown attribute for negative condition: {attr_name}, skipping"
-                    )
-                    continue
-
-                logger.debug(
-                    f"Processing negative condition for attribute: {attr_name}"
-                )
-
-                if isinstance(condition, dict):
-                    operator = condition.get("operator", "eq")
-                    value = condition.get("value")
-
-                    logger.debug(
-                        f"Applying negative operator '{operator}' with value '{value}'"
-                    )
-
-                    if operator == "startswith":
-                        search = search.where_not(attr.startswith(value))
-                    elif operator == "contains":
-                        search = search.where_not(attr.contains(value))
-                    elif operator == "match":
-                        search = search.where_not(attr.match(value))
-                    elif operator == "eq":
-                        search = search.where_not(attr.eq(value))
-                    elif operator == "has_any_value":
-                        search = search.where_not(attr.has_any_value())
-                    else:
-                        op_method = getattr(attr, operator, None)
-                        if op_method is None:
-                            logger.warning(
-                                f"Unknown operator for negative condition: {operator}, skipping"
-                            )
-                            continue
-                        search = search.where_not(op_method(value))
-                elif condition == "has_any_value":
-                    # Special case for has_any_value
-                    logger.debug(f"Excluding assets where {attr_name} has any value")
-                    search = search.where_not(attr.has_any_value())
-                else:
-                    # Default to equality operator
-                    logger.debug(f"Excluding assets where {attr_name}={condition}")
-                    search = search.where_not(attr.eq(condition))
-
-                neg_condition_count += 1
-
-            logger.debug(f"Applied {neg_condition_count} negative conditions")
+            search = _apply_negative_conditions(search, negative_conditions, Asset)
 
         # Apply where_some conditions with min_somes
         if some_conditions:
-            logger.debug(
-                f"Applying 'some' conditions: {some_conditions} with min_somes={min_somes}"
-            )
-            some_condition_count = 0
-            for attr_name, condition in some_conditions.items():
-                attr = getattr(Asset, attr_name.upper(), None)
-                if attr is None:
-                    logger.warning(
-                        f"Unknown attribute for 'some' condition: {attr_name}, skipping"
-                    )
-                    continue
-
-                logger.debug(f"Processing 'some' condition for attribute: {attr_name}")
-
-                if isinstance(condition, list):
-                    # Handle multiple values for where_some
-                    logger.debug(
-                        f"Adding multiple 'some' values for {attr_name}: {condition}"
-                    )
-                    for value in condition:
-                        search = search.where_some(attr.eq(value))
-                        some_condition_count += 1
-                else:
-                    logger.debug(f"Adding 'some' condition {attr_name}={condition}")
-                    search = search.where_some(attr.eq(condition))
-                    some_condition_count += 1
-
-            # Set minimum matches required
-            logger.debug(
-                f"Setting min_somes={min_somes} for {some_condition_count} 'some' conditions"
-            )
-            search = search.min_somes(min_somes)
+            search = _apply_some_conditions(search, some_conditions, min_somes, Asset)
 
         # Apply date range filters
         if date_range:
-            logger.debug(f"Applying date range filters: {date_range}")
-            date_range_count = 0
-            for attr_name, range_cond in date_range.items():
-                attr = getattr(Asset, attr_name.upper(), None)
-                if attr is None:
-                    logger.warning(
-                        f"Unknown attribute for date range: {attr_name}, skipping"
-                    )
-                    continue
-
-                logger.debug(f"Processing date range for attribute: {attr_name}")
-
-                if "gte" in range_cond:
-                    logger.debug(f"Adding {attr_name} >= {range_cond['gte']}")
-                    search = search.where(attr.gte(range_cond["gte"]))
-                    date_range_count += 1
-                if "lte" in range_cond:
-                    logger.debug(f"Adding {attr_name} <= {range_cond['lte']}")
-                    search = search.where(attr.lte(range_cond["lte"]))
-                    date_range_count += 1
-                if "gt" in range_cond:
-                    logger.debug(f"Adding {attr_name} > {range_cond['gt']}")
-                    search = search.where(attr.gt(range_cond["gt"]))
-                    date_range_count += 1
-                if "lt" in range_cond:
-                    logger.debug(f"Adding {attr_name} < {range_cond['lt']}")
-                    search = search.where(attr.lt(range_cond["lt"]))
-                    date_range_count += 1
-
-            logger.debug(f"Applied {date_range_count} date range conditions")
+            search = _apply_date_range_filters(search, date_range, Asset)
 
         if guids and len(guids) > 0:
             logger.debug(f"Applying GUID filter: {guids}")
@@ -321,26 +340,7 @@ def search_assets(
 
         # Include requested attributes
         if include_attributes:
-            logger.debug(f"Including attributes in results: {include_attributes}")
-            included_count = 0
-            for attr in include_attributes:
-                if isinstance(attr, str):
-                    attr_obj = getattr(Asset, attr.upper(), None)
-                    if attr_obj is None:
-                        logger.warning(
-                            f"Unknown attribute for inclusion: {attr}, skipping"
-                        )
-                        continue
-                    logger.debug(f"Including attribute: {attr}")
-                    search = search.include_on_results(attr_obj)
-                else:
-                    # Assume it's already an AtlanField object
-                    logger.debug(f"Including attribute object: {attr}")
-                    search = search.include_on_results(attr)
-
-                included_count += 1
-
-            logger.debug(f"Included {included_count} attributes in results")
+            search = _include_requested_attributes(search, include_attributes, Asset)
 
         # Set pagination
         logger.debug(f"Setting pagination: limit={limit}, offset={offset}")
@@ -349,19 +349,7 @@ def search_assets(
             search = search.from_offset(offset)
 
         # Set sorting
-        if sort_by:
-            sort_attr = getattr(Asset, sort_by.upper(), None)
-            if sort_attr is not None:
-                if sort_order.upper() == "DESC":
-                    logger.debug(f"Setting sort order: {sort_by} DESC")
-                    search = search.sort_by_desc(sort_attr)
-                else:
-                    logger.debug(f"Setting sort order: {sort_by} ASC")
-                    search = search.sort_by_asc(sort_attr)
-            else:
-                logger.warning(
-                    f"Unknown attribute for sorting: {sort_by}, skipping sort"
-                )
+        search = _apply_sorting(search, sort_by, sort_order, Asset)
 
         # Execute search
         logger.debug("Converting FluentSearch to request object")

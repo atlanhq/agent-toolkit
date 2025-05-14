@@ -69,13 +69,13 @@ def search_assets_tool(
 
     Examples:
         # Search for verified tables
-        tables = search_assets(
+        tables = search_assets_tool(
             asset_type="Table",
             conditions={"certificate_status": CertificateStatus.VERIFIED.value}
         )
 
         # Search for assets missing descriptions
-        missing_desc = search_assets(
+        missing_desc = search_assets_tool(
             negative_conditions={
                 "description": "has_any_value",
                 "user_description": "has_any_value"
@@ -84,7 +84,7 @@ def search_assets_tool(
         )
 
         # Search for columns with specific certificate status
-        columns = search_assets(
+        columns = search_assets_tool(
             asset_type="Column",
             some_conditions={
                 "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
@@ -94,7 +94,7 @@ def search_assets_tool(
             date_range={"create_time": {"gte": 1641034800000, "lte": 1672570800000}}
         )
         # Search for assets with a specific search text
-        assets = search_assets(
+        assets = search_assets_tool(
             conditions = {
                 "name": {
                     "operator": "match",
@@ -108,7 +108,7 @@ def search_assets_tool(
         )
 
         # Search for assets with compliant business policy
-        assets = search_assets(
+        assets = search_assets_tool(
             conditions={
                 "asset_policy_guids": "business_policy_guid"
             },
@@ -116,7 +116,7 @@ def search_assets_tool(
         )
 
         # Search for assets with non compliant business policy
-        assets = search_assets(
+        assets = search_assets_tool(
             conditions={
                 "non_compliant_asset_policy_guids": "business_policy_guid"
             },
@@ -124,7 +124,7 @@ def search_assets_tool(
         )
 
         # get non compliant business policies for an asset
-         assets = search_assets(
+         assets = search_assets_tool(
             conditions={
                 "name": "has_any_value",
                 "displayName": "has_any_value",
@@ -134,7 +134,7 @@ def search_assets_tool(
         )
 
         # get compliant business policies for an asset
-         assets = search_assets(
+         assets = search_assets_tool(
             conditions={
                 "name": "has_any_value",
                 "displayName": "has_any_value",
@@ -265,19 +265,19 @@ def traverse_lineage_tool(
 
     Example:
         # Get lineage with specific depth and size
-        lineage = traverse_lineage_tool(
+        lineage_data = traverse_lineage_tool(
             guid="asset-guid-here",
             direction="DOWNSTREAM",
             depth=1000000,
             size=10
         )
 
-        # Access assets and their references
-        for asset in lineage["assets"]:
-            print(f"Asset: {asset.guid}")
-
-        for ref in lineage["references"]:
-            print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
+        # Access assets
+        if "assets" in lineage_data:
+            for asset in lineage_data["assets"]:
+                print(f"Asset: {asset.guid}")
+        if "error" in lineage_data:
+            print(f"Error: {lineage_data['error']}")
     """
     try:
         direction_enum = LineageDirection[direction.upper()]

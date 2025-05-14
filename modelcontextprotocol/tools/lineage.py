@@ -24,7 +24,7 @@ def traverse_lineage(
         direction (LineageDirection): Direction to traverse (UPSTREAM or DOWNSTREAM)
         depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
         size (int, optional): Maximum number of results to return. Defaults to 10.
-        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to False.
 
     Returns:
         Dict[str, Any]: Dictionary containing:

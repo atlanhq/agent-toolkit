@@ -54,6 +54,9 @@ def update_assets(
                     error_msg = f"Invalid certificate status: {value}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
+            if result["errors"]:
+                logger.warning("Validation errors found. Aborting asset update.")
+                return result
 
         # Get Atlan client
         client = get_atlan_client()
