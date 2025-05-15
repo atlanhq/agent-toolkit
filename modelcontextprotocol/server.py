@@ -11,7 +11,7 @@ from tools import (
 )
 from pyatlan.model.lineage import LineageDirection
 
-mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan"])
+mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
 
 @mcp.tool()
