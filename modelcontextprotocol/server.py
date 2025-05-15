@@ -32,6 +32,9 @@ def search_assets_tool(
     domain_guids=None,
     date_range=None,
     guids=None,
+    workflow_run_type=None,
+    workflow_run_status=None,
+    include_attributes_extra=None,
 ):
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -60,6 +63,10 @@ def search_assets_tool(
         date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
             Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
         guids (List[str], optional): List of asset GUIDs to filter by.
+        workflow_run_type (str, optional): Workflow run type to filter by.
+        workflow_run_status (str, optional): Workflow run status to filter by.
+        include_attributes_extra (Dict[str, str], optional): Additional attributes to include in results.
+            Format: {"asset_type": "attribute_name"}
 
     Returns:
         List[Asset]: List of assets matching the search criteria
@@ -154,6 +161,14 @@ def search_assets_tool(
             }
         )
 
+        # get business policy that are pending for approval, here the attribute workflow_run_on_asset_guid is the business policy guid that should be used to fetch the business policy details
+         assets = search_assets(
+            "asset_type"="WorkflowRun",
+            "workflow_run_type"="POLICY",
+            "workflow_run_status"="PENDING",
+            include_attributes_extra={"WorkflowRun": "workflow_run_on_asset_guid"}
+        )
+
     """
     return search_assets(
         conditions,
@@ -173,6 +188,9 @@ def search_assets_tool(
         domain_guids,
         date_range,
         guids,
+        workflow_run_type,
+        workflow_run_status,
+        include_attributes_extra,
     )
 
 
