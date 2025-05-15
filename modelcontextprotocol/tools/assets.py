@@ -69,7 +69,7 @@ def update_assets(
                     wrapped_value = f"<html><body>{value}</body></html>"
                     try:
                         html5lib.parse(wrapped_value)
-                    except Exception as e:
+                    except Exception:
                         error_msg = f"Invalid readme: {value}. Must be a valid HTML string without <html> and <body> tags."
                         logger.error(error_msg)
                         result["errors"].append(error_msg)
@@ -99,7 +99,6 @@ def update_assets(
                 )
 
                 if first := response_readme_fetch.current_page():
-                    current_content = first[0].readme.description
                     updated_content = attribute_values[index]
                     updated_readme = Readme.creator(
                         asset=first[0], content=updated_content
