@@ -1,9 +1,16 @@
+from typing import List, Dict, Any, Optional
 from mcp.server.fastmcp import FastMCP
 from tools import (
     search_assets,
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    create_custom_metadata,
+    get_custom_metadata,
+    update_custom_metadata,
+    create_badge,
+    update_badge,
+    delete_badge,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -387,3 +394,330 @@ def update_assets_tool(
         )
     except ValueError as e:
         return {"updated_count": 0, "errors": [str(e)]}
+
+
+@mcp.tool()
+def create_custom_metadata_tool(
+    display_name: str,
+    attributes: List[Dict[str, Any]],
+    description: Optional[str] = None,
+    emoji: Optional[str] = None,
+    logo_url: Optional[str] = None,
+    locked: bool = False,
+):
+    """
+    Create a custom metadata definition in Atlan.
+
+    Args:
+        display_name (str): Display name for the custom metadata
+        attributes (List[Dict[str, Any]]): List of attribute definitions. Each attribute should have:
+            - display_name (str): Display name for the attribute
+            - attribute_type (str): Type of the attribute (from AtlanCustomAttributePrimitiveType)
+            - description (str, optional): Description of the attribute
+            - multi_valued (bool, optional): Whether the attribute can have multiple values
+            - options_name (str, optional): Name of options for enumerated types
+        description (str, optional): Description of the custom metadata
+        emoji (str, optional): Emoji to use as the logo
+        logo_url (str, optional): URL to use for the logo
+        locked (bool, optional): Whether the custom metadata definition should be locked
+
+    Returns:
+        Dict[str, Any]: Response containing:
+            - created: Boolean indicating if creation was successful
+            - guid: GUID of the created custom metadata definition
+            - error: Error message if creation failed
+
+    Examples:
+        # Create RACI custom metadata with descriptions
+        result = create_custom_metadata_tool(
+            display_name="RACI",
+            description="RACI matrix for data assets",
+            attributes=[
+                {
+                    "display_name": "Responsible",
+                    "attribute_type": "USERS",
+                    "description": "Who is responsible for this asset",
+                    "multi_valued": False
+                },
+                {
+                    "display_name": "Accountable",
+                    "attribute_type": "USERS",
+                    "description": "Who is accountable for this asset",
+                    "multi_valued": False
+                },
+                {
+                    "display_name": "Consulted",
+                    "attribute_type": "GROUPS",
+                    "description": "Who should be consulted about this asset",
+                    "multi_valued": True
+                },
+                {
+                    "display_name": "Informed",
+                    "attribute_type": "GROUPS",
+                    "description": "Who should be informed about changes",
+                    "multi_valued": True
+                }
+            ],
+            emoji="👪",
+            locked=False
+        )
+
+        # Create a custom metadata with descriptions and logo URL
+        result = create_custom_metadata_tool(
+            display_name="Data Quality",
+            description="Data quality metrics and scores",
+            attributes=[
+                {
+                    "display_name": "Score",
+                    "attribute_type": "INTEGER",
+                    "description": "Overall quality score (0-100)"
+                },
+                {
+                    "display_name": "Last Check",
+                    "attribute_type": "DATE",
+                    "description": "When the quality was last assessed"
+                },
+                {
+                    "display_name": "Status",
+                    "attribute_type": "STRING",
+                    "description": "Current quality status",
+                    "options_name": "quality_status"
+                }
+            ],
+            logo_url="https://example.com/quality-logo.png",
+            locked=True
+        )
+    """
+    return create_custom_metadata(
+        display_name=display_name,
+        attributes=attributes,
+        description=description,
+        emoji=emoji,
+        logo_url=logo_url,
+        locked=locked,
+    )
+
+
+@mcp.tool()
+def get_custom_metadata_tool(name: str):
+    """
+    Retrieve an existing custom metadata definition.
+
+    Args:
+        name (str): Name of the custom metadata to retrieve
+
+    Returns:
+        Dict[str, Any]: Response containing:
+            - found: Boolean indicating if metadata was found
+            - metadata: Custom metadata definition if found
+            - error: Error message if retrieval failed
+
+    Example:
+        # Get RACI metadata definition
+        result = get_custom_metadata_tool(name="RACI")
+        if result["found"]:
+            metadata = result["metadata"]
+            print(f"Found metadata with {len(metadata.attribute_defs)} attributes")
+    """
+    return get_custom_metadata(name)
+
+
+@mcp.tool()
+def update_custom_metadata_tool(
+    name: str,
+    add_attributes: Optional[List[Dict[str, Any]]] = None,
+    modify_attributes: Optional[Dict[str, Dict[str, Any]]] = None,
+    remove_attributes: Optional[List[str]] = None,
+    archived_by: Optional[str] = None,
+):
+    """
+    Update an existing custom metadata definition.
+
+    Args:
+        name (str): Name of the custom metadata to update
+        add_attributes (List[Dict[str, Any]], optional): New attributes to add. Each attribute should have:
+            - display_name (str): Display name for the attribute
+            - attribute_type (str): Type of the attribute (from AtlanCustomAttributePrimitiveType)
+            - description (str, optional): Description of the attribute
+            - multi_valued (bool, optional): Whether the attribute can have multiple values
+            - options_name (str, optional): Name of options for enumerated types
+        modify_attributes (Dict[str, Dict[str, Any]], optional): Attributes to modify, keyed by display name
+        remove_attributes (List[str], optional): Display names of attributes to remove
+        archived_by (str, optional): Username of person archiving attributes (required for removal)
+
+    Returns:
+        Dict[str, Any]: Response containing:
+            - updated: Boolean indicating if update was successful
+            - error: Error message if update failed
+
+    Examples:
+        # Add a new attribute to RACI
+        result = update_custom_metadata_tool(
+            name="RACI",
+            add_attributes=[{
+                "display_name": "Additional Info",
+                "attribute_type": "STRING",
+                "description": "Additional information"
+            }]
+        )
+
+        # Modify an existing RACI attribute
+        result = update_custom_metadata_tool(
+            name="RACI",
+            modify_attributes={
+                "Additional Info": {
+                    "display_name": "More Info",
+                    "description": "Updated description"
+                }
+            }
+        )
+
+        # Remove attributes from RACI
+        result = update_custom_metadata_tool(
+            name="RACI",
+            remove_attributes=["More Info"],
+            archived_by="jsmith"
+        )
+    """
+    return update_custom_metadata(
+        name=name,
+        add_attributes=add_attributes,
+        modify_attributes=modify_attributes,
+        remove_attributes=remove_attributes,
+        archived_by=archived_by,
+    )
+
+
+@mcp.tool()
+def create_badge_tool(
+    name: str,
+    metadata_name: str,
+    attribute_name: str,
+    display_name: Optional[str] = None,
+    description: Optional[str] = None,
+    emoji: Optional[str] = None,
+    logo_url: Optional[str] = None,
+    badge_conditions: Optional[List[Dict[str, Any]]] = None,
+):
+    """
+    Create a badge for a custom metadata attribute with optional conditions.
+
+    Args:
+        name (str): Unique name for the badge
+        metadata_name (str): Name of the custom metadata definition
+        attribute_name (str): Name of the attribute to show in the badge
+        display_name (str, optional): Display name for the badge
+        description (str, optional): Description of the badge
+        emoji (str, optional): Emoji to use as the badge icon
+        logo_url (str, optional): URL to use for the badge icon
+        badge_conditions (List[Dict[str, Any]], optional): List of conditions for the badge.
+            Each condition should contain:
+            - operator: BadgeComparisonOperator (e.g. "GTE", "LT")
+            - value: The value to compare against
+            - color: BadgeConditionColor (e.g. "GREEN", "YELLOW", "RED")
+
+    Returns:
+        Dict[str, Any]: Response containing:
+            - created: Boolean indicating if creation was successful
+            - guid: GUID of the created badge
+            - error: Error message if creation failed
+
+    Examples:
+        # Create a simple badge
+        result = create_badge_tool(
+            name="raci-responsible",
+            metadata_name="RACI",
+            attribute_name="Responsible",
+            display_name="RACI Lead"
+        )
+
+        # Create a badge with conditions
+        result = create_badge_tool(
+            name="data-quality-score",
+            metadata_name="Data Quality",
+            attribute_name="Score",
+            display_name="Quality Score",
+            description="Data quality score",
+            badge_conditions=[
+                {
+                    "operator": "GTE",
+                    "value": "80",
+                    "color": "GREEN"
+                },
+                {
+                    "operator": "LT",
+                    "value": "80",
+                    "color": "YELLOW"
+                }
+            ]
+        )
+    """
+    return create_badge(
+        name=name,
+        metadata_name=metadata_name,
+        attribute_name=attribute_name,
+        display_name=display_name,
+        description=description,
+        emoji=emoji,
+        logo_url=logo_url,
+        badge_conditions=badge_conditions,
+    )
+
+
+@mcp.tool()
+def update_badge_tool(
+    name: str,
+    display_name: Optional[str] = None,
+    description: Optional[str] = None,
+    emoji: Optional[str] = None,
+    logo_url: Optional[str] = None,
+):
+    """
+    Update an existing badge definition.
+
+    Args:
+        name (str): Name of the badge to update
+        display_name (str, optional): New display name for the badge
+        description (str, optional): New description of the badge
+        emoji (str, optional): New emoji to use as the badge icon
+        logo_url (str, optional): New URL to use for the badge icon
+
+    Returns:
+        Dict[str, Any]: Response containing:
+            - updated: Boolean indicating if update was successful
+            - error: Error message if update failed
+
+    Example:
+        # Update badge display name and emoji
+        result = update_badge_tool(
+            name="raci-responsible",
+            display_name="RACI Lead",
+            emoji="👨‍💼"
+        )
+    """
+    return update_badge(
+        name=name,
+        display_name=display_name,
+        description=description,
+        emoji=emoji,
+        logo_url=logo_url,
+    )
+
+
+@mcp.tool()
+def delete_badge_tool(guid: str):
+    """
+    Delete a badge completely.
+
+    Args:
+        guid (str): GUID of the badge to delete
+
+    Returns:
+        Dict[str, Any]: Response containing:
+            - deleted: Boolean indicating if deletion was successful
+            - error: Error message if deletion failed
+
+    Example:
+        result = delete_badge_tool(guid="1c932bbb-fbe6-4bbc-9d0d-3df2f1fa4f81")
+    """
+    return delete_badge(guid=guid)
