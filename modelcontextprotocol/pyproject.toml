@@ -5,6 +5,7 @@ description = "Atlan Model Context Protocol server for interacting with Atlan se
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "html5lib>=1.1",
     "mcp[cli]>=1.6.0",
     "pyatlan>=6.0.1",
 ]
