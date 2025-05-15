@@ -341,7 +341,7 @@ def update_assets_tool(
             attribute_name="readme",
             attribute_values=["<h1>New readme content</h1>"]
         )
-        
+
 
         # Update user description for multiple assets
         result = update_assets_tool(

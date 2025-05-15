@@ -56,7 +56,7 @@ def update_assets(
                     error_msg = f"Invalid certificate status: {value}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
-        
+
         if attribute_name == UpdatableAttribute.README:
             for value in attribute_values:
                 if not isinstance(value, str):
@@ -84,8 +84,8 @@ def update_assets(
             type_name = updatable_asset.type_name
             qualified_name = updatable_asset.qualified_name
             asset_cls = getattr(
-                    __import__("pyatlan.model.assets", fromlist=[type_name]), type_name
-                )
+                __import__("pyatlan.model.assets", fromlist=[type_name]), type_name
+            )
             # Special handling for README updates
             if attribute_name == UpdatableAttribute.README:
                 response_readme_fetch = (
@@ -102,8 +102,7 @@ def update_assets(
                     current_content = first[0].readme.description
                     updated_content = attribute_values[index]
                     updated_readme = Readme.creator(
-                        asset=first[0],
-                        content=updated_content
+                        asset=first[0], content=updated_content
                     )
                     save_response = client.asset.save(updated_readme)
             else:
@@ -114,7 +113,7 @@ def update_assets(
                 )
                 setattr(asset, attribute_name.value, attribute_values[index])
                 assets.append(asset)
-            
+
             index += 1
 
         if len(assets) > 0:
@@ -122,7 +121,7 @@ def update_assets(
             result["updated_count"] = len(response.guid_assignments)
             logger.info(f"Successfully updated {result['updated_count']} assets")
 
-        # Process response 
+        # Process response
         result["readme_updated"] = len(save_response.guid_assignments)
         return result
 
