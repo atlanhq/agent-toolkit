@@ -308,7 +308,7 @@ def update_assets_tool(
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Only "user_description" and "certificate_status" are supported.
+            Only "user_description", "certificate_status", and "readme" are supported.
         attribute_values (List[str]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
 
@@ -329,6 +329,19 @@ def update_assets_tool(
             attribute_name="certificate_status",
             attribute_values=["VERIFIED"]
         )
+
+        # Update readme for a single asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            },
+            attribute_name="readme",
+            attribute_values=["<h1>New readme content</h1>"]
+        )
+        
 
         # Update user description for multiple assets
         result = update_assets_tool(
