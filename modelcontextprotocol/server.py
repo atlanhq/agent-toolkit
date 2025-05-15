@@ -143,6 +143,17 @@ def search_assets_tool(
             include_attributes=["asset_policy_guids"]
         )
 
+        # get incident for a business policy
+         assets = search_assets(
+            conditions={
+                "asset_type": "BusinessPolicyIncident",
+                "business_policy_incident_related_policy_guids": "business_policy_guid"
+            },
+            some_conditions={
+                "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
+            }
+        )
+
     """
     return search_assets(
         conditions,
