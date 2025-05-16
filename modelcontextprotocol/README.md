@@ -109,7 +109,7 @@ brew install docker
 # Verify installation
 docker --version
 
-# Pull the latest Atlan MCP server image
+# Build the latest Atlan MCP server image
 git clone https://github.com/atlanhq/agent-toolkit.git
 cd agent-toolkit/modelcontextprotocol
 
@@ -183,7 +183,7 @@ docker build . -t atlan-mcp-server:latest
 
 
 ## Production Deployment
-- Host the Atlan MCP container image `ghcr.io/atlanhq/atlan-mcp-server:latest` on the cloud/platform of your choice
+- Host the Atlan MCP container image on the cloud/platform of your choice
  - Make sure you add all the required environment variables
  - Make sure you start the server in the SSE transport mode `-e MCP_TRANSPORT=sse`
 
