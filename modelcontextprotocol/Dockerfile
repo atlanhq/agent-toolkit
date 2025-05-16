@@ -1,40 +1,37 @@
 # Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS uv
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+
+# Set environment variables for build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 # Install the project into `/app`
 WORKDIR /app
 
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
-
-# Copy from the cache instead of linking since it's a mounted volume
-ENV UV_LINK_MODE=copy
-
-# Install the project's dependencies using the lockfile and settings
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev --no-editable
-
-# Then, add the rest of the project source code and install it
-# Installing separately from its dependencies allows optimal layer caching
 ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable
 
-FROM python:3.12-slim-bookworm
-
-WORKDIR /app
-
-COPY --from=uv --chown=app:app /root/.local /root/.local
-COPY --from=uv --chown=app:app /app/.venv /app/.venv
-
-# Place executables in the environment at the front of the path
+# Create a virtual environment and install dependencies
+RUN python -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
+RUN uv sync --no-cache-dir --no-dev --python /app/.venv/bin/python
+
+FROM python:3.12-slim-bookworm AS runtime
+
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
+
+WORKDIR /appuser
+
+COPY --from=builder --chown=appuser:appuser /app /appuser
+
+# Set the PATH to use the virtual environment
+ENV PATH="/appuser/.venv/bin:$PATH"
 
 ENV MCP_TRANSPORT="stdio"
 ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8000"
 ENV MCP_PATH="/"
 
-ENTRYPOINT ["atlan-mcp-server", "--transport", "$MCP_TRANSPORT", "--host", "$MCP_HOST", "--port", "$MCP_PORT", "--path", "$MCP_PATH"]
+USER appuser
+
+ENTRYPOINT exec python server.py --transport "$MCP_TRANSPORT" --host "$MCP_HOST" --port "$MCP_PORT" --path "$MCP_PATH"

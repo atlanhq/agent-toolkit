@@ -414,9 +414,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    mcp.run(
-        transport=args.transport,
-        host=args.host,
-        port=args.port,
-        path=args.path,
-    )
+    kwargs = {"transport": args.transport}
+    if args.transport == "streamable-http" or args.transport == "sse":
+        kwargs = {
+            "transport": args.transport,
+            "host": args.host,
+            "port": args.port,
+            "path": args.path,
+        }
+    # Run the server with the specified transport and host/port/path
+    mcp.run(**kwargs)
