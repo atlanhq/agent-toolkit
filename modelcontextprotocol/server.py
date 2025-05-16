@@ -1,4 +1,5 @@
-from mcp.server.fastmcp import FastMCP
+import argparse
+from fastmcp import FastMCP
 from tools import (
     search_assets,
     get_assets_by_dsl,
@@ -10,7 +11,7 @@ from tools import (
 )
 from pyatlan.model.lineage import LineageDirection
 
-mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
+mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
 
 @mcp.tool()
@@ -387,3 +388,35 @@ def update_assets_tool(
         )
     except ValueError as e:
         return {"updated_count": 0, "errors": [str(e)]}
+
+
+def main():
+    mcp.run()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Atlan MCP Server")
+    parser.add_argument(
+        "--transport",
+        type=str,
+        default="stdio",
+        choices=["stdio", "sse", "streamable-http"],
+        help="Transport protocol (stdio/sse/streamable-http)",
+    )
+    parser.add_argument(
+        "--host", type=str, default="0.0.0.0", help="Host to run the server on"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000, help="Port to run the server on"
+    )
+    parser.add_argument(
+        "--path", type=str, default="/", help="Path of the streamable HTTP server"
+    )
+    args = parser.parse_args()
+
+    mcp.run(
+        transport=args.transport,
+        host=args.host,
+        port=args.port,
+        path=args.path,
+    )

@@ -16,9 +16,12 @@ classifiers = [
 ]
 
 dependencies = [
-    "mcp[cli]>=1.6.0",
+    "fastmcp>=2.3.4",
     "pyatlan>=6.0.1",
 ]
+
+[project.scripts]
+atlan-mcp-server = "server:main"
 
 [project.urls]
 "Homepage" = "https://github.com/atlanhq/agent-toolkit"
