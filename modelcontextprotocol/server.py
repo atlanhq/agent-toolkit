@@ -36,113 +36,128 @@ def search_assets_tool(
     """
     Advanced asset search using FluentSearch with flexible conditions.
 
+    ⚠️ IMPORTANT NOTES FOR AI AGENTS ⚠️
+    
+    1. ALL dictionary parameters (conditions, negative_conditions, some_conditions) MUST be passed as JSON strings:
+       - Correct: '{"description": {"operator": "has_any_value"}}'
+       - Incorrect: {"description": {"operator": "has_any_value"}}
+    
+    2. Common Operators Available:
+       - Check if field has any value: {"field": {"operator": "has_any_value"}}
+       - Exact match: {"field": "value"} or {"field": {"operator": "eq", "value": "value"}}
+       - Pattern match: {"field": {"operator": "match", "value": "pattern"}}
+       - Starts with: {"field": {"operator": "startswith", "value": "prefix"}}
+    
+    3. include_attributes MUST be a JSON array string:
+       - Correct: '["name", "description", "qualified_name"]'
+       - Incorrect: ["name", "description", "qualified_name"]
+    
+    4. Common Attributes Available:
+       - Basic: "name", "description", "user_description", "qualified_name"
+       - Status: "certificate_status", "announcement_title", "announcement_message"
+       - Ownership: "owner_users", "owner_groups", "admin_users", "admin_groups"
+    
+    5. asset_type MUST be a string matching exactly (case-sensitive):
+       - Common types: "Table", "Column", "View", "Schema", "Database"
+    
+    Examples:
+    
+    1. Search for tables with descriptions:
+    ```python
+    search_assets_tool(
+        asset_type="Table",
+        conditions='{"description": {"operator": "has_any_value"}}',
+        include_attributes='["name", "description", "qualified_name"]'
+    )
+    ```
+
+    2. Search for tables with descriptions and sort by popularity score:
+    ```python
+    search_assets_tool(
+        asset_type="Table",
+        conditions='{"description": {"operator": "has_any_value"}}',
+        include_attributes='["name", "description", "qualified_name"]',
+        sort_by="popularityScore",
+        sort_order="DESC"
+    )
+    ```
+
+    3. Search for verified tables:
+    ```python
+    search_assets_tool(
+        asset_type="Table",
+        conditions='{"certificate_status": "VERIFIED"}',
+        include_attributes='["name", "qualified_name", "certificate_status"]'
+    )
+    ```
+
+    4. Search for assets missing descriptions:
+    ```python
+    search_assets_tool(
+        negative_conditions='{"description": {"operator": "has_any_value"}, "user_description": {"operator": "has_any_value"}}',
+        include_attributes='["name", "owner_users", "owner_groups"]'
+    )
+    ```
+
+    5. Search for columns with specific certificate status:
+    ```python
+    search_assets_tool(
+        asset_type="Column",
+        some_conditions='{"certificate_status": ["DRAFT", "VERIFIED"]}',
+        tags='["PRD"]',
+        conditions='{"created_by": "username"}',
+        date_range='{"create_time": {"gte": 1641034800000, "lte": 1672570800000}}'
+    )
+    ```
+
+    6. Search for assets with a specific search text:
+    ```python
+    search_assets_tool(
+        conditions='{"name": {"operator": "match", "value": "search_text"}, "description": {"operator": "match", "value": "search_text"}}'
+    )
+    ```
+
+    7. Search for assets with compliant business policy:
+    ```python
+    search_assets_tool(
+        conditions='{"asset_policy_guids": "business_policy_guid"}',
+        include_attributes='["asset_policy_guids"]'
+    )
+    ```
+
     Args:
-        conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
-            Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
-        negative_conditions (Dict[str, Any], optional): Dictionary of attribute conditions to exclude.
-            Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
-        some_conditions (Dict[str, Any], optional): Conditions for where_some() queries that require min_somes of them to match.
-            Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
+        conditions (str): JSON string of attribute conditions to match.
+            Format: '{"attribute": value}' or '{"attribute": {"operator": op, "value": val}}'
+            
+        negative_conditions (str): JSON string of attribute conditions to exclude.
+            Same format as conditions.
+            
+        some_conditions (str): JSON string for where_some() queries.
+            Same format as conditions.
+            
         min_somes (int): Minimum number of some_conditions that must match. Defaults to 1.
-        include_attributes (List[Union[str, AtlanField]], optional): List of specific attributes to include in results.
-            Can be string attribute names or AtlanField objects.
-        asset_type (Union[Type[Asset], str], optional): Type of asset to search for.
-            Either a class (e.g., Table, Column) or a string type name (e.g., "Table", "Column")
+        
+        include_attributes (str): JSON array string of attributes to include.
+            Example: '["name", "description", "qualified_name"]'
+            
+        asset_type (str): Type of asset to search for (e.g., "Table", "Column").
+            Case sensitive, must match exactly.
+            
         include_archived (bool): Whether to include archived assets. Defaults to False.
-        limit (int, optional): Maximum number of results to return. Defaults to 10.
-        offset (int, optional): Offset for pagination. Defaults to 0.
-        sort_by (str, optional): Attribute to sort by. Defaults to None.
-        sort_order (str, optional): Sort order, "ASC" or "DESC". Defaults to "ASC".
-        connection_qualified_name (str, optional): Connection qualified name to filter by.
-        tags (List[str], optional): List of tags to filter by.
+        limit (int): Maximum number of results to return. Defaults to 10.
+        offset (int): Offset for pagination. Defaults to 0.
+        sort_by (str): Attribute to sort by. Defaults to None.
+        sort_order (str): Sort order, "ASC" or "DESC". Defaults to "ASC".
+        connection_qualified_name (str): Connection qualified name to filter by.
+        tags (List[str]): List of tags to filter by.
         directly_tagged (bool): Whether to filter for directly tagged assets only. Defaults to True.
-        domain_guids (List[str], optional): List of domain GUIDs to filter by.
-        date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
-            Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
-        guids (List[str], optional): List of asset GUIDs to filter by.
+        domain_guids (List[str]): List of domain GUIDs to filter by.
+        date_range (Dict): Date range filters.
+            Format: {"attribute": {"gte": start_timestamp, "lte": end_timestamp}}
+        guids (List[str]): List of asset GUIDs to filter by.
 
     Returns:
         List[Asset]: List of assets matching the search criteria
-
-    Raises:
-        Exception: If there's an error executing the search
-
-    Examples:
-        # Search for verified tables
-        tables = search_assets(
-            asset_type="Table",
-            conditions={"certificate_status": CertificateStatus.VERIFIED.value}
-        )
-
-        # Search for assets missing descriptions
-        missing_desc = search_assets(
-            negative_conditions={
-                "description": "has_any_value",
-                "user_description": "has_any_value"
-            },
-            include_attributes=["owner_users", "owner_groups"]
-        )
-
-        # Search for columns with specific certificate status
-        columns = search_assets(
-            asset_type="Column",
-            some_conditions={
-                "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
-            },
-            tags=["PRD"],
-            conditions={"created_by": "username"},
-            date_range={"create_time": {"gte": 1641034800000, "lte": 1672570800000}}
-        )
-        # Search for assets with a specific search text
-        assets = search_assets(
-            conditions = {
-                "name": {
-                    "operator": "match",
-                    "value": "search_text"
-                },
-                "description": {
-                    "operator": "match",
-                    "value": "search_text"
-                }
-            }
-        )
-
-        # Search for assets with compliant business policy
-        assets = search_assets(
-            conditions={
-                "asset_policy_guids": "business_policy_guid"
-            },
-            include_attributes=["asset_policy_guids"]
-        )
-
-        # Search for assets with non compliant business policy
-        assets = search_assets(
-            conditions={
-                "non_compliant_asset_policy_guids": "business_policy_guid"
-            },
-            include_attributes=["non_compliant_asset_policy_guids"]
-        )
-
-        # get non compliant business policies for an asset
-         assets = search_assets(
-            conditions={
-                "name": "has_any_value",
-                "displayName": "has_any_value",
-                "guid": "has_any_value"
-            },
-            include_attributes=["non_compliant_asset_policy_guids"]
-        )
-
-        # get compliant business policies for an asset
-         assets = search_assets(
-            conditions={
-                "name": "has_any_value",
-                "displayName": "has_any_value",
-                "guid": "has_any_value"
-            },
-            include_attributes=["asset_policy_guids"]
-        )
-
     """
     return search_assets(
         conditions,
