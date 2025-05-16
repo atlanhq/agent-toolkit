@@ -110,7 +110,10 @@ brew install docker
 docker --version
 
 # Pull the latest Atlan MCP server image
-docker pull ghcr.io/atlanhq/atlan-mcp-server:latest
+git clone https://github.com/atlanhq/agent-toolkit.git
+cd agent-toolkit/modelcontextprotocol
+
+docker build . -t atlan-mcp-server:latest
 ```
 
 ## Using the MCP server
@@ -169,7 +172,7 @@ docker pull ghcr.io/atlanhq/atlan-mcp-server:latest
         "ATLAN_BASE_URL=https://your-instance.atlan.com",
         "-e",
         "ATLAN_AGENT_ID=your_agent_id",
-        "ghcr.io/atlanhq/atlan-mcp-server:latest"
+        "atlan-mcp-server:latest"
       ]
     }
   }
