@@ -60,13 +60,6 @@ Search Optimization
 - Support a wide range of search conditions including date ranges.
 - Optimize complex queries with proper indexing strategies.
 
-DSL Query Handling
-- Validate and parse DSL JSON properly.
-- Provide examples for common DSL patterns.
-- Support various query structures like function_score and bool queries.
-- Return both results and aggregations.
-- Implement proper error handling for malformed DSL queries.
-
 Tools and Utility Functions
 - Create helper functions for common operations like:
   - Query building

@@ -33,7 +33,6 @@ The main entry point for the MCP server. Registers and exposes tools defined in 
 from mcp.server.fastmcp import FastMCP
 from tools import (
     search_assets,
-    get_assets_by_dsl,
     traverse_lineage,
     update_assets,
     UpdatableAttribute,
@@ -58,10 +57,6 @@ def search_assets_tool(
     """Advanced asset search using FluentSearch with flexible conditions."""
     return search_assets(conditions=conditions, ...)
 
-@mcp.tool()
-def get_assets_by_dsl_tool(dsl_query: Union[str, Dict[str, Any]]):
-    """Execute the search with the given DSL query."""
-    return get_assets_by_dsl(dsl_query)
 
 @mcp.tool()
 def traverse_lineage_tool(
@@ -139,6 +134,5 @@ def get_atlan_client() -> AtlanClient:
 ### tools/ Directory
 Contains the implementation of the different tools exposed by the server.
 - `assets.py`: Implements asset-related tools like search and update.
-- `dsl.py`: Implements the DSL query tool.
 - `lineage.py`: (Potentially) Implements lineage traversal tools.
 - `__init__.py`: Makes the directory a package and exports the tool functions.
