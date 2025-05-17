@@ -6,6 +6,7 @@ from client import get_atlan_client
 from pyatlan.model.assets import Asset
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.fields.atlan_fields import AtlanField
+from pyatlan.model.assets.workflow_run import WorkflowRun
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -29,6 +30,9 @@ def search_assets(
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
     guids: Optional[List[str]] = None,
+    workflow_run_type: Optional[str] = None,
+    workflow_run_status: Optional[str] = None,
+    include_attributes_extra: Optional[Dict[str, str]] = None,
 ) -> List[Asset]:
     """
     Advanced asset search using FluentSearch with flexible conditions.
@@ -57,7 +61,10 @@ def search_assets(
         date_range (Dict[str, Dict[str, Any]], optional): Date range filters.
             Format: {"attribute_name": {"gte": start_timestamp, "lte": end_timestamp}}
         guids (List[str], optional): List of GUIDs to filter by.
-
+        workflow_run_type (str, optional): Workflow run type to filter by.
+        workflow_run_status (str, optional): Workflow run status to filter by.
+        include_attributes_extra (Dict[str, str], optional): Additional attributes to include in results.
+            Format: {"asset_type": "attribute_name"}
 
     Returns:
         List[Asset]: List of assets matching the search criteria
@@ -105,6 +112,18 @@ def search_assets(
             )
             search = search.where(
                 Asset.QUALIFIED_NAME.startswith(connection_qualified_name)
+            )
+
+        # Apply workflow run type filter if provided
+        if workflow_run_type:
+            logger.debug(f"Filtering by workflow run type: {workflow_run_type}")
+            search = search.where(WorkflowRun.WORKFLOW_RUN_TYPE.eq(workflow_run_type))
+
+        # Apply workflow run status filter if provided
+        if workflow_run_status:
+            logger.debug(f"Filtering by workflow run status: {workflow_run_status}")
+            search = search.where(
+                WorkflowRun.WORKFLOW_RUN_STATUS.eq(workflow_run_status)
             )
 
         # Apply tags filter if provided
@@ -341,6 +360,14 @@ def search_assets(
                 included_count += 1
 
             logger.debug(f"Included {included_count} attributes in results")
+
+        if include_attributes_extra:
+            for asset_type, attr_type in include_attributes_extra.items():
+                if asset_type == "WorkflowRun":
+                    attr_obj = getattr(WorkflowRun, attr_type.upper(), None)
+                    search = search.include_on_results(attr_obj)
+                else:
+                    logger.warning(f"Unknown attribute for inclusion: {attr}, skipping")
 
         # Set pagination
         logger.debug(f"Setting pagination: limit={limit}, offset={offset}")
