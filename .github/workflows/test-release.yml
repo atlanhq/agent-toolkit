@@ -1,20 +1,20 @@
 name: Test-Release-Workflow
 
 on:
-  pull_request:
-    types: [labeled]
+  push:
     branches:
-      - feature/test-release
+      - test-main
+    paths:
+      - 'modelcontextprotocol/version.py'
 
 jobs:
   test-release-workflow:
-    if: contains(github.event.pull_request.labels.*.name, 'test-release')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -37,12 +37,12 @@ jobs:
 
           if [ -z "$PREV_TAG" ]; then
             PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
-            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
+            RANGE="$PREV_COMMIT..HEAD"
           elif git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
-            RANGE="$PREV_TAG..${{ github.event.pull_request.head.sha }}"
+            RANGE="$PREV_TAG..HEAD"
           else
             PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
-            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
+            RANGE="$PREV_COMMIT..HEAD"
           fi
 
           echo "Using commit range for testing: $RANGE"
@@ -59,7 +59,7 @@ jobs:
           fi
 
           # Add fixes
-          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null | sed 's/^\* fix(\(.+\))?:?\s*//' > fixes.txt
+          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null | sed -E 's/^\* fix(\(.+\))?:?\s*//' > fixes.txt
           if [ -s fixes.txt ]; then
             echo -e "### Fixed\n" >> TEST_RELEASE_NOTES.md
             cat fixes.txt >> TEST_RELEASE_NOTES.md
