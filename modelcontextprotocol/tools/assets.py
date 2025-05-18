@@ -79,6 +79,11 @@ def update_assets(
 
         # Create assets with updated values
         assets = []
+        # Maintain separate lists for readme updates to avoid confusion with other asset attribute updates.
+        # readme_update_assets: Readme assets to update.
+        # readme_update_parent_assets: Assets that were updated with readme.
+        readme_update_assets = []
+        readme_update_parent_assets = []
         index = 0
         for updatable_asset in updatable_assets:
             type_name = updatable_asset.type_name
@@ -86,6 +91,11 @@ def update_assets(
             asset_cls = getattr(
                 __import__("pyatlan.model.assets", fromlist=[type_name]), type_name
             )
+            asset = asset_cls.updater(
+                    qualified_name=updatable_asset.qualified_name,
+                    name=updatable_asset.name,
+                )
+            
             # Special handling for README updates
             if attribute_name == UpdatableAttribute.README:
                 response_readme_fetch = (
@@ -103,25 +113,34 @@ def update_assets(
                     updated_readme = Readme.creator(
                         asset=first[0], content=updated_content
                     )
-                    save_response = client.asset.save(updated_readme)
+                    # Save the readme asset
+                    # Readme asset is created in the same request as the parent asset.
+                    readme_update_assets.append(updated_readme)
+                    # Add the parent/actual asset to the list of assets that were updated with readme.
+                    readme_update_parent_assets.append(asset)
             else:
                 # Regular attribute update flow
-                asset = asset_cls.updater(
-                    qualified_name=updatable_asset.qualified_name,
-                    name=updatable_asset.name,
-                )
                 setattr(asset, attribute_name.value, attribute_values[index])
                 assets.append(asset)
 
             index += 1
+
+        if len(readme_update_assets) > 0:
+            readme_update_response = client.asset.save(readme_update_assets)
+            updated_guids = list(readme_update_response.guid_assignments.keys())
+            result["readme_updated"] = len(updated_guids)
+            # Collect qualified names or other identifiers for assets that were updated with readme
+            result["updated_readme_assets"] = [
+                asset.qualified_name for asset in readme_update_parent_assets
+                if hasattr(asset, "qualified_name")
+            ]
+            logger.info(f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}")
 
         if len(assets) > 0:
             response = client.asset.save(assets)
             result["updated_count"] = len(response.guid_assignments)
             logger.info(f"Successfully updated {result['updated_count']} assets")
 
-        # Process response
-        result["readme_updated"] = len(save_response.guid_assignments)
         return result
 
     except Exception as e:
