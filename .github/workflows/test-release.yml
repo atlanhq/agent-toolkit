@@ -1,14 +1,15 @@
 name: Test-Release-Workflow
 
 on:
-  pull_request:
-    types: [labeled]
+  workflow_dispatch:
+  push:
     branches:
       - feature/test-release
+    paths:
+      - 'modelcontextprotocol/version.py'
 
 jobs:
   test-release-workflow:
-    if: contains(github.event.pull_request.labels.*.name, 'test-release')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -18,40 +19,42 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Get version
         id: get_version
         run: |
           VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Would create tag v$VERSION"
+          echo "Version detected: $VERSION"
 
-      - name: Generate changelog entry (dry run)
+      - name: Generate changelog entry
         run: |
           set +e  # Don't exit on error
           VERSION="${{ steps.get_version.outputs.version }}"
           RELEASE_DATE=$(date +"%Y-%m-%d")
           echo "Generating changelog for version $VERSION ($RELEASE_DATE)"
 
-          # Get the previous version tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
-
+          # Get the previous version tag or first commit
+          PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1 || echo "")
           if [ -z "$PREV_TAG" ]; then
+            # If no previous tag, use root commit
             PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
-            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
-          elif git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
-            RANGE="$PREV_TAG..${{ github.event.pull_request.head.sha }}"
+            RANGE="$PREV_COMMIT..HEAD"
           else
-            PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
-            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
+            RANGE="$PREV_TAG..HEAD"
           fi
 
-          echo "Using commit range for testing: $RANGE"
+          echo "Using commit range: $RANGE"
 
           # Create test changelog entry
           echo -e "## [$VERSION] - $RELEASE_DATE\n" > TEST_RELEASE_NOTES.md
 
           # Add features
-          git log $RANGE --format="* %s (%h)" --grep="^feat" --perl-regexp --no-merges 2>/dev/null | sed -E 's/^\* feat(\(.+\))?:?\s*//' > features.txt
+          git log $RANGE --format="* %s (%h)" | grep -E "^* feat|^* feature" 2>/dev/null | sed -E 's/^* feat(ure)?//' > features.txt
           if [ -s features.txt ]; then
             echo -e "### Added\n" >> TEST_RELEASE_NOTES.md
             cat features.txt >> TEST_RELEASE_NOTES.md
@@ -59,7 +62,7 @@ jobs:
           fi
 
           # Add fixes
-          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null | sed 's/^\* fix(\(.+\))?:?\s*//' > fixes.txt
+          git log $RANGE --format="* %s (%h)" | grep "^* fix" 2>/dev/null | sed 's/^* fix//' > fixes.txt
           if [ -s fixes.txt ]; then
             echo -e "### Fixed\n" >> TEST_RELEASE_NOTES.md
             cat fixes.txt >> TEST_RELEASE_NOTES.md
@@ -67,14 +70,14 @@ jobs:
           fi
 
           # Add other changes
-          git log $RANGE --format="* %s (%h)" --no-merges | grep -v -E "^\* (feat|fix|chore|docs|style|refactor|test|ci)(\(.+\))?:?\s*" 2>/dev/null > others.txt
+          git log $RANGE --format="* %s (%h)" | grep -v -E "^* feat|^* feature|^* fix" 2>/dev/null > others.txt
           if [ -s others.txt ]; then
             echo -e "### Changed\n" >> TEST_RELEASE_NOTES.md
             cat others.txt >> TEST_RELEASE_NOTES.md
             echo -e "\n" >> TEST_RELEASE_NOTES.md
           fi
 
-          # If no specific changes found, add a simple entry
+          # If no changes found, add a simple entry
           if [ ! -s features.txt ] && [ ! -s fixes.txt ] && [ ! -s others.txt ]; then
             echo "- Test release version $VERSION" >> TEST_RELEASE_NOTES.md
           fi
@@ -82,18 +85,26 @@ jobs:
           # Clean up temporary files
           rm -f features.txt fixes.txt others.txt
 
-          echo "TEST_RELEASE_NOTES.md generation completed (dry run):"
+          echo "TEST_RELEASE_NOTES.md generated:"
           cat TEST_RELEASE_NOTES.md
 
-      - name: Test PyPI build
+      - name: Build package
         run: |
           cd modelcontextprotocol
+          python -m pip install --upgrade pip
           pip install build wheel
-          python -m build --sdist --wheel
-          echo "PyPI package build test successful"
+          python -m build
+          echo "📦 Package built successfully"
+          ls -la dist/
 
       - name: Test Docker build
         run: |
           cd modelcontextprotocol
           docker build -t test-atlan-mcp-server:${{ steps.get_version.outputs.version }} .
-          echo "Docker image build test successful"
+          echo "🐳 Docker image built successfully"
+          docker images | grep test-atlan-mcp-server
+
+      - name: Create test tag
+        run: |
+          echo "Would create tag v${{ steps.get_version.outputs.version }}"
+          echo "Test release process completed successfully!"
