@@ -1,0 +1,99 @@
+name: Test-Release-Workflow
+
+on:
+  pull_request:
+    types: [labeled]
+    branches:
+      - feature/test-release
+
+jobs:
+  test-release-workflow:
+    if: contains(github.event.pull_request.labels.*.name, 'test-release')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Would create tag v$VERSION"
+
+      - name: Generate changelog entry (dry run)
+        run: |
+          set +e  # Don't exit on error
+          VERSION="${{ steps.get_version.outputs.version }}"
+          RELEASE_DATE=$(date +"%Y-%m-%d")
+          echo "Generating changelog for version $VERSION ($RELEASE_DATE)"
+
+          # Get the previous version tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+
+          if [ -z "$PREV_TAG" ]; then
+            PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
+          elif git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
+            RANGE="$PREV_TAG..${{ github.event.pull_request.head.sha }}"
+          else
+            PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
+          fi
+
+          echo "Using commit range for testing: $RANGE"
+
+          # Create test changelog entry
+          echo -e "## [$VERSION] - $RELEASE_DATE\n" > TEST_RELEASE_NOTES.md
+
+          # Add features
+          git log $RANGE --format="* %s (%h)" --grep="^feat" --perl-regexp --no-merges 2>/dev/null | sed -E 's/^\* feat(\(.+\))?:?\s*//' > features.txt
+          if [ -s features.txt ]; then
+            echo -e "### Added\n" >> TEST_RELEASE_NOTES.md
+            cat features.txt >> TEST_RELEASE_NOTES.md
+            echo -e "\n" >> TEST_RELEASE_NOTES.md
+          fi
+
+          # Add fixes
+          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null | sed 's/^\* fix(\(.+\))?:?\s*//' > fixes.txt
+          if [ -s fixes.txt ]; then
+            echo -e "### Fixed\n" >> TEST_RELEASE_NOTES.md
+            cat fixes.txt >> TEST_RELEASE_NOTES.md
+            echo -e "\n" >> TEST_RELEASE_NOTES.md
+          fi
+
+          # Add other changes
+          git log $RANGE --format="* %s (%h)" --no-merges | grep -v -E "^\* (feat|fix|chore|docs|style|refactor|test|ci)(\(.+\))?:?\s*" 2>/dev/null > others.txt
+          if [ -s others.txt ]; then
+            echo -e "### Changed\n" >> TEST_RELEASE_NOTES.md
+            cat others.txt >> TEST_RELEASE_NOTES.md
+            echo -e "\n" >> TEST_RELEASE_NOTES.md
+          fi
+
+          # If no specific changes found, add a simple entry
+          if [ ! -s features.txt ] && [ ! -s fixes.txt ] && [ ! -s others.txt ]; then
+            echo "- Test release version $VERSION" >> TEST_RELEASE_NOTES.md
+          fi
+
+          # Clean up temporary files
+          rm -f features.txt fixes.txt others.txt
+
+          echo "TEST_RELEASE_NOTES.md generation completed (dry run):"
+          cat TEST_RELEASE_NOTES.md
+
+      - name: Test PyPI build
+        run: |
+          cd modelcontextprotocol
+          pip install build wheel
+          python -m build --sdist --wheel
+          echo "PyPI package build test successful"
+
+      - name: Test Docker build
+        run: |
+          cd modelcontextprotocol
+          docker build -t test-atlan-mcp-server:${{ steps.get_version.outputs.version }} .
+          echo "Docker image build test successful"
