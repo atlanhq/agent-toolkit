@@ -1,74 +1,37 @@
-# Copyright Atlan, Inc. All Rights Reserved.
-#
-# Licensed under the MIT License.
+# Use a Python image with uv pre-installed
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
-# Build stage with UV for dependency management
-FROM python:3.11-slim AS builder
+# Set environment variables for build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Install UV
-RUN pip install --no-cache-dir uv
-
-# Set up working directory
+# Install the project into `/app`
 WORKDIR /app
 
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
+ADD . /app
 
-# Copy from the cache instead of linking
-ENV UV_LINK_MODE=copy
-
-# Prefer the system python
-ENV UV_PYTHON_PREFERENCE=only-system
-
-# First, copy all source files
-COPY . .
-
-# Create a virtual environment and install the package directly with pip
-RUN python -m venv .venv && \
-    . .venv/bin/activate && \
-    pip install --no-cache-dir -e .
-
-# Final stage
-FROM python:3.11-slim
-
-# Install curl for healthcheck and other required tools
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    groupadd --system --gid 1001 app && \
-    useradd --system --gid app --uid 1001 app && \
-    mkdir -p /app && \
-    chown app:app /app
-
-WORKDIR /app
-
-# Copy the virtual environment and source code
-COPY --from=builder --chown=app:app /app/.venv /app/.venv
-COPY --from=builder --chown=app:app /app /app
-
-# Create healthcheck script
-RUN echo '#!/bin/sh\ncurl --fail http://localhost:8000/health || exit 1' > /usr/local/bin/healthcheck.sh && \
-    chmod +x /usr/local/bin/healthcheck.sh
-
-# Set PATH to use virtual environment
+# Create a virtual environment and install dependencies
+RUN python -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app"
+RUN uv sync --no-cache-dir --no-dev --python /app/.venv/bin/python
 
-# Install UV in the final image for running MCP
-RUN pip install --no-cache-dir uv
+FROM python:3.12-slim-bookworm AS runtime
 
-# Create UV cache directory and set proper permissions
-RUN mkdir -p /home/app/.cache/uv && \
-    chown -R app:app /home/app
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 
-# Run as non-root
-USER app
+WORKDIR /appuser
 
-# Expose the port the app runs on
-EXPOSE 8000
+COPY --from=builder --chown=appuser:appuser /app /appuser
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD [ "/usr/local/bin/healthcheck.sh" ]
+# Set the PATH to use the virtual environment
+ENV PATH="/appuser/.venv/bin:$PATH"
 
-CMD ["uv", "run", "--with", "mcp[cli]", "--with", "pyatlan", "mcp", "run", "server.py"]
+ENV MCP_TRANSPORT="stdio"
+ENV MCP_HOST="0.0.0.0"
+ENV MCP_PORT="8000"
+ENV MCP_PATH="/"
+
+USER appuser
+
+ENTRYPOINT exec python server.py --transport "$MCP_TRANSPORT" --host "$MCP_HOST" --port "$MCP_PORT" --path "$MCP_PATH"
