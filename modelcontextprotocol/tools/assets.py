@@ -93,10 +93,10 @@ def update_assets(
                 __import__("pyatlan.model.assets", fromlist=[type_name]), type_name
             )
             asset = asset_cls.updater(
-                    qualified_name=updatable_asset.qualified_name,
-                    name=updatable_asset.name,
-                )
-            
+                qualified_name=updatable_asset.qualified_name,
+                name=updatable_asset.name,
+            )
+
             # Special handling for README updates
             if attribute_name == UpdatableAttribute.README:
                 response_readme_fetch = (
@@ -132,10 +132,13 @@ def update_assets(
             result["readme_updated"] = len(updated_guids)
             # Collect qualified names or other identifiers for assets that were updated with readme
             result["updated_readme_assets"] = [
-                asset.qualified_name for asset in readme_update_parent_assets
+                asset.qualified_name
+                for asset in readme_update_parent_assets
                 if hasattr(asset, "qualified_name")
             ]
-            logger.info(f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}")
+            logger.info(
+                f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}"
+            )
 
         if len(assets) > 0:
             response = client.asset.save(assets)
