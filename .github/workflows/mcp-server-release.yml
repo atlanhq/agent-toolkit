@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - feature/add-support-for-arm
+      - rishav/test-arm
 
   pull_request:
     types: [closed]
