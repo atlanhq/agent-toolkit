@@ -1,6 +1,11 @@
 name: MCP-Release
 
 on:
+  push:
+    branches:
+      - main
+      - feature/add-support-for-arm
+
   pull_request:
     types: [closed]
     branches:
