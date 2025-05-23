@@ -17,6 +17,7 @@ class UpdatableAttribute(str, Enum):
 
     USER_DESCRIPTION = "user_description"
     CERTIFICATE_STATUS = "certificate_status"
+    README = "readme"
 
 
 class UpdatableAsset(BaseModel):
