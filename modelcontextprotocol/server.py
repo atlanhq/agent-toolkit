@@ -108,6 +108,34 @@ def search_assets_tool(
             }
         )
 
+
+        # Search for assets using advanced operators
+        assets = search_assets(
+            conditions={
+                "name": {
+                    "operator": "startswith",
+                    "value": "prefix_",
+                    "case_insensitive": True
+                },
+                "description": {
+                    "operator": "contains",
+                    "value": "important data",
+                    "case_insensitive": True
+                },
+                "create_time": {
+                    "operator": "between",
+                    "value": [1640995200000, 1643673600000]
+                }
+            }
+        )
+
+        # Search for assets with multiple type names (OR logic)
+        assets = search_assets(
+            conditions={
+                "type_name": ["Table", "Column", "View"]  # Uses .within() for OR logic
+            }
+        )
+
         # Search for assets with compliant business policy
         assets = search_assets(
             conditions={
@@ -153,6 +181,20 @@ def search_assets_tool(
             some_conditions={
                 "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
             }
+        )
+
+        # Search for glossary terms by name and status
+        glossary_terms = search_assets(
+            asset_type="AtlasGlossaryTerm",
+            conditions={
+                "certificate_status": CertificateStatus.VERIFIED.value,
+                "name": {
+                    "operator": "contains",
+                    "value": "customer",
+                    "case_insensitive": True
+                }
+            },
+            include_attributes=["categories"]
         )
 
     """
