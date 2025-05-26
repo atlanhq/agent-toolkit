@@ -517,7 +517,19 @@ def search_assets(
         logger.info("Executing search request")
         client = get_atlan_client()
         search_response = client.asset.search(request)
-        processed_results = SearchUtils.process_results(search_response)
+
+        # Extract string attribute names for processing
+        string_attributes = []
+        if include_attributes:
+            for attr in include_attributes:
+                if isinstance(attr, str):
+                    string_attributes.append(attr)
+                # For AtlanField objects, we could extract the field name if needed
+                # but for now we'll focus on string attributes
+
+        processed_results = SearchUtils.process_results(
+            search_response, string_attributes
+        )
         logger.info(f"Search completed, returned {len(processed_results)} results")
         if isinstance(processed_results, tuple) and len(processed_results) >= 1:
             actual_results = processed_results[0]

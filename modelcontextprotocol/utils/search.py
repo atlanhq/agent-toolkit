@@ -1,12 +1,21 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SearchUtils:
     @staticmethod
-    def process_results(results: Any) -> tuple[List[Dict[str, Any]], Any, int]:
+    def process_results(
+        results: Any, include_attributes: Optional[List[str]] = None
+    ) -> tuple[List[Dict[str, Any]], Any, int]:
         """
         Process the results from the search index safely.
+
+        Args:
+            results: The search results from Atlan
+            include_attributes: Additional attributes to include in the output
         """
         results_list = []
         aggregations = getattr(results, "aggregations", None)
@@ -79,6 +88,7 @@ class SearchUtils:
             cert_status_enum = getattr(result.attributes, "certificate_status", None)
             certificate_status_str = str(cert_status_enum) if cert_status_enum else None
 
+            # Base result dictionary with core attributes
             # this is directly linked to the MessageArtifact model in the db, make sure to update it when the model changes
             result_dict = {
                 "type": getattr(result, "type_name", None),
@@ -102,5 +112,42 @@ class SearchUtils:
                 "glossary_terms": glossary_terms,
                 "readme": readme_description,
             }
+
+            # Add any additional attributes requested by the user
+            if include_attributes:
+                for attr_name in include_attributes:
+                    # Skip if already included in base result_dict
+                    if attr_name.lower() in [key.lower() for key in result_dict.keys()]:
+                        continue
+
+                    # Get the attribute value from the result
+                    attr_value = getattr(result.attributes, attr_name.lower(), None)
+
+                    # Handle special cases for complex attribute types
+                    if attr_value is not None:
+                        # Convert sets to lists for JSON serialization
+                        if isinstance(attr_value, set):
+                            attr_value = list(attr_value)
+                        # Convert datetime objects to ISO format
+                        elif isinstance(attr_value, datetime):
+                            attr_value = attr_value.isoformat()
+                        # Handle enum types by converting to string
+                        elif hasattr(attr_value, "value"):
+                            attr_value = str(attr_value)
+                        # Handle complex objects that might have a string representation
+                        elif hasattr(attr_value, "__dict__") and not isinstance(
+                            attr_value, (str, int, float, bool)
+                        ):
+                            # For complex objects, try to extract meaningful data
+                            try:
+                                attr_value = str(attr_value)
+                            except Exception as e:
+                                logger.error(
+                                    f"Error processing attribute {attr_name}: {e}"
+                                )
+                                attr_value = None
+
+                    result_dict[attr_name] = attr_value
+
             results_list.append(result_dict)
         return results_list, aggregations, count

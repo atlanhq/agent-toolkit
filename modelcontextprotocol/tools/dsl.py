@@ -48,7 +48,7 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         logger.info("Executing DSL search request")
         client = get_atlan_client()
         search_response = client.asset.search(index_request)
-        processed_results = SearchUtils.process_results(search_response)
+        processed_results = SearchUtils.process_results(search_response, None)
         if isinstance(processed_results, tuple) and len(processed_results) >= 1:
             results = processed_results[0]
         else:
