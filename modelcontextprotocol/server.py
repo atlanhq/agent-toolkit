@@ -343,7 +343,7 @@ def update_assets_tool(
             attribute_values=["VERIFIED"]
         )
 
-        # Update readme for a single asset
+        # Update readme for a single asset with HTML
         result = update_assets_tool(
             assets={
                 "guid": "asset-guid-here",
@@ -355,7 +355,7 @@ def update_assets_tool(
             attribute_values=["<h1>New readme content</h1>"]
         )
 
-        # Update readme for multiple assets
+        # Update readme for multiple assets with HTML
         result = update_assets_tool(
             assets=[
                 {
@@ -378,25 +378,66 @@ def update_assets_tool(
             ]
         )
 
-        # Update user description for multiple assets
+        # Update readme for a single asset with Markdown
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            },
+            attribute_name="readme",
+            attribute_values=['# Data Pipeline Overview\n\n'
+                            '## Purpose\n'
+                            'This pipeline processes customer transaction data for analytics.\n\n'
+                            '### Key Features\n'
+                            '- **Real-time Processing**: Handles streaming data\n'
+                            '- **Data Quality**: Implements [validation rules](https://docs.example.com/validation)\n'
+                            '- **Scalability**: Supports up to 1M records/day\n\n'
+                            '```python\n'
+                            'def process_data(data):\n'
+                            '    return transformed_data\n'
+                            '```\n\n'
+                            '> **Note**: This pipeline requires Python 3.8+']
+        )
+
+        # Update readme for multiple assets with Markdown
         result = update_assets_tool(
             assets=[
                 {
                     "guid": "asset-guid-1",
-                    "name": "Asset Name 1",
-                    "type_name": "Asset Type Name 1",
-                    "qualified_name": "Asset Qualified Name 1"
+                    "name": "Customer Table",
+                    "type_name": "Table",
+                    "qualified_name": "database.schema.customers"
                 },
                 {
                     "guid": "asset-guid-2",
-                    "name": "Asset Name 2",
-                    "type_name": "Asset Type Name 2",
-                    "qualified_name": "Asset Qualified Name 2"
+                    "name": "Transaction Table",
+                    "type_name": "Table",
+                    "qualified_name": "database.schema.transactions"
                 }
             ],
-            attribute_name="user_description",
+            attribute_name="readme",
             attribute_values=[
-                "New description for asset 1", "New description for asset 2"
+                '# Customer Data Table\n\n'
+                '## Description\n'
+                'Contains customer profile information.\n\n'
+                '### Key Fields\n'
+                '| Field | Type | Description |\n'
+                '|-------|------|-------------|\n'
+                '| id | UUID | Primary key |\n'
+                '| name | String | Customer name |\n'
+                '| email | String | Contact email |\n\n'
+                '> **Security**: Contains PII data',
+                '# Transaction Records\n\n'
+                '## Overview\n'
+                'Stores all customer transactions.\n\n'
+                '### Data Flow\n'
+                '1. Raw data ingestion\n'
+                '2. Validation\n'
+                '3. Transformation\n'
+                '4. Storage\n\n'
+                '**Note**: Data is retained for 5 years'
             ]
         )
 
