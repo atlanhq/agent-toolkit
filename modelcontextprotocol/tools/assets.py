@@ -1,4 +1,3 @@
-import html5lib
 import logging
 from typing import List, Union, Dict, Any
 from client import get_atlan_client
@@ -57,23 +56,6 @@ def update_assets(
                     error_msg = f"Invalid certificate status: {value}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
-
-        if attribute_name == UpdatableAttribute.README:
-            for value in attribute_values:
-                if not isinstance(value, str):
-                    error_msg = f"Invalid readme: {value}. Must be a string."
-                    logger.error(error_msg)
-                    result["errors"].append(error_msg)
-                else:
-                    # Readme in Atlan is rendered as HTML
-                    # Wrap the value in HTML tags to make it a valid HTML string
-                    wrapped_value = f"<html><body>{value}</body></html>"
-                    try:
-                        html5lib.parse(wrapped_value)
-                    except Exception:
-                        error_msg = f"Invalid readme: {value}. Must be a valid HTML string without <html> and <body> tags."
-                        logger.error(error_msg)
-                        result["errors"].append(error_msg)
 
         # Get Atlan client
         client = get_atlan_client()
