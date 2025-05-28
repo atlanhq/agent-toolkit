@@ -461,7 +461,6 @@ def search_assets(
         logger.debug(f"Total attributes to include: {all_attributes}")
 
         # Include all attributes in results
-        included_count = 0
         for attr_name in all_attributes:
             attr_obj = getattr(Asset, attr_name.upper(), None)
             if attr_obj is None:
@@ -471,7 +470,6 @@ def search_assets(
                 continue
             logger.debug(f"Including attribute: {attr_name}")
             search = search.include_on_results(attr_obj)
-            included_count += 1
 
         # Include additional AtlanField objects specified by user
         if include_attributes:
@@ -480,9 +478,6 @@ def search_assets(
                     # Assume it's already an AtlanField object
                     logger.debug(f"Including attribute object: {attr}")
                     search = search.include_on_results(attr)
-                    included_count += 1
-
-        logger.debug(f"Included {included_count} attributes in results")
 
         # Set pagination
         logger.debug(f"Setting pagination: limit={limit}, offset={offset}")
@@ -509,27 +504,10 @@ def search_assets(
         logger.debug("Converting FluentSearch to request object")
         request = search.to_request()
 
-        # Log the request object if debug is enabled
-        if logger.isEnabledFor(logging.DEBUG):
-            request_json = json.dumps(request.to_json())
-            logger.debug(f"Search request: {request_json}")
-
         logger.info("Executing search request")
         client = get_atlan_client()
         search_response = client.asset.search(request)
-
-        # Extract string attribute names for processing
-        string_attributes = []
-        if include_attributes:
-            for attr in include_attributes:
-                if isinstance(attr, str):
-                    string_attributes.append(attr)
-                # For AtlanField objects, we could extract the field name if needed
-                # but for now we'll focus on string attributes
-
-        processed_results = SearchUtils.process_results(
-            search_response, string_attributes
-        )
+        processed_results = SearchUtils.process_results(search_response)
         logger.info(f"Search completed, returned {len(processed_results)} results")
         if isinstance(processed_results, tuple) and len(processed_results) >= 1:
             actual_results = processed_results[0]
