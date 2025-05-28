@@ -24,7 +24,7 @@ def update_assets(
             Only userDescription,certificateStatus and readme are allowed.
         attribute_values (List[Union[str, CertificateStatus]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
-            For readme, the value must be a valid HTML string without <html> and <body> tags.
+            For readme, the value must be a valid HTML string without <html> and <body> tags OR a valid Markdown string.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
