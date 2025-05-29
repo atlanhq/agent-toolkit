@@ -1,5 +1,4 @@
 import logging
-import json
 from typing import Type, List, Optional, Union, Dict, Any
 
 from client import get_atlan_client
@@ -31,7 +30,7 @@ def search_assets(
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
     guids: Optional[List[str]] = None,
-) -> List[Asset]:
+) -> List[Dict[str, Any]]:
     """
     Advanced asset search using FluentSearch with flexible conditions.
 
@@ -65,7 +64,7 @@ def search_assets(
 
 
     Returns:
-        List[Asset]: List of assets matching the search criteria
+        List[Dict[str, Any]]: List of assets matching the search criteria
 
     Raises:
         Exception: If there's an error executing the search
@@ -129,17 +128,19 @@ def search_assets(
 
         # Apply positive conditions
         if conditions:
-            if isinstance(conditions, str):
-                try:
-                    conditions = json.loads(conditions)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse conditions JSON: {e}")
-                    logger.debug(f"Invalid JSON string: {conditions}")
-                    raise ValueError(f"Invalid JSON in conditions parameter: {e}")
+            if not isinstance(conditions, dict):
+                error_msg = f"Conditions parameter must be a dictionary, got {type(conditions).__name__}"
+                logger.error(error_msg)
+                return {
+                    "results": [],
+                    "aggregations": None,
+                    "count": 0,
+                    "error": error_msg,
+                }
+
             logger.debug(f"Applying positive conditions: {conditions}")
-            condition_count = 0
             for attr_name, condition in conditions.items():
-                attr = getattr(Asset, attr_name.upper(), None)
+                attr = SearchUtils._get_asset_attribute(attr_name)
                 if attr is None:
                     logger.warning(
                         f"Unknown attribute: {attr_name}, skipping condition"
@@ -148,89 +149,15 @@ def search_assets(
 
                 logger.debug(f"Processing condition for attribute: {attr_name}")
 
-                if isinstance(condition, dict):
-                    operator = condition.get("operator", "eq")
-                    value = condition.get("value")
-                    case_insensitive = condition.get("case_insensitive", False)
-
-                    logger.debug(
-                        f"Applying operator '{operator}' with value '{value}' (case_insensitive={case_insensitive})"
-                    )
-
-                    # Handle different operators
-                    if operator == "startswith":
-                        search = search.where(
-                            attr.startswith(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "match":
-                        search = search.where(attr.match(value))
-                    elif operator == "eq":
-                        search = search.where(
-                            attr.eq(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "neq":
-                        search = search.where(
-                            attr.neq(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "gte":
-                        search = search.where(attr.gte(value))
-                    elif operator == "lte":
-                        search = search.where(attr.lte(value))
-                    elif operator == "gt":
-                        search = search.where(attr.gt(value))
-                    elif operator == "lt":
-                        search = search.where(attr.lt(value))
-                    elif operator == "has_any_value":
-                        search = search.where(attr.has_any_value())
-                    elif operator == "contains":
-                        search = search.where(
-                            attr.contains(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "between":
-                        # Expecting value to be a list/tuple with [start, end]
-                        if isinstance(value, (list, tuple)) and len(value) == 2:
-                            search = search.where(attr.between(value[0], value[1]))
-                        else:
-                            logger.warning(
-                                f"Invalid value format for 'between' operator: {value}, expected [start, end]"
-                            )
-                            continue
-                    else:
-                        op_method = getattr(attr, operator, None)
-                        if op_method is None:
-                            logger.warning(
-                                f"Unknown operator: {operator}, skipping condition"
-                            )
-                            continue
-                        # Try to pass case_insensitive if the method supports it
-                        try:
-                            search = search.where(
-                                op_method(value, case_insensitive=case_insensitive)
-                            )
-                        except TypeError:
-                            # Fallback if case_insensitive is not supported
-                            search = search.where(op_method(value))
-                elif isinstance(condition, list):
-                    # Handle list of values with OR logic using .within()
-                    logger.debug(
-                        f"Applying multiple values for {attr_name}: {condition}"
-                    )
-                    search = search.where(attr.within(condition))
-                else:
-                    # Default to equality operator
-                    logger.debug(f"Applying equality condition {attr_name}={condition}")
-                    search = search.where(attr.eq(condition))
-
-                condition_count += 1
-
-            logger.debug(f"Applied {condition_count} positive conditions")
+                search = SearchUtils._process_condition(
+                    search, attr, condition, attr_name, "where"
+                )
 
         # Apply negative conditions
         if negative_conditions:
             logger.debug(f"Applying negative conditions: {negative_conditions}")
-            neg_condition_count = 0
             for attr_name, condition in negative_conditions.items():
-                attr = getattr(Asset, attr_name.upper(), None)
+                attr = SearchUtils._get_asset_attribute(attr_name)
                 if attr is None:
                     logger.warning(
                         f"Unknown attribute for negative condition: {attr_name}, skipping"
@@ -241,80 +168,17 @@ def search_assets(
                     f"Processing negative condition for attribute: {attr_name}"
                 )
 
-                if isinstance(condition, dict):
-                    operator = condition.get("operator", "eq")
-                    value = condition.get("value")
-                    case_insensitive = condition.get("case_insensitive", False)
-
-                    logger.debug(
-                        f"Applying negative operator '{operator}' with value '{value}' (case_insensitive={case_insensitive})"
-                    )
-
-                    if operator == "startswith":
-                        search = search.where_not(
-                            attr.startswith(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "contains":
-                        search = search.where_not(
-                            attr.contains(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "match":
-                        search = search.where_not(attr.match(value))
-                    elif operator == "eq":
-                        search = search.where_not(
-                            attr.eq(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "neq":
-                        search = search.where_not(
-                            attr.neq(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "has_any_value":
-                        search = search.where_not(attr.has_any_value())
-                    elif operator == "between":
-                        # Expecting value to be a list/tuple with [start, end]
-                        if isinstance(value, (list, tuple)) and len(value) == 2:
-                            search = search.where_not(attr.between(value[0], value[1]))
-                        else:
-                            logger.warning(
-                                f"Invalid value format for negative 'between' operator: {value}, expected [start, end]"
-                            )
-                            continue
-                    else:
-                        op_method = getattr(attr, operator, None)
-                        if op_method is None:
-                            logger.warning(
-                                f"Unknown operator for negative condition: {operator}, skipping"
-                            )
-                            continue
-                        # Try to pass case_insensitive if the method supports it
-                        try:
-                            search = search.where_not(
-                                op_method(value, case_insensitive=case_insensitive)
-                            )
-                        except TypeError:
-                            # Fallback if case_insensitive is not supported
-                            search = search.where_not(op_method(value))
-                elif condition == "has_any_value":
-                    # Special case for has_any_value
-                    logger.debug(f"Excluding assets where {attr_name} has any value")
-                    search = search.where_not(attr.has_any_value())
-                else:
-                    # Default to equality operator
-                    logger.debug(f"Excluding assets where {attr_name}={condition}")
-                    search = search.where_not(attr.eq(condition))
-
-                neg_condition_count += 1
-
-            logger.debug(f"Applied {neg_condition_count} negative conditions")
+                search = SearchUtils._process_condition(
+                    search, attr, condition, attr_name, "where_not"
+                )
 
         # Apply where_some conditions with min_somes
         if some_conditions:
             logger.debug(
                 f"Applying 'some' conditions: {some_conditions} with min_somes={min_somes}"
             )
-            some_condition_count = 0
             for attr_name, condition in some_conditions.items():
-                attr = getattr(Asset, attr_name.upper(), None)
+                attr = SearchUtils._get_asset_attribute(attr_name)
                 if attr is None:
                     logger.warning(
                         f"Unknown attribute for 'some' condition: {attr_name}, skipping"
@@ -323,88 +187,9 @@ def search_assets(
 
                 logger.debug(f"Processing 'some' condition for attribute: {attr_name}")
 
-                if isinstance(condition, dict):
-                    operator = condition.get("operator", "eq")
-                    value = condition.get("value")
-                    case_insensitive = condition.get("case_insensitive", False)
-
-                    logger.debug(
-                        f"Applying 'some' operator '{operator}' with value '{value}' (case_insensitive={case_insensitive})"
-                    )
-
-                    # Handle different operators
-                    if operator == "startswith":
-                        search = search.where_some(
-                            attr.startswith(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "match":
-                        search = search.where_some(attr.match(value))
-                    elif operator == "eq":
-                        search = search.where_some(
-                            attr.eq(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "neq":
-                        search = search.where_some(
-                            attr.neq(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "gte":
-                        search = search.where_some(attr.gte(value))
-                    elif operator == "lte":
-                        search = search.where_some(attr.lte(value))
-                    elif operator == "gt":
-                        search = search.where_some(attr.gt(value))
-                    elif operator == "lt":
-                        search = search.where_some(attr.lt(value))
-                    elif operator == "has_any_value":
-                        search = search.where_some(attr.has_any_value())
-                    elif operator == "contains":
-                        search = search.where_some(
-                            attr.contains(value, case_insensitive=case_insensitive)
-                        )
-                    elif operator == "between":
-                        # Expecting value to be a list/tuple with [start, end]
-                        if isinstance(value, (list, tuple)) and len(value) == 2:
-                            search = search.where_some(attr.between(value[0], value[1]))
-                        else:
-                            logger.warning(
-                                f"Invalid value format for 'some' 'between' operator: {value}, expected [start, end]"
-                            )
-                            continue
-                    else:
-                        op_method = getattr(attr, operator, None)
-                        if op_method is None:
-                            logger.warning(
-                                f"Unknown operator for 'some' condition: {operator}, skipping condition"
-                            )
-                            continue
-                        # Try to pass case_insensitive if the method supports it
-                        try:
-                            search = search.where_some(
-                                op_method(value, case_insensitive=case_insensitive)
-                            )
-                        except TypeError:
-                            # Fallback if case_insensitive is not supported
-                            search = search.where_some(op_method(value))
-
-                    some_condition_count += 1
-                elif isinstance(condition, list):
-                    # Handle multiple values for where_some
-                    logger.debug(
-                        f"Adding multiple 'some' values for {attr_name}: {condition}"
-                    )
-                    for value in condition:
-                        search = search.where_some(attr.eq(value))
-                        some_condition_count += 1
-                else:
-                    # Default to equality operator
-                    logger.debug(f"Adding 'some' condition {attr_name}={condition}")
-                    search = search.where_some(attr.eq(condition))
-                    some_condition_count += 1
-
-            # Set minimum matches required
-            logger.debug(
-                f"Setting min_somes={min_somes} for {some_condition_count} 'some' conditions"
-            )
+                search = SearchUtils._process_condition(
+                    search, attr, condition, attr_name, "where_some"
+                )
             search = search.min_somes(min_somes)
 
         # Apply date range filters
@@ -412,7 +197,7 @@ def search_assets(
             logger.debug(f"Applying date range filters: {date_range}")
             date_range_count = 0
             for attr_name, range_cond in date_range.items():
-                attr = getattr(Asset, attr_name.upper(), None)
+                attr = SearchUtils._get_asset_attribute(attr_name)
                 if attr is None:
                     logger.warning(
                         f"Unknown attribute for date range: {attr_name}, skipping"
@@ -462,7 +247,7 @@ def search_assets(
 
         # Include all attributes in results
         for attr_name in all_attributes:
-            attr_obj = getattr(Asset, attr_name.upper(), None)
+            attr_obj = SearchUtils._get_asset_attribute(attr_name)
             if attr_obj is None:
                 logger.warning(
                     f"Unknown attribute for inclusion: {attr_name}, skipping"
@@ -487,7 +272,7 @@ def search_assets(
 
         # Set sorting
         if sort_by:
-            sort_attr = getattr(Asset, sort_by.upper(), None)
+            sort_attr = SearchUtils._get_asset_attribute(sort_by)
             if sort_attr is not None:
                 if sort_order.upper() == "DESC":
                     logger.debug(f"Setting sort order: {sort_by} DESC")
@@ -509,12 +294,8 @@ def search_assets(
         search_response = client.asset.search(request)
         processed_results = SearchUtils.process_results(search_response)
         logger.info(f"Search completed, returned {len(processed_results)} results")
-        if isinstance(processed_results, tuple) and len(processed_results) >= 1:
-            actual_results = processed_results[0]
-            return actual_results
-        else:
-            return processed_results
+        return processed_results
+
     except Exception as e:
         logger.error(f"Error searching assets: {str(e)}")
-        logger.exception("Exception details:")
         return []
