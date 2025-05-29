@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, List
 
 from client import get_atlan_client
 from pyatlan.model.search import DSL, IndexSearchRequest
@@ -10,7 +10,7 @@ from utils.search import SearchUtils
 logger = logging.getLogger(__name__)
 
 
-def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Execute the search with the given query
     Args:
@@ -48,12 +48,8 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         logger.info("Executing DSL search request")
         client = get_atlan_client()
         search_response = client.asset.search(index_request)
-        processed_results = SearchUtils.process_results(search_response, None)
-        if isinstance(processed_results, tuple) and len(processed_results) >= 1:
-            results = processed_results[0]
-        else:
-            results = processed_results
-        return {"results": results, "aggregations": search_response.aggregations}
+        processed_results = SearchUtils.process_results(search_response)
+        return processed_results
     except Exception as e:
         logger.error(f"Error in DSL search: {str(e)}")
-        return {"results": [], "aggregations": {}, "error": str(e)}
+        return []

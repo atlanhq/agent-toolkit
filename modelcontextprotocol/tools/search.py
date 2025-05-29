@@ -131,12 +131,7 @@ def search_assets(
             if not isinstance(conditions, dict):
                 error_msg = f"Conditions parameter must be a dictionary, got {type(conditions).__name__}"
                 logger.error(error_msg)
-                return {
-                    "results": [],
-                    "aggregations": None,
-                    "count": 0,
-                    "error": error_msg,
-                }
+                return []
 
             logger.debug(f"Applying positive conditions: {conditions}")
             for attr_name, condition in conditions.items():

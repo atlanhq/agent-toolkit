@@ -11,7 +11,6 @@ DEFAULT_SEARCH_ATTRIBUTES = [
     "source_created_at",
     "source_updated_at",
     "readme",
-    "owner_users",
     "owner_groups",
     "asset_tags",
 ]
