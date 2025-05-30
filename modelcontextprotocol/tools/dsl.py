@@ -4,6 +4,7 @@ from typing import Dict, Any, Union
 
 from client import get_atlan_client
 from pyatlan.model.search import DSL, IndexSearchRequest
+from utils.search import SearchUtils
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -46,10 +47,9 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
         logger.info("Executing DSL search request")
         client = get_atlan_client()
-        results = client.asset.search(index_request)
-
-        results_list = list(results.current_page())
-        return {"results": results_list, "aggregations": results.aggregations}
+        search_response = client.asset.search(index_request)
+        processed_results = SearchUtils.process_results(search_response)
+        return processed_results
     except Exception as e:
         logger.error(f"Error in DSL search: {str(e)}")
         return {"results": [], "aggregations": {}, "error": str(e)}
