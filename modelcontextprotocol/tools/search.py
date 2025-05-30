@@ -2,7 +2,7 @@ import logging
 from typing import Type, List, Optional, Union, Dict, Any
 
 from client import get_atlan_client
-from pyatlan.model.assets import Asset
+from pyatlan.model.assets import Asset, AtlasGlossaryTerm
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.fields.atlan_fields import AtlanField
 from utils.search import SearchUtils
@@ -30,7 +30,7 @@ def search_assets(
     domain_guids: Optional[List[str]] = None,
     date_range: Optional[Dict[str, Dict[str, Any]]] = None,
     guids: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """
     Advanced asset search using FluentSearch with flexible conditions.
 
@@ -64,10 +64,10 @@ def search_assets(
 
 
     Returns:
-        List[Dict[str, Any]]: List of assets matching the search criteria
-
-    Raises:
-        Exception: If there's an error executing the search
+        Dict[str, Any]: Dictionary containing:
+            - results: List of assets matching the search criteria
+            - aggregations: Search aggregations if available
+            - error: None if no error occurred, otherwise the error message
     """
     logger.info(
         f"Starting asset search with parameters: asset_type={asset_type}, "
@@ -258,6 +258,11 @@ def search_assets(
                     # Assume it's already an AtlanField object
                     logger.debug(f"Including attribute object: {attr}")
                     search = search.include_on_results(attr)
+        try:
+            search = search.include_on_results(Asset.ASSIGNED_TERMS)
+            search = search.include_on_relations(AtlasGlossaryTerm.NAME)
+        except Exception as e:
+            logger.warning(f"Error including assigned terms: {e}")
 
         # Set pagination
         logger.debug(f"Setting pagination: limit={limit}, offset={offset}")
@@ -288,9 +293,11 @@ def search_assets(
         client = get_atlan_client()
         search_response = client.asset.search(request)
         processed_results = SearchUtils.process_results(search_response)
-        logger.info(f"Search completed, returned {len(processed_results)} results")
+        logger.info(
+            f"Search completed, returned {len(processed_results['results'])} results"
+        )
         return processed_results
 
     except Exception as e:
         logger.error(f"Error searching assets: {str(e)}")
-        return []
+        return [{"results": [], "aggregations": {}, "error": str(e)}]

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 import logging
 from pyatlan.model.assets import Asset
 
@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class SearchUtils:
     @staticmethod
-    def process_results(results: Any) -> List[Dict[str, Any]]:
+    def process_results(results: Any) -> Dict[str, Any]:
         """
         Process the results from the search index using Pydantic serialization.
 
@@ -19,14 +19,17 @@ class SearchUtils:
             results: The search results from Atlan
 
         Returns:
-            List[Dict[str, Any]]: List of processed results
+            Dict[str, Any]: Dictionary containing:
+                - results: List of processed results
+                - aggregations: Search aggregations if available
+                - error: None if no error occurred, otherwise the error message
         """
-        results_list = []
         current_page_results = (
             results.current_page()
             if hasattr(results, "current_page") and callable(results.current_page)
             else []
         )
+        aggregations = results.aggregations
 
         logger.info(f"Processing {len(current_page_results)} search results")
         results_list = [
@@ -35,7 +38,7 @@ class SearchUtils:
             if result is not None
         ]
 
-        return results_list
+        return {"results": results_list, "aggregations": aggregations, "error": None}
 
     @staticmethod
     def _get_asset_attribute(attr_name: str):
