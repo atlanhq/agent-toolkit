@@ -62,10 +62,7 @@ def update_assets(
 
         # Create assets with updated values
         assets = []
-        # Maintain separate lists for readme updates to avoid confusion with other asset attribute updates.
-        # readme_update_assets: Readme assets to update.
         # readme_update_parent_assets: Assets that were updated with readme.
-        readme_update_assets = []
         readme_update_parent_assets = []
         index = 0
         for updatable_asset in updatable_assets:
@@ -81,7 +78,9 @@ def update_assets(
 
             # Special handling for README updates
             if attribute_name == UpdatableAttribute.README:
-                response_readme_fetch = (
+                # Get the current readme content for the asset
+                # The below query is used to get the asset based on the qualified name and include the readme content.
+                asset_readme_response = (
                     FluentSearch()
                     .select()
                     .where(CompoundQuery.asset_type(asset_cls))
@@ -91,14 +90,26 @@ def update_assets(
                     .execute(client=client)
                 )
 
-                if first := response_readme_fetch.current_page():
+                if first := asset_readme_response.current_page():
+                    try:
+                        current_content = first[0].readme.description
+                        logger.info(
+                            f"Current readme content for {qualified_name}: {current_content}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Error getting current readme content: {e}")
+                        logger.info(
+                            f"No existing readme content found for {qualified_name}"
+                        )
+
                     updated_content = attribute_values[index]
+                    # We replace the existing readme content with the new content.
+                    # If the existing readme content is not present, we create a new readme asset.
                     updated_readme = Readme.creator(
                         asset=first[0], content=updated_content
                     )
                     # Save the readme asset
-                    # Readme asset is created in the same request as the parent asset.
-                    readme_update_assets.append(updated_readme)
+                    assets.append(updated_readme)
                     # Add the parent/actual asset to the list of assets that were updated with readme.
                     readme_update_parent_assets.append(asset)
             else:
@@ -108,10 +119,8 @@ def update_assets(
 
             index += 1
 
-        if len(readme_update_assets) > 0:
-            readme_update_response = client.asset.save(readme_update_assets)
-            updated_guids = list(readme_update_response.guid_assignments.keys())
-            result["readme_updated"] = len(updated_guids)
+        if len(readme_update_parent_assets) > 0:
+            result["readme_updated"] = len(readme_update_parent_assets)
             # Collect qualified names or other identifiers for assets that were updated with readme
             result["updated_readme_assets"] = [
                 asset.qualified_name
@@ -122,10 +131,9 @@ def update_assets(
                 f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}"
             )
 
-        if len(assets) > 0:
-            response = client.asset.save(assets)
-            result["updated_count"] = len(response.guid_assignments)
-            logger.info(f"Successfully updated {result['updated_count']} assets")
+        response = client.asset.save(assets)
+        result["updated_count"] = len(response.guid_assignments)
+        logger.info(f"Successfully updated {result['updated_count']} assets")
 
         return result
 
