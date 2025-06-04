@@ -323,7 +323,7 @@ def update_assets_tool(
             Only "user_description", "certificate_status", and "readme" are supported.
         attribute_values (List[str]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
-            For readme, the value must be a valid HTML string without <html> and <body> tags OR a valid Markdown string.
+            For readme, the value must be a valid Markdown string.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
