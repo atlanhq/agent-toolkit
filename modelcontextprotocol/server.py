@@ -343,41 +343,6 @@ def update_assets_tool(
             attribute_values=["VERIFIED"]
         )
 
-        # Update readme for a single asset with HTML
-        result = update_assets_tool(
-            assets={
-                "guid": "asset-guid-here",
-                "name": "Asset Name",
-                "type_name": "Asset Type Name",
-                "qualified_name": "Asset Qualified Name"
-            },
-            attribute_name="readme",
-            attribute_values=["<h1>New readme content</h1>"]
-        )
-
-        # Update readme for multiple assets with HTML
-        result = update_assets_tool(
-            assets=[
-                {
-                    "guid": "asset-guid-1",
-                    "name": "Asset Name 1",
-                    "type_name": "Asset Type Name 1",
-                    "qualified_name": "Asset Qualified Name 1"
-                },
-                {
-                    "guid": "asset-guid-2",
-                    "name": "Asset Name 2",
-                    "type_name": "Asset Type Name 2",
-                    "qualified_name": "Asset Qualified Name 2"
-                }
-            ],
-            attribute_name="readme",
-            attribute_values=[
-                "<h1>New readme content for asset 1</h1>",
-                "<h1>New readme content for asset 2</h1>"
-            ]
-        )
-
         # Update readme for a single asset with Markdown
         result = update_assets_tool(
             assets={
