@@ -131,6 +131,7 @@ def update_assets(
                 f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}"
             )
 
+        # Proces response
         response = client.asset.save(assets)
         result["updated_count"] = len(response.guid_assignments)
         logger.info(f"Successfully updated {result['updated_count']} assets")
