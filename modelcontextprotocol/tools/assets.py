@@ -64,8 +64,7 @@ def update_assets(
         assets = []
         # readme_update_parent_assets: Assets that were updated with readme.
         readme_update_parent_assets = []
-        index = 0
-        for updatable_asset in updatable_assets:
+        for index, updatable_asset in enumerate(updatable_assets):
             type_name = updatable_asset.type_name
             qualified_name = updatable_asset.qualified_name
             asset_cls = getattr(
@@ -116,8 +115,6 @@ def update_assets(
                 # Regular attribute update flow
                 setattr(asset, attribute_name.value, attribute_values[index])
                 assets.append(asset)
-
-            index += 1
 
         if len(readme_update_parent_assets) > 0:
             result["readme_updated"] = len(readme_update_parent_assets)
