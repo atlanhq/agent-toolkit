@@ -329,6 +329,9 @@ def update_assets_tool(
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
+    Usage:
+        - If you already have the asset related information, that needs to be passed to the tool, then you can pass the asset as a dictionary. Otherwise call the search_assets tool to get the asset information.
+        - If you are updating the certificate status, then you can pass the value as a string. Otherwise pass the value as a list of strings.
 
     Examples:
         # Update certificate status for a single asset
@@ -358,6 +361,29 @@ def update_assets_tool(
             - Updated daily at 2 AM
             - Contains PII data
             - [Documentation](https://docs.example.com)''']
+        )
+
+        # Update multiple assets with different user descriptions
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "column-guid-1",
+                    "name": "customer_id",
+                    "type_name": "Column",
+                    "qualified_name": "default/snowflake/DB/SCHEMA/TABLE/CUSTOMER_ID"
+                },
+                {
+                    "guid": "column-guid-2",
+                    "name": "order_date",
+                    "type_name": "Column",
+                    "qualified_name": "default/snowflake/DB/SCHEMA/TABLE/ORDER_DATE"
+                }
+            ],
+            attribute_name="user_description",
+            attribute_values=[
+                "Unique identifier for customer records",
+                "Date when the order was placed"
+            ]
         )
 
     """
