@@ -85,3 +85,5 @@ We have comprehensive unit tests for all tools to ensure reliability and prevent
 # Run all tests
 python -m pytest tests/ -v
 ```
+
+**Note**: Tests are automatically run on every pull request via GitHub Actions CI.
