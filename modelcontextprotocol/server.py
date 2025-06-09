@@ -388,6 +388,28 @@ def update_assets_tool(
             attribute_values=["VERIFIED"]
         )
 
+        # Update user description for multiple assets
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "asset-guid-1",
+                    "name": "Asset Name 1",
+                    "type_name": "Asset Type Name 1",
+                    "qualified_name": "Asset Qualified Name 1"
+                },
+                {
+                    "guid": "asset-guid-2",
+                    "name": "Asset Name 2",
+                    "type_name": "Asset Type Name 2",
+                    "qualified_name": "Asset Qualified Name 2"
+                }
+            ],
+            attribute_name="user_description",
+            attribute_values=[
+                "New description for asset 1", "New description for asset 2"
+            ]
+        )
+
         # Update readme for a single asset with Markdown
         result = update_assets_tool(
             assets={
