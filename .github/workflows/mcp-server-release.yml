@@ -27,6 +27,7 @@ jobs:
         run: |
           VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
 
       - name: Check if tag exists
         id: check_tag
@@ -44,73 +45,76 @@ jobs:
         id: changelog
         if: steps.check_tag.outputs.exists == 'false'
         run: |
-          set +e  # Don't exit on error
+          set +e
 
           VERSION="${{ steps.get_version.outputs.version }}"
           RELEASE_DATE=$(date +"%Y-%m-%d")
 
           echo "Generating changelog for version $VERSION ($RELEASE_DATE)"
 
-          # Get the previous version tag. If this is the first release, PREV_TAG will be empty.
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          # Get the previous version tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
 
           if [ -z "$PREV_TAG" ]; then
-            # If no previous tag, use root commit
-            PREV_COMMIT=$(git rev-list --max-parents=0 HEAD)
-            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
-            echo "No previous tag found. Using range from first commit to PR head SHA: $RANGE"
-          elif git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
-            RANGE="$PREV_TAG..${{ github.event.pull_request.head.sha }}"
-            echo "Previous tag found: $PREV_TAG. Using range from previous tag to PR head SHA: $RANGE"
+            # If no previous tag, get the first commit
+            FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            RANGE="$FIRST_COMMIT..HEAD"
+            echo "Using range from first commit to HEAD"
           else
-             # Fallback if PREV_TAG is not a valid ref (e.g. very first release after this script is introduced)
-            PREV_COMMIT=$(git rev-list --max-parents=0 HEAD) # Or consider GITHUB_SHA of the commit before the merge
-            RANGE="$PREV_COMMIT..${{ github.event.pull_request.head.sha }}"
-            echo "PREV_TAG $PREV_TAG was not a valid ref. Using range from first commit to PR head SHA: $RANGE"
+            RANGE="$PREV_TAG..HEAD"
+            echo "Using range from $PREV_TAG to HEAD"
           fi
 
-          echo "Using commit range for RELEASE_NOTES.md: $RANGE"
-
           # Create temporary changelog entry for RELEASE_NOTES.md
-          echo -e "## [$VERSION] - $RELEASE_DATE\n" > RELEASE_NOTES.md
+          echo "## [$VERSION] - $RELEASE_DATE" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
 
           # Add features
-          git log $RANGE --format="* %s (%h)" --grep="^feat" --perl-regexp --no-merges 2>/dev/null | sed -E 's/^\* feat(\(.+\))?:?\s*//' > features.txt
+          git log $RANGE --format="* %s (%h)" --grep="^feat" --perl-regexp --no-merges 2>/dev/null > features.txt || touch features.txt
+
           if [ -s features.txt ]; then
-            echo -e "### Added\n" >> RELEASE_NOTES.md
-            cat features.txt >> RELEASE_NOTES.md
-            echo -e "\n" >> RELEASE_NOTES.md
+            echo "### Added" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            sed 's/^\* feat[[:space:]]*\([^:]*\):[[:space:]]*/* /' features.txt >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
           fi
 
           # Add fixes
-          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null | sed 's/^\* fix(\(.+\))?:?\s*//' > fixes.txt
+          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null > fixes.txt || touch fixes.txt
+
           if [ -s fixes.txt ]; then
-            echo -e "### Fixed\n" >> RELEASE_NOTES.md
-            cat fixes.txt >> RELEASE_NOTES.md
-            echo -e "\n" >> RELEASE_NOTES.md
+            echo "### Fixed" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            sed 's/^\* fix[[:space:]]*\([^:]*\):[[:space:]]*/* /' fixes.txt >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
           fi
 
           # Add other changes (excluding merge commits, chore, docs, style, refactor, test, ci)
-          git log $RANGE --format="* %s (%h)" --no-merges | grep -v -E "^\* (feat|fix|chore|docs|style|refactor|test|ci)(\(.+\))?:?\s*" 2>/dev/null > others.txt
+          git log $RANGE --format="* %s (%h)" --no-merges 2>/dev/null | \
+            grep -v -E "^\* (feat|fix|chore|docs|style|refactor|test|ci)(\(.*\))?:" > others.txt || touch others.txt
+
           if [ -s others.txt ]; then
-            echo -e "### Changed\n" >> RELEASE_NOTES.md
+            echo "### Changed" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
             cat others.txt >> RELEASE_NOTES.md
-            echo -e "\n" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
           fi
 
           # If no specific changes found, add a simple entry
           if [ ! -s features.txt ] && [ ! -s fixes.txt ] && [ ! -s others.txt ]; then
-            echo "- Release version $VERSION" >> RELEASE_NOTES.md
+            echo "### Changed" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            echo "* Release version $VERSION" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
           fi
 
           # Clean up temporary files
           rm -f features.txt fixes.txt others.txt
 
-          echo "RELEASE_NOTES.md generation completed."
-
-          # Show result for debugging
-          echo "RELEASE_NOTES.md contents:"
+          echo "Release notes generated successfully"
+          echo "================================"
           cat RELEASE_NOTES.md
+          echo "================================"
 
       - name: Create Tag
         if: steps.check_tag.outputs.exists == 'false'
@@ -125,6 +129,8 @@ jobs:
           tag_name: v${{ steps.get_version.outputs.version }}
           body_path: RELEASE_NOTES.md
           token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
 
       # Upload release notes for other jobs to use
       - name: Upload release notes
@@ -183,6 +189,9 @@ jobs:
         with:
           ref: v${{ needs.prepare-release.outputs.version }}
 
+      - name: Set up QEMU for Cross-Platform Builds
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -201,3 +210,6 @@ jobs:
           tags: |
             ghcr.io/atlanhq/atlan-mcp-server:latest
             ghcr.io/atlanhq/atlan-mcp-server:${{ needs.prepare-release.outputs.version }}
+          platforms: |
+            linux/amd64
+            linux/arm64
