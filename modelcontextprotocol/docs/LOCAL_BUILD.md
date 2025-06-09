@@ -1,9 +1,23 @@
-# Local Build
+# Local Build & Development Guide
+
+This guide covers setting up the Atlan MCP Server for local development, testing, and contributing.
+
+## Table of Contents
+
+- [Initial Setup](#initial-setup)
+- [Development Environment](#development-environment)
+- [Running Tests](#running-tests)
+
+- [Project Structure](#project-structure)
+- [Adding New Tools](#adding-new-tools)
+- [Submitting Changes](#submitting-changes)
+
+## Initial Setup
 
 1. Clone the repository:
 ```bash
 git clone https://github.com/atlanhq/agent-toolkit.git
-cd agent-toolkit
+cd agent-toolkit/modelcontextprotocol
 ```
 
 2. Install UV package manager:
@@ -16,13 +30,17 @@ brew install uv
 For more installation options and detailed instructions, refer to the [official UV documentation](https://docs.astral.sh/uv/getting-started/installation/).
 
 3. Install dependencies:
-> python version should be >= 3.11
+> Python version should be >= 3.11
+
+For production/usage:
 ```bash
-cd modelcontextprotocol
 uv sync
 ```
 
-4. Configure Atlan credentials:
+For development (includes testing tools):
+```bash
+uv sync --extra dev
+```
 
 a. Using a .env file:
 Create a `.env` file in the root directory (or copy the `.env.template` file and rename it to `.env`) with the following content:
@@ -45,3 +63,27 @@ uv run .venv/bin/atlan-mcp-server
 ```bash
 uv run mcp dev server.py
 ```
+
+## Development Environment
+
+### Virtual Environment
+
+```bash
+# Create and activate virtual environment
+uv venv
+source .venv/bin/activate  # On Mac/Linux
+
+# Install all dependencies including dev tools
+uv sync --extra dev
+```
+
+## Running Tests
+
+We have comprehensive unit tests for all tools to ensure reliability and prevent regressions.
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+```
+
+**Note**: Tests are automatically run on every pull request via GitHub Actions CI.

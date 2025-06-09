@@ -20,6 +20,12 @@ dependencies = [
     "pyatlan>=6.0.1",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.0",
+    "ruff>=0.8.0",
+]
+
 [project.scripts]
 atlan-mcp-server = "server:main"
 
