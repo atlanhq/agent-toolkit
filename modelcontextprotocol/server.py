@@ -362,14 +362,18 @@ def update_assets_tool(
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Only "user_description" and "certificate_status" are supported.
+            Only "user_description", "certificate_status" and "readme" are supported.
         attribute_values (List[str]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
+            For readme, the value must be a valid Markdown string.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
+    Usage:
+        - If you already have the asset related information, that needs to be passed to the tool, then you can pass the asset as a dictionary. Otherwise call the search_assets tool to get the asset information.
+        - If you are updating the certificate status, then you can pass the value as a string. Otherwise pass the value as a list of strings.
 
     Examples:
         # Update certificate status for a single asset
@@ -403,6 +407,46 @@ def update_assets_tool(
             attribute_name="user_description",
             attribute_values=[
                 "New description for asset 1", "New description for asset 2"
+            ]
+        )
+
+        # Update readme for a single asset with Markdown
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            },
+            attribute_name="readme",
+            attribute_values=['''# Customer Data Table
+            Contains customer transaction records for analytics.
+            **Key Info:**
+            - Updated daily at 2 AM
+            - Contains PII data
+            - [Documentation](https://docs.example.com)''']
+        )
+
+        # Update multiple assets with different user descriptions
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "column-guid-1",
+                    "name": "customer_id",
+                    "type_name": "Column",
+                    "qualified_name": "default/snowflake/DB/SCHEMA/TABLE/CUSTOMER_ID"
+                },
+                {
+                    "guid": "column-guid-2",
+                    "name": "order_date",
+                    "type_name": "Column",
+                    "qualified_name": "default/snowflake/DB/SCHEMA/TABLE/ORDER_DATE"
+                }
+            ],
+            attribute_name="user_description",
+            attribute_values=[
+                "Unique identifier for customer records",
+                "Date when the order was placed"
             ]
         )
 
