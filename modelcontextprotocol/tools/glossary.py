@@ -19,7 +19,7 @@ def create_glossary_asset(
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     asset_icon: Optional[str] = None,
     owner_users: Optional[Union[str, List[str]]] = None,
-    owner_groups: Optional[Union[str, List[str]]] = None
+    owner_groups: Optional[Union[str, List[str]]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossary asset in Atlan.
@@ -74,7 +74,7 @@ def create_glossary_asset(
         # Set optional attributes
         if description:
             glossary.description = description
-        
+
         if long_description:
             glossary.user_description = long_description
 
@@ -106,7 +106,7 @@ def create_glossary_asset(
                 group_names = [owner_groups]
             else:
                 group_names = list(owner_groups)
-            
+
             # Look up group GUIDs by name
             group_guids = set()
             for group_name in group_names:
@@ -117,12 +117,16 @@ def create_glossary_asset(
                         # Get the first matching group's GUID
                         group_guid = groups_result.records[0].guid
                         group_guids.add(group_guid)
-                        logger.info(f"Found existing group '{group_name}' with GUID: {group_guid}")
+                        logger.info(
+                            f"Found existing group '{group_name}' with GUID: {group_guid}"
+                        )
                     else:
-                        logger.warning(f"Group '{group_name}' not found in Atlan. Skipping.")
+                        logger.warning(
+                            f"Group '{group_name}' not found in Atlan. Skipping."
+                        )
                 except Exception as e:
                     logger.error(f"Error looking up group '{group_name}': {str(e)}")
-            
+
             # Set the group GUIDs instead of names
             if group_guids:
                 glossary.owner_groups = group_guids
@@ -140,7 +144,7 @@ def create_glossary_asset(
             "name": name,
             "qualified_name": glossary.qualified_name,
             "success": True,
-            "errors": []
+            "errors": [],
         }
 
         logger.info(f"Successfully created glossary: {name} with GUID: {created_guid}")
@@ -154,7 +158,7 @@ def create_glossary_asset(
             "name": name,
             "qualified_name": None,
             "success": False,
-            "errors": [error_msg]
+            "errors": [error_msg],
         }
 
 
@@ -166,7 +170,7 @@ def create_glossary_category_asset(
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     parent_category_guid: Optional[str] = None,
     owner_users: Optional[Union[str, List[str]]] = None,
-    owner_groups: Optional[Union[str, List[str]]] = None
+    owner_groups: Optional[Union[str, List[str]]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossaryCategory asset in Atlan.
@@ -226,14 +230,17 @@ def create_glossary_category_asset(
         category = AtlasGlossaryCategory.creator(
             name=name,
             anchor=anchor_glossary,
-            parent_category=(AtlasGlossaryCategory.ref_by_guid(parent_category_guid)
-                             if parent_category_guid else None),
+            parent_category=(
+                AtlasGlossaryCategory.ref_by_guid(parent_category_guid)
+                if parent_category_guid
+                else None
+            ),
         )
 
         # Set optional attributes
         if description:
             category.description = description
-        
+
         if long_description:
             category.user_description = long_description
 
@@ -257,7 +264,7 @@ def create_glossary_category_asset(
                 group_names = [owner_groups]
             else:
                 group_names = list(owner_groups)
-            
+
             # Look up group GUIDs by name
             group_guids = set()
             for group_name in group_names:
@@ -268,12 +275,16 @@ def create_glossary_category_asset(
                         # Get the first matching group's GUID
                         group_guid = groups_result.records[0].guid
                         group_guids.add(group_guid)
-                        logger.info(f"Found existing group '{group_name}' with GUID: {group_guid}")
+                        logger.info(
+                            f"Found existing group '{group_name}' with GUID: {group_guid}"
+                        )
                     else:
-                        logger.warning(f"Group '{group_name}' not found in Atlan. Skipping.")
+                        logger.warning(
+                            f"Group '{group_name}' not found in Atlan. Skipping."
+                        )
                 except Exception as e:
                     logger.error(f"Error looking up group '{group_name}': {str(e)}")
-            
+
             # Set the group GUIDs instead of names
             if group_guids:
                 category.owner_groups = group_guids
@@ -292,10 +303,12 @@ def create_glossary_category_asset(
             "qualified_name": category.qualified_name,
             "glossary_guid": glossary_guid,
             "success": True,
-            "errors": []
+            "errors": [],
         }
 
-        logger.info(f"Successfully created glossary category: {name} with GUID: {created_guid}")
+        logger.info(
+            f"Successfully created glossary category: {name} with GUID: {created_guid}"
+        )
         return result
 
     except Exception as e:
@@ -307,7 +320,7 @@ def create_glossary_category_asset(
             "qualified_name": None,
             "glossary_guid": glossary_guid,
             "success": False,
-            "errors": [error_msg]
+            "errors": [error_msg],
         }
 
 
@@ -324,7 +337,7 @@ def create_glossary_term_asset(
     preferred_terms: Optional[List[str]] = None,
     replacement_terms: Optional[List[str]] = None,
     owner_users: Optional[Union[str, List[str]]] = None,
-    owner_groups: Optional[Union[str, List[str]]] = None
+    owner_groups: Optional[Union[str, List[str]]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossaryTerm asset in Atlan.
@@ -385,15 +398,12 @@ def create_glossary_term_asset(
         client = get_atlan_client()
 
         # Create the term using the creator method
-        term = AtlasGlossaryTerm.creator(
-            name=name,
-            glossary_guid=glossary_guid
-        )
+        term = AtlasGlossaryTerm.creator(name=name, glossary_guid=glossary_guid)
 
         # Set optional attributes
         if description:
             term.description = description
-        
+
         if long_description:
             term.user_description = long_description
 
@@ -405,7 +415,9 @@ def create_glossary_term_asset(
 
         if categories:
             # Set categories - create references to the category GUIDs
-            category_refs = [AtlasGlossaryCategory.ref_by_guid(cat_guid) for cat_guid in categories]
+            category_refs = [
+                AtlasGlossaryCategory.ref_by_guid(cat_guid) for cat_guid in categories
+            ]
             term.categories = set(category_refs)
 
         if owner_users:
@@ -422,7 +434,7 @@ def create_glossary_term_asset(
                 group_names = [owner_groups]
             else:
                 group_names = list(owner_groups)
-            
+
             # Look up group GUIDs by name
             group_guids = set()
             for group_name in group_names:
@@ -433,12 +445,16 @@ def create_glossary_term_asset(
                         # Get the first matching group's GUID
                         group_guid = groups_result.records[0].guid
                         group_guids.add(group_guid)
-                        logger.info(f"Found existing group '{group_name}' with GUID: {group_guid}")
+                        logger.info(
+                            f"Found existing group '{group_name}' with GUID: {group_guid}"
+                        )
                     else:
-                        logger.warning(f"Group '{group_name}' not found in Atlan. Skipping.")
+                        logger.warning(
+                            f"Group '{group_name}' not found in Atlan. Skipping."
+                        )
                 except Exception as e:
                     logger.error(f"Error looking up group '{group_name}': {str(e)}")
-            
+
             # Set the group GUIDs instead of names
             if group_guids:
                 term.owner_groups = group_guids
@@ -452,29 +468,46 @@ def create_glossary_term_asset(
             created_guid = list(response.guid_assignments.values())[0]
 
         # Handle term relationships (these require the term to exist first)
-        if created_guid and any([related_terms, synonyms, antonyms, preferred_terms, replacement_terms]):
+        if created_guid and any(
+            [related_terms, synonyms, antonyms, preferred_terms, replacement_terms]
+        ):
             try:
                 # Retrieve the created term to set relationships
                 created_term = client.asset.get_by_guid(created_guid, AtlasGlossaryTerm)
-                
+
                 if related_terms:
-                    related_refs = [AtlasGlossaryTerm.ref_by_guid(term_guid) for term_guid in related_terms]
+                    related_refs = [
+                        AtlasGlossaryTerm.ref_by_guid(term_guid)
+                        for term_guid in related_terms
+                    ]
                     created_term.see_also = set(related_refs)
 
                 if synonyms:
-                    synonym_refs = [AtlasGlossaryTerm.ref_by_guid(term_guid) for term_guid in synonyms]
+                    synonym_refs = [
+                        AtlasGlossaryTerm.ref_by_guid(term_guid)
+                        for term_guid in synonyms
+                    ]
                     created_term.synonyms = set(synonym_refs)
 
                 if antonyms:
-                    antonym_refs = [AtlasGlossaryTerm.ref_by_guid(term_guid) for term_guid in antonyms]
+                    antonym_refs = [
+                        AtlasGlossaryTerm.ref_by_guid(term_guid)
+                        for term_guid in antonyms
+                    ]
                     created_term.antonyms = set(antonym_refs)
 
                 if preferred_terms:
-                    preferred_refs = [AtlasGlossaryTerm.ref_by_guid(term_guid) for term_guid in preferred_terms]
+                    preferred_refs = [
+                        AtlasGlossaryTerm.ref_by_guid(term_guid)
+                        for term_guid in preferred_terms
+                    ]
                     created_term.preferred_terms = set(preferred_refs)
 
                 if replacement_terms:
-                    replacement_refs = [AtlasGlossaryTerm.ref_by_guid(term_guid) for term_guid in replacement_terms]
+                    replacement_refs = [
+                        AtlasGlossaryTerm.ref_by_guid(term_guid)
+                        for term_guid in replacement_terms
+                    ]
                     created_term.replacement_terms = set(replacement_refs)
 
                 # Save the updated term with relationships
@@ -482,7 +515,9 @@ def create_glossary_term_asset(
                 logger.info(f"Successfully updated term relationships for: {name}")
 
             except Exception as rel_error:
-                logger.warning(f"Term created but failed to set relationships: {str(rel_error)}")
+                logger.warning(
+                    f"Term created but failed to set relationships: {str(rel_error)}"
+                )
 
         result = {
             "guid": created_guid,
@@ -490,10 +525,12 @@ def create_glossary_term_asset(
             "qualified_name": term.qualified_name,
             "glossary_guid": glossary_guid,
             "success": True,
-            "errors": []
+            "errors": [],
         }
 
-        logger.info(f"Successfully created glossary term: {name} with GUID: {created_guid}")
+        logger.info(
+            f"Successfully created glossary term: {name} with GUID: {created_guid}"
+        )
         return result
 
     except Exception as e:
@@ -505,5 +542,5 @@ def create_glossary_term_asset(
             "qualified_name": None,
             "glossary_guid": glossary_guid,
             "success": False,
-            "errors": [error_msg]
+            "errors": [error_msg],
         }
