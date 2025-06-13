@@ -5,6 +5,9 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    create_glossary_asset,
+    create_glossary_category_asset,
+    create_glossary_term_asset,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -430,6 +433,221 @@ def update_assets_tool(
         )
     except ValueError as e:
         return {"updated_count": 0, "errors": [str(e)]}
+
+
+@mcp.tool()
+def create_glossary_asset_tool(
+    name,
+    description=None,
+    long_description=None,
+    certificate_status=None,
+    asset_icon=None,
+    owner_users=None,
+    owner_groups=None,
+):
+    """
+    Create a new AtlasGlossary asset in Atlan.
+
+    Args:
+        name (str): Name of the glossary (required).
+        description (str, optional): Short description of the glossary.
+        long_description (str, optional): Detailed description of the glossary.
+        certificate_status (str, optional): Certification status of the glossary.
+            Can be "VERIFIED", "DRAFT", or "DEPRECATED".
+        asset_icon (str, optional): Icon for the glossary (e.g., "BOOK_OPEN_TEXT").
+        owner_users (Union[str, List[str]], optional): User name(s) who should own this glossary.
+            Can be a single string or a list of strings.
+        owner_groups (Union[str, List[str]], optional): Group name(s) who should own this glossary.
+            Can be a single string or a list of strings.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - guid: The GUID of the created glossary
+            - name: The name of the created glossary
+            - qualified_name: The qualified name of the created glossary
+            - success: Boolean indicating if creation was successful
+            - errors: List of any errors encountered
+
+    Examples:
+        # Create a basic glossary
+        result = create_glossary_asset_tool(
+            name="Business Terms",
+            description="Common business terminology used across the organization"
+        )
+
+        # Create a glossary with icon, certification, and ownership
+        result = create_glossary_asset_tool(
+            name="Data Quality Glossary",
+            description="Terms related to data quality standards",
+            long_description="This glossary contains comprehensive definitions of data quality metrics, standards, and processes used throughout our data platform.",
+            certificate_status="VERIFIED",
+            asset_icon="BOOK_OPEN_TEXT",
+            owner_users=["john.doe", "jane.smith"],  # List of users
+            owner_groups="data-stewards"  # Single group (can also be a list)
+        )
+    """
+    return create_glossary_asset(
+        name=name,
+        description=description,
+        long_description=long_description,
+        certificate_status=certificate_status,
+        asset_icon=asset_icon,
+        owner_users=owner_users,
+        owner_groups=owner_groups,
+    )
+
+
+@mcp.tool()
+def create_glossary_category_asset_tool(
+    name,
+    glossary_guid,
+    description=None,
+    long_description=None,
+    certificate_status=None,
+    parent_category_guid=None,
+    owner_users=None,
+    owner_groups=None,
+):
+    """
+    Create a new AtlasGlossaryCategory asset in Atlan.
+
+    Args:
+        name (str): Name of the category (required).
+        glossary_guid (str): GUID of the glossary this category belongs to (required).
+        description (str, optional): Short description of the category.
+        long_description (str, optional): Detailed description of the category.
+        certificate_status (str, optional): Certification status of the category.
+            Can be "VERIFIED", "DRAFT", or "DEPRECATED".
+        parent_category_guid (str, optional): GUID of the parent category if this is a subcategory.
+        owner_users (Union[str, List[str]], optional): User name(s) who should own this category.
+            Can be a single string or a list of strings.
+        owner_groups (Union[str, List[str]], optional): Group name(s) who should own this category.
+            Can be a single string or a list of strings.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - guid: The GUID of the created category
+            - name: The name of the created category
+            - qualified_name: The qualified name of the created category
+            - glossary_guid: The GUID of the parent glossary
+            - success: Boolean indicating if creation was successful
+            - errors: List of any errors encountered
+
+    Examples:
+        # Create a basic category
+        result = create_glossary_category_asset_tool(
+            name="Customer Data",
+            glossary_guid="glossary-guid-here",
+            description="Terms related to customer information and attributes"
+        )
+
+        # Create a subcategory with detailed information and certification
+        result = create_glossary_category_asset_tool(
+            name="Customer Demographics",
+            glossary_guid="glossary-guid-here",
+            parent_category_guid="parent-category-guid-here",
+            description="Terms specific to customer demographic information",
+            long_description="This category contains terms that define various demographic attributes of customers such as age groups, income brackets, geographic regions, etc.",
+            certificate_status="VERIFIED",
+            owner_users="data.steward",  # Single user (can also be a list)
+            owner_groups=["customer-analytics-team"]  # List of groups
+        )
+    """
+    return create_glossary_category_asset(
+        name=name,
+        glossary_guid=glossary_guid,
+        description=description,
+        long_description=long_description,
+        certificate_status=certificate_status,
+        parent_category_guid=parent_category_guid,
+        owner_users=owner_users,
+        owner_groups=owner_groups,
+    )
+
+
+@mcp.tool()
+def create_glossary_term_asset_tool(
+    name,
+    glossary_guid,
+    description=None,
+    long_description=None,
+    certificate_status=None,
+    categories=None,
+    related_terms=None,
+    synonyms=None,
+    antonyms=None,
+    preferred_terms=None,
+    replacement_terms=None,
+    owner_users=None,
+    owner_groups=None,
+):
+    """
+    Create a new AtlasGlossaryTerm asset in Atlan.
+
+    Args:
+        name (str): Name of the term (required).
+        glossary_guid (str): GUID of the glossary this term belongs to (required).
+        description (str, optional): Short description of the term.
+        long_description (str, optional): Detailed description of the term.
+        certificate_status (str, optional): Certification status of the term.
+            Can be "VERIFIED", "DRAFT", or "DEPRECATED".
+        categories (List[str], optional): List of category GUIDs this term belongs to.
+        related_terms (List[str], optional): List of related term GUIDs.
+        synonyms (List[str], optional): List of synonym term GUIDs.
+        antonyms (List[str], optional): List of antonym term GUIDs.
+        preferred_terms (List[str], optional): List of preferred term GUIDs.
+        replacement_terms (List[str], optional): List of replacement term GUIDs.
+        owner_users (Union[str, List[str]], optional): User name(s) who should own this term.
+            Can be a single string or a list of strings.
+        owner_groups (Union[str, List[str]], optional): Group name(s) who should own this term.
+            Can be a single string or a list of strings.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - guid: The GUID of the created term
+            - name: The name of the created term
+            - qualified_name: The qualified name of the created term
+            - glossary_guid: The GUID of the parent glossary
+            - success: Boolean indicating if creation was successful
+            - errors: List of any errors encountered
+
+    Examples:
+        # Create a basic term
+        result = create_glossary_term_asset_tool(
+            name="Customer",
+            glossary_guid="glossary-guid-here",
+            description="An individual or organization that purchases goods or services"
+        )
+
+        # Create a comprehensive term with relationships and certification
+        result = create_glossary_term_asset_tool(
+            name="Annual Recurring Revenue",
+            glossary_guid="glossary-guid-here",
+            description="The yearly value of recurring revenue from customers",
+            long_description="Annual Recurring Revenue (ARR) is a key metric that represents the yearly value of recurring revenue streams. It includes subscription fees and other predictable revenue sources, excluding one-time payments or variable fees.",
+            certificate_status="VERIFIED",
+            categories=["category-guid-1", "category-guid-2"],
+            synonyms=["synonym-term-guid"],
+            related_terms=["related-term-guid-1", "related-term-guid-2"],
+            owner_users="revenue.analyst",  # Single user (can also be a list)
+            owner_groups=["finance-team"]  # List of groups
+        )
+    """
+    return create_glossary_term_asset(
+        name=name,
+        glossary_guid=glossary_guid,
+        description=description,
+        long_description=long_description,
+        certificate_status=certificate_status,
+        categories=categories,
+        related_terms=related_terms,
+        synonyms=synonyms,
+        antonyms=antonyms,
+        preferred_terms=preferred_terms,
+        replacement_terms=replacement_terms,
+        owner_users=owner_users,
+        owner_groups=owner_groups,
+    )
 
 
 def main():
