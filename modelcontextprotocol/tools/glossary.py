@@ -1,7 +1,10 @@
 """Glossary operations for creating glossaries, categories, and terms."""
 
+from __future__ import annotations  # PEP 563 postponed evaluation of annotations
+
+import json
 import logging
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Iterable, cast
 
 from client import get_atlan_client
 from pyatlan.model.assets import AtlasGlossary, AtlasGlossaryCategory, AtlasGlossaryTerm
@@ -12,14 +15,95 @@ from .models import CertificateStatus
 logger = logging.getLogger(__name__)
 
 
+def _normalize_to_list(value: Optional[Union[str, Iterable[str]]]) -> Optional[List[str]]:  # noqa: D401
+    """Return ``value`` as a list of strings.
+
+    This helper attempts to be forgiving with the shapes we receive from the LLM
+    front-end.  In particular, some models (for example, *Claude*) may serialise
+    Python lists as **JSON-encoded strings** instead of sending them as native
+    lists.  This normaliser handles the following cases gracefully:
+
+    1. ``None`` – the value is returned unchanged.
+    2. ``list`` / ``set`` / ``tuple`` of strings – converted to ``list``.
+    3. A single plain string – wrapped in a one-item ``list``.
+    4. A JSON string that represents a list – parsed into a list.
+
+    Args:
+        value: The incoming parameter that is expected to contain one or more
+            strings.
+
+    Returns:
+        A list of strings or ``None`` if *value* is falsy.
+
+    Raises:
+        TypeError: If *value* is of an unexpected type or if a JSON string does
+            not decode into a list of strings.
+    """
+
+    if not value:
+        # Covers both None and empty containers / empty strings.
+        return None
+
+    # If it's already an iterable of strings (but *not* a str), convert to list.
+    if isinstance(value, (list, set, tuple)):
+        return list(cast(Iterable[str], value))
+
+    # If it's a bare string we need to inspect further.
+    if isinstance(value, str):
+        stripped = value.strip()
+
+        # Attempt to parse JSON-encoded list.
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = json.loads(stripped)
+                if not isinstance(parsed, list):
+                    raise TypeError(
+                        "JSON string did not decode into a list – got "
+                        f"{type(parsed).__name__}."
+                    )
+                # Ensure *all* items are strings.
+                if not all(isinstance(item, str) for item in parsed):
+                    raise TypeError("Decoded JSON list contains non-string items.")
+                return parsed
+            except json.JSONDecodeError as exc:  # pragma: no cover – defensive.
+                logger.debug("Value %s is not valid JSON: %s", value, exc)
+                # Attempt a graceful, best-effort parse for malformed JSON-like input.
+
+                # Remove the surrounding square brackets if present so that we can
+                # split on commas: "[foo, bar]" → "foo, bar".
+                inner = stripped[1:-1] if stripped.startswith("[") and stripped.endswith("]") else stripped
+
+                # Split on commas **that are not inside quotes** (basic heuristic).
+                # We intentionally keep this simple – it does not try to parse
+                # escaped quotes or nested structures because the expected input
+                # is a *flat* list of names.
+                cleaned_parts: List[str] = []
+                for raw_part in inner.split(","):
+                    part = raw_part.strip().strip("\"").strip("'")
+                    if part:
+                        cleaned_parts.append(part)
+                parts = cleaned_parts
+
+                if parts:
+                    return parts
+
+        # Final fallback – treat the entire value as a single string item.
+        return [stripped]
+
+    raise TypeError(
+        "Expected None, string, or iterable of strings for list-like parameter; "
+        f"got {type(value).__name__}."
+    )
+
+
 def create_glossary_asset(
     name: str,
     description: Optional[str] = None,
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     asset_icon: Optional[str] = None,
-    owner_users: Optional[Union[str, List[str]]] = None,
-    owner_groups: Optional[Union[str, List[str]]] = None,
+    owner_users: Optional[List[str]] = None,
+    owner_groups: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossary asset in Atlan.
@@ -31,10 +115,8 @@ def create_glossary_asset(
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status of the glossary.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
         asset_icon (Optional[str]): Icon for the glossary (e.g., "BOOK_OPEN_TEXT").
-        owner_users (Optional[Union[str, List[str]]]): User name(s) who should own this glossary.
-            Can be a single string or a list of strings.
-        owner_groups (Optional[Union[str, List[str]]]): Group name(s) who should own this glossary.
-            Can be a single string or a list of strings.
+        owner_users (Optional[List[str]]): List of user names who should own this glossary.
+        owner_groups (Optional[List[str]]): List of group names who should own this glossary.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -43,24 +125,6 @@ def create_glossary_asset(
             - qualified_name: The qualified name of the created glossary
             - success: Boolean indicating if creation was successful
             - errors: List of any errors encountered
-
-    Examples:
-        # Create a basic glossary
-        glossary = create_glossary_asset(
-            name="Business Terms",
-            description="Common business terminology used across the organization"
-        )
-
-        # Create a glossary with icon, certification, and ownership
-        glossary = create_glossary_asset(
-            name="Data Quality Glossary",
-            description="Terms related to data quality standards",
-            long_description="This glossary contains comprehensive definitions of data quality metrics, standards, and processes used throughout our data platform.",
-            certificate_status="VERIFIED",
-            asset_icon="BOOK_OPEN_TEXT",
-            owner_users=["john.doe", "jane.smith"],  # List of users
-            owner_groups="data-stewards"  # Single group (can also be a list)
-        )
     """
     logger.info(f"Creating glossary asset: {name}")
 
@@ -90,46 +154,16 @@ def create_glossary_asset(
                 icon_enum = getattr(AtlanIcon, asset_icon.upper())
                 glossary.asset_icon = icon_enum
             except AttributeError:
+
                 logger.warning(f"Invalid icon: {asset_icon}. Using default.")
+        # Normalise potential list-like inputs that might be JSON strings
+        normalised_owner_users = _normalize_to_list(owner_users)
+        if normalised_owner_users:
+            glossary.owner_users = set(normalised_owner_users)
 
-        if owner_users:
-            # Handle both single string and list of strings
-            if isinstance(owner_users, str):
-                glossary.owner_users = {owner_users}
-            else:
-                glossary.owner_users = set(owner_users)
-
-        if owner_groups:
-            # Handle both single string and list of strings
-            group_names = []
-            if isinstance(owner_groups, str):
-                group_names = [owner_groups]
-            else:
-                group_names = list(owner_groups)
-
-            # Look up group GUIDs by name
-            group_guids = set()
-            for group_name in group_names:
-                try:
-                    # Search for existing group by name
-                    groups_result = client.group.get_by_name(group_name)
-                    if groups_result.records and len(groups_result.records) > 0:
-                        # Get the first matching group's GUID
-                        group_guid = groups_result.records[0].guid
-                        group_guids.add(group_guid)
-                        logger.info(
-                            f"Found existing group '{group_name}' with GUID: {group_guid}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Group '{group_name}' not found in Atlan. Skipping."
-                        )
-                except Exception as e:
-                    logger.error(f"Error looking up group '{group_name}': {str(e)}")
-
-            # Set the group GUIDs instead of names
-            if group_guids:
-                glossary.owner_groups = group_guids
+        normalised_owner_groups = _normalize_to_list(owner_groups)
+        if normalised_owner_groups:
+            glossary.owner_groups = set(normalised_owner_groups)
 
         # Save the glossary
         response = client.asset.save(glossary)
@@ -169,8 +203,8 @@ def create_glossary_category_asset(
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     parent_category_guid: Optional[str] = None,
-    owner_users: Optional[Union[str, List[str]]] = None,
-    owner_groups: Optional[Union[str, List[str]]] = None,
+    owner_users: Optional[List[str]] = None,
+    owner_groups: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossaryCategory asset in Atlan.
@@ -183,10 +217,8 @@ def create_glossary_category_asset(
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status of the category.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
         parent_category_guid (Optional[str]): GUID of the parent category if this is a subcategory.
-        owner_users (Optional[Union[str, List[str]]]): User name(s) who should own this category.
-            Can be a single string or a list of strings.
-        owner_groups (Optional[Union[str, List[str]]]): Group name(s) who should own this category.
-            Can be a single string or a list of strings.
+        owner_users (Optional[List[str]]): List of user names who should own this category.
+        owner_groups (Optional[List[str]]): List of group names who should own this category.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -196,26 +228,6 @@ def create_glossary_category_asset(
             - glossary_guid: The GUID of the parent glossary
             - success: Boolean indicating if creation was successful
             - errors: List of any errors encountered
-
-    Examples:
-        # Create a basic category
-        category = create_glossary_category_asset(
-            name="Customer Data",
-            glossary_guid="glossary-guid-here",
-            description="Terms related to customer information and attributes"
-        )
-
-        # Create a subcategory with detailed information and certification
-        subcategory = create_glossary_category_asset(
-            name="Customer Demographics",
-            glossary_guid="glossary-guid-here",
-            parent_category_guid="parent-category-guid-here",
-            description="Terms specific to customer demographic information",
-            long_description="This category contains terms that define various demographic attributes of customers such as age groups, income brackets, geographic regions, etc.",
-            certificate_status="VERIFIED",
-            owner_users="data.steward",  # Single user (can also be a list)
-            owner_groups=["customer-analytics-team"]  # List of groups
-        )
     """
     logger.info(f"Creating glossary category: {name} in glossary: {glossary_guid}")
 
@@ -250,44 +262,13 @@ def create_glossary_category_asset(
                 certificate_status = CertificateStatus(certificate_status)
             category.certificate_status = certificate_status.value
 
-        if owner_users:
-            # Handle both single string and list of strings
-            if isinstance(owner_users, str):
-                category.owner_users = {owner_users}
-            else:
-                category.owner_users = set(owner_users)
+        normalised_owner_users = _normalize_to_list(owner_users)
+        if normalised_owner_users:
+            category.owner_users = set(normalised_owner_users)
 
-        if owner_groups:
-            # Handle both single string and list of strings
-            group_names = []
-            if isinstance(owner_groups, str):
-                group_names = [owner_groups]
-            else:
-                group_names = list(owner_groups)
-
-            # Look up group GUIDs by name
-            group_guids = set()
-            for group_name in group_names:
-                try:
-                    # Search for existing group by name
-                    groups_result = client.group.get_by_name(group_name)
-                    if groups_result.records and len(groups_result.records) > 0:
-                        # Get the first matching group's GUID
-                        group_guid = groups_result.records[0].guid
-                        group_guids.add(group_guid)
-                        logger.info(
-                            f"Found existing group '{group_name}' with GUID: {group_guid}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Group '{group_name}' not found in Atlan. Skipping."
-                        )
-                except Exception as e:
-                    logger.error(f"Error looking up group '{group_name}': {str(e)}")
-
-            # Set the group GUIDs instead of names
-            if group_guids:
-                category.owner_groups = group_guids
+        normalised_owner_groups = _normalize_to_list(owner_groups)
+        if normalised_owner_groups:
+            category.owner_groups = set(normalised_owner_groups)
 
         # Save the category
         response = client.asset.save(category)
@@ -327,17 +308,13 @@ def create_glossary_category_asset(
 def create_glossary_term_asset(
     name: str,
     glossary_guid: str,
+    alias: Optional[str] = None,
     description: Optional[str] = None,
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     categories: Optional[List[str]] = None,
-    related_terms: Optional[List[str]] = None,
-    synonyms: Optional[List[str]] = None,
-    antonyms: Optional[List[str]] = None,
-    preferred_terms: Optional[List[str]] = None,
-    replacement_terms: Optional[List[str]] = None,
-    owner_users: Optional[Union[str, List[str]]] = None,
-    owner_groups: Optional[Union[str, List[str]]] = None,
+    owner_users: Optional[List[str]] = None,
+    owner_groups: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossaryTerm asset in Atlan.
@@ -345,20 +322,14 @@ def create_glossary_term_asset(
     Args:
         name (str): Name of the term (required).
         glossary_guid (str): GUID of the glossary this term belongs to (required).
+        alias (Optional[str]): An alias for the term.
         description (Optional[str]): Short description of the term.
         long_description (Optional[str]): Detailed description of the term.
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status of the term.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
         categories (Optional[List[str]]): List of category GUIDs this term belongs to.
-        related_terms (Optional[List[str]]): List of related term GUIDs.
-        synonyms (Optional[List[str]]): List of synonym term GUIDs.
-        antonyms (Optional[List[str]]): List of antonym term GUIDs.
-        preferred_terms (Optional[List[str]]): List of preferred term GUIDs.
-        replacement_terms (Optional[List[str]]): List of replacement term GUIDs.
-        owner_users (Optional[Union[str, List[str]]]): User name(s) who should own this term.
-            Can be a single string or a list of strings.
-        owner_groups (Optional[Union[str, List[str]]]): Group name(s) who should own this term.
-            Can be a single string or a list of strings.
+        owner_users (Optional[List[str]]): List of user names who should own this term.
+        owner_groups (Optional[List[str]]): List of group names who should own this term.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -368,28 +339,6 @@ def create_glossary_term_asset(
             - glossary_guid: The GUID of the parent glossary
             - success: Boolean indicating if creation was successful
             - errors: List of any errors encountered
-
-    Examples:
-        # Create a basic term
-        term = create_glossary_term_asset(
-            name="Customer",
-            glossary_guid="glossary-guid-here",
-            description="An individual or organization that purchases goods or services"
-        )
-
-        # Create a comprehensive term with relationships and certification
-        term = create_glossary_term_asset(
-            name="Annual Recurring Revenue",
-            glossary_guid="glossary-guid-here",
-            description="The yearly value of recurring revenue from customers",
-            long_description="Annual Recurring Revenue (ARR) is a key metric that represents the yearly value of recurring revenue streams. It includes subscription fees and other predictable revenue sources, excluding one-time payments or variable fees.",
-            certificate_status="VERIFIED",
-            categories=["category-guid-1", "category-guid-2"],
-            synonyms=["synonym-term-guid"],
-            related_terms=["related-term-guid-1", "related-term-guid-2"],
-            owner_users="revenue.analyst",  # Single user (can also be a list)
-            owner_groups=["finance-team"]  # List of groups
-        )
     """
     logger.info(f"Creating glossary term: {name} in glossary: {glossary_guid}")
 
@@ -397,8 +346,28 @@ def create_glossary_term_asset(
         # Get Atlan client
         client = get_atlan_client()
 
-        # Create the term using the creator method
-        term = AtlasGlossaryTerm.creator(name=name, glossary_guid=glossary_guid)
+        # Build minimal references required for creation
+        anchor_glossary = AtlasGlossary.ref_by_guid(glossary_guid)
+
+        # Prepare category references (if any) upfront so they can be sent through the creator call itself.
+        category_refs: Optional[List[AtlasGlossaryCategory]] = None
+
+        normalised_categories = _normalize_to_list(categories)
+        if normalised_categories:
+            category_refs = [
+                AtlasGlossaryCategory.ref_by_guid(cat_guid)
+                for cat_guid in normalised_categories
+            ]
+
+        # Create the term using the creator helper, passing anchor and (optionally) categories directly.
+        if category_refs:
+            term = AtlasGlossaryTerm.creator(
+                name=name,
+                anchor=anchor_glossary,
+                categories=category_refs,
+            )
+        else:
+            term = AtlasGlossaryTerm.creator(name=name, anchor=anchor_glossary)
 
         # Set optional attributes
         if description:
@@ -413,51 +382,13 @@ def create_glossary_term_asset(
                 certificate_status = CertificateStatus(certificate_status)
             term.certificate_status = certificate_status.value
 
-        if categories:
-            # Set categories - create references to the category GUIDs
-            category_refs = [
-                AtlasGlossaryCategory.ref_by_guid(cat_guid) for cat_guid in categories
-            ]
-            term.categories = set(category_refs)
+        normalised_owner_users = _normalize_to_list(owner_users)
+        if normalised_owner_users:
+            term.owner_users = set(normalised_owner_users)
 
-        if owner_users:
-            # Handle both single string and list of strings
-            if isinstance(owner_users, str):
-                term.owner_users = {owner_users}
-            else:
-                term.owner_users = set(owner_users)
-
-        if owner_groups:
-            # Handle both single string and list of strings
-            group_names = []
-            if isinstance(owner_groups, str):
-                group_names = [owner_groups]
-            else:
-                group_names = list(owner_groups)
-
-            # Look up group GUIDs by name
-            group_guids = set()
-            for group_name in group_names:
-                try:
-                    # Search for existing group by name
-                    groups_result = client.group.get_by_name(group_name)
-                    if groups_result.records and len(groups_result.records) > 0:
-                        # Get the first matching group's GUID
-                        group_guid = groups_result.records[0].guid
-                        group_guids.add(group_guid)
-                        logger.info(
-                            f"Found existing group '{group_name}' with GUID: {group_guid}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Group '{group_name}' not found in Atlan. Skipping."
-                        )
-                except Exception as e:
-                    logger.error(f"Error looking up group '{group_name}': {str(e)}")
-
-            # Set the group GUIDs instead of names
-            if group_guids:
-                term.owner_groups = group_guids
+        normalised_owner_groups = _normalize_to_list(owner_groups)
+        if normalised_owner_groups:
+            term.owner_groups = set(normalised_owner_groups)
 
         # Save the term first, then handle relationships that require both terms to exist
         response = client.asset.save(term)
@@ -466,58 +397,6 @@ def create_glossary_term_asset(
         created_guid = None
         if response.guid_assignments:
             created_guid = list(response.guid_assignments.values())[0]
-
-        # Handle term relationships (these require the term to exist first)
-        if created_guid and any(
-            [related_terms, synonyms, antonyms, preferred_terms, replacement_terms]
-        ):
-            try:
-                # Retrieve the created term to set relationships
-                created_term = client.asset.get_by_guid(created_guid, AtlasGlossaryTerm)
-
-                if related_terms:
-                    related_refs = [
-                        AtlasGlossaryTerm.ref_by_guid(term_guid)
-                        for term_guid in related_terms
-                    ]
-                    created_term.see_also = set(related_refs)
-
-                if synonyms:
-                    synonym_refs = [
-                        AtlasGlossaryTerm.ref_by_guid(term_guid)
-                        for term_guid in synonyms
-                    ]
-                    created_term.synonyms = set(synonym_refs)
-
-                if antonyms:
-                    antonym_refs = [
-                        AtlasGlossaryTerm.ref_by_guid(term_guid)
-                        for term_guid in antonyms
-                    ]
-                    created_term.antonyms = set(antonym_refs)
-
-                if preferred_terms:
-                    preferred_refs = [
-                        AtlasGlossaryTerm.ref_by_guid(term_guid)
-                        for term_guid in preferred_terms
-                    ]
-                    created_term.preferred_terms = set(preferred_refs)
-
-                if replacement_terms:
-                    replacement_refs = [
-                        AtlasGlossaryTerm.ref_by_guid(term_guid)
-                        for term_guid in replacement_terms
-                    ]
-                    created_term.replacement_terms = set(replacement_refs)
-
-                # Save the updated term with relationships
-                client.asset.save(created_term)
-                logger.info(f"Successfully updated term relationships for: {name}")
-
-            except Exception as rel_error:
-                logger.warning(
-                    f"Term created but failed to set relationships: {str(rel_error)}"
-                )
 
         result = {
             "guid": created_guid,

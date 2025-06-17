@@ -454,11 +454,9 @@ def create_glossary_asset_tool(
         long_description (str, optional): Detailed description of the glossary.
         certificate_status (str, optional): Certification status of the glossary.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
-        asset_icon (str, optional): Icon for the glossary (e.g., "BOOK_OPEN_TEXT").
-        owner_users (Union[str, List[str]], optional): User name(s) who should own this glossary.
-            Can be a single string or a list of strings.
-        owner_groups (Union[str, List[str]], optional): Group name(s) who should own this glossary.
-            Can be a single string or a list of strings.
+        asset_icon (str, optional): Icon for the glossary. For example: "BOOK_OPEN_TEXT".
+        owner_users (List[str], optional): List of user names who should own this glossary.
+        owner_groups (List[str], optional): List of group names who should own this glossary.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -482,8 +480,20 @@ def create_glossary_asset_tool(
             long_description="This glossary contains comprehensive definitions of data quality metrics, standards, and processes used throughout our data platform.",
             certificate_status="VERIFIED",
             asset_icon="BOOK_OPEN_TEXT",
-            owner_users=["john.doe", "jane.smith"],  # List of users
-            owner_groups="data-stewards"  # Single group (can also be a list)
+            owner_users=["john.doe", "jane.smith"],
+            owner_groups=["data-stewards"]
+        )
+
+        # Create a minimal glossary with only a name
+        result = create_glossary_asset_tool(
+            name="Finance Glossary"
+        )
+
+        # Create a glossary marked as DRAFT with an owner
+        result = create_glossary_asset_tool(
+            name="Marketing Glossary",
+            certificate_status="DRAFT",
+            owner_users=["sally.marketing"]
         )
     """
     return create_glossary_asset(
@@ -519,10 +529,8 @@ def create_glossary_category_asset_tool(
         certificate_status (str, optional): Certification status of the category.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
         parent_category_guid (str, optional): GUID of the parent category if this is a subcategory.
-        owner_users (Union[str, List[str]], optional): User name(s) who should own this category.
-            Can be a single string or a list of strings.
-        owner_groups (Union[str, List[str]], optional): Group name(s) who should own this category.
-            Can be a single string or a list of strings.
+        owner_users (List[str], optional): List of user names who should own this category.
+        owner_groups (List[str], optional): List of group names who should own this category.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -549,8 +557,23 @@ def create_glossary_category_asset_tool(
             description="Terms specific to customer demographic information",
             long_description="This category contains terms that define various demographic attributes of customers such as age groups, income brackets, geographic regions, etc.",
             certificate_status="VERIFIED",
-            owner_users="data.steward",  # Single user (can also be a list)
-            owner_groups=["customer-analytics-team"]  # List of groups
+            owner_users=["data.steward"],
+            owner_groups=["customer-analytics-team"]
+        )
+
+        # Create a category with a parent and owners
+        result = create_glossary_category_asset_tool(
+            name="Campaign Metrics",
+            glossary_guid="marketing-glossary-guid",
+            parent_category_guid="metrics-category-guid",
+            owner_groups=["marketing-analytics"]
+        )
+
+        # Create a verified top-level category
+        result = create_glossary_category_asset_tool(
+            name="Financial Reporting",
+            glossary_guid="finance-glossary-guid",
+            certificate_status="VERIFIED"
         )
     """
     return create_glossary_category_asset(
@@ -569,15 +592,11 @@ def create_glossary_category_asset_tool(
 def create_glossary_term_asset_tool(
     name,
     glossary_guid,
+    alias=None,
     description=None,
     long_description=None,
     certificate_status=None,
     categories=None,
-    related_terms=None,
-    synonyms=None,
-    antonyms=None,
-    preferred_terms=None,
-    replacement_terms=None,
     owner_users=None,
     owner_groups=None,
 ):
@@ -592,15 +611,8 @@ def create_glossary_term_asset_tool(
         certificate_status (str, optional): Certification status of the term.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
         categories (List[str], optional): List of category GUIDs this term belongs to.
-        related_terms (List[str], optional): List of related term GUIDs.
-        synonyms (List[str], optional): List of synonym term GUIDs.
-        antonyms (List[str], optional): List of antonym term GUIDs.
-        preferred_terms (List[str], optional): List of preferred term GUIDs.
-        replacement_terms (List[str], optional): List of replacement term GUIDs.
-        owner_users (Union[str, List[str]], optional): User name(s) who should own this term.
-            Can be a single string or a list of strings.
-        owner_groups (Union[str, List[str]], optional): Group name(s) who should own this term.
-            Can be a single string or a list of strings.
+        owner_users (List[str], optional): List of user names who should own this term.
+        owner_groups (List[str], optional): List of group names who should own this term.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -627,24 +639,33 @@ def create_glossary_term_asset_tool(
             long_description="Annual Recurring Revenue (ARR) is a key metric that represents the yearly value of recurring revenue streams. It includes subscription fees and other predictable revenue sources, excluding one-time payments or variable fees.",
             certificate_status="VERIFIED",
             categories=["category-guid-1", "category-guid-2"],
-            synonyms=["synonym-term-guid"],
-            related_terms=["related-term-guid-1", "related-term-guid-2"],
-            owner_users="revenue.analyst",  # Single user (can also be a list)
-            owner_groups=["finance-team"]  # List of groups
+            owner_users=["revenue.analyst"],
+            owner_groups=["finance-team"]
+        )
+
+        # Create a deprecated term
+        result = create_glossary_term_asset_tool(
+            name="Old Revenue Metric",
+            glossary_guid="finance-glossary-guid",
+            certificate_status="DEPRECATED",
+            description="This metric is no longer in use."
+        )
+
+        # Create a term assigned to a category with an alias
+        result = create_glossary_term_asset_tool(
+            name="Click-Through Rate",
+            glossary_guid="marketing-glossary-guid",
+            categories=["campaign-metrics-guid"]
         )
     """
     return create_glossary_term_asset(
         name=name,
         glossary_guid=glossary_guid,
+        alias=alias,
         description=description,
         long_description=long_description,
         certificate_status=certificate_status,
         categories=categories,
-        related_terms=related_terms,
-        synonyms=synonyms,
-        antonyms=antonyms,
-        preferred_terms=preferred_terms,
-        replacement_terms=replacement_terms,
         owner_users=owner_users,
         owner_groups=owner_groups,
     )
