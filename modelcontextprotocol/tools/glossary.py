@@ -15,7 +15,9 @@ from .models import CertificateStatus
 logger = logging.getLogger(__name__)
 
 
-def _normalize_to_list(value: Optional[Union[str, Iterable[str]]]) -> Optional[List[str]]:  # noqa: D401
+def _normalize_to_list(
+    value: Optional[Union[str, Iterable[str]]],
+) -> Optional[List[str]]:  # noqa: D401
     """Return ``value`` as a list of strings.
 
     This helper attempts to be forgiving with the shapes we receive from the LLM
@@ -71,7 +73,11 @@ def _normalize_to_list(value: Optional[Union[str, Iterable[str]]]) -> Optional[L
 
                 # Remove the surrounding square brackets if present so that we can
                 # split on commas: "[foo, bar]" → "foo, bar".
-                inner = stripped[1:-1] if stripped.startswith("[") and stripped.endswith("]") else stripped
+                inner = (
+                    stripped[1:-1]
+                    if stripped.startswith("[") and stripped.endswith("]")
+                    else stripped
+                )
 
                 # Split on commas **that are not inside quotes** (basic heuristic).
                 # We intentionally keep this simple – it does not try to parse
@@ -79,7 +85,7 @@ def _normalize_to_list(value: Optional[Union[str, Iterable[str]]]) -> Optional[L
                 # is a *flat* list of names.
                 cleaned_parts: List[str] = []
                 for raw_part in inner.split(","):
-                    part = raw_part.strip().strip("\"").strip("'")
+                    part = raw_part.strip().strip('"').strip("'")
                     if part:
                         cleaned_parts.append(part)
                 parts = cleaned_parts
@@ -154,7 +160,6 @@ def create_glossary_asset(
                 icon_enum = getattr(AtlanIcon, asset_icon.upper())
                 glossary.asset_icon = icon_enum
             except AttributeError:
-
                 logger.warning(f"Invalid icon: {asset_icon}. Using default.")
         # Normalise potential list-like inputs that might be JSON strings
         normalised_owner_users = _normalize_to_list(owner_users)
