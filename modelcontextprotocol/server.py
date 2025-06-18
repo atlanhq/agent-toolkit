@@ -10,14 +10,7 @@ from tools import (
     UpdatableAsset,
 )
 from pyatlan.model.lineage import LineageDirection
-from utils.parameters import (
-    parse_json_parameter,
-    parse_list_parameter,
-    validate_integer_parameter,
-    validate_string_parameter,
-    parse_boolean_parameter,
-    ParameterParsingError,
-)
+from utils.parameters import parse_json_parameter, parse_list_parameter
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
@@ -206,40 +199,15 @@ def search_assets_tool(
         )
 
     """
-    try:
-        # Claude passes the parameters as a string, so we need to parse them
-        # Parse JSON string parameters that could be dictionaries
-        conditions = parse_json_parameter(conditions, "conditions")
-        negative_conditions = parse_json_parameter(
-            negative_conditions, "negative_conditions"
-        )
-        some_conditions = parse_json_parameter(some_conditions, "some_conditions")
-        date_range = parse_json_parameter(date_range, "date_range")
-
-        # Parse JSON string parameters that should be lists
-        include_attributes = parse_list_parameter(
-            include_attributes, "include_attributes"
-        )
-        tags = parse_list_parameter(tags, "tags")
-        domain_guids = parse_list_parameter(domain_guids, "domain_guids")
-        guids = parse_list_parameter(guids, "guids")
-
-        # Validate integer parameters
-        min_somes = validate_integer_parameter(min_somes, "min_somes", min_value=1)
-        limit = validate_integer_parameter(limit, "limit", min_value=1)
-        offset = validate_integer_parameter(offset, "offset", min_value=0)
-
-        # Validate string parameters
-        sort_order = validate_string_parameter(
-            sort_order, "sort_order", allowed_values=["ASC", "DESC"]
-        )
-
-        # Validate boolean parameters
-        include_archived = parse_boolean_parameter(include_archived, "include_archived")
-        directly_tagged = parse_boolean_parameter(directly_tagged, "directly_tagged")
-
-    except ParameterParsingError as e:
-        return {"error": f"Invalid parameter: {str(e)}", "results": []}
+    # Parse JSON string parameters if needed
+    conditions = parse_json_parameter(conditions)
+    negative_conditions = parse_json_parameter(negative_conditions)
+    some_conditions = parse_json_parameter(some_conditions)
+    date_range = parse_json_parameter(date_range)
+    include_attributes = parse_list_parameter(include_attributes)
+    tags = parse_list_parameter(tags)
+    domain_guids = parse_list_parameter(domain_guids)
+    guids = parse_list_parameter(guids)
 
     return search_assets(
         conditions,
@@ -331,15 +299,7 @@ def get_assets_by_dsl_tool(dsl_query):
     }'''
     response = get_assets_by_dsl(dsl_query)
     """
-    try:
-        # Parse the DSL query parameter
-        parsed_dsl_query = parse_json_parameter(
-            dsl_query, "dsl_query", allow_none=False
-        )
-
-        return get_assets_by_dsl(parsed_dsl_query)
-    except ParameterParsingError as e:
-        return {"error": f"Invalid DSL query: {str(e)}", "results": []}
+    return get_assets_by_dsl(dsl_query)
 
 
 @mcp.tool()
@@ -384,40 +344,16 @@ def traverse_lineage_tool(
         for ref in lineage["references"]:
             print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
     """
-    try:
-        # Claude passes the parameters as a string, so we need to parse them
-        # Validate and parse parameters
-        validated_guid = validate_string_parameter(
-            guid, "guid", allow_none=False, allow_empty=False
-        )
-        validated_direction = validate_string_parameter(
-            direction,
-            "direction",
-            allowed_values=["UPSTREAM", "DOWNSTREAM"],
-            allow_none=False,
-        )
-        validated_depth = validate_integer_parameter(
-            depth, "depth", min_value=1, allow_none=False
-        )
-        validated_size = validate_integer_parameter(
-            size, "size", min_value=1, allow_none=False
-        )
-        validated_immediate_neighbors = parse_boolean_parameter(
-            immediate_neighbors, "immediate_neighbors", allow_none=False
-        )
+    # Convert direction string to enum
+    direction_enum = LineageDirection[str(direction).upper()]
 
-        # Convert direction string to enum
-        direction_enum = LineageDirection[validated_direction.upper()]
-
-        return traverse_lineage(
-            guid=validated_guid,
-            direction=direction_enum,
-            depth=validated_depth,
-            size=validated_size,
-            immediate_neighbors=validated_immediate_neighbors,
-        )
-    except (ParameterParsingError, KeyError, ValueError) as e:
-        return {"error": f"Invalid parameter: {str(e)}", "assets": [], "references": []}
+    return traverse_lineage(
+        guid=guid,
+        direction=direction_enum,
+        depth=depth,
+        size=size,
+        immediate_neighbors=immediate_neighbors,
+    )
 
 
 @mcp.tool()
@@ -478,63 +414,30 @@ def update_assets_tool(
         )
 
     """
-    try:
-        # Claude passes the parameters as a string, so we need to parse them
-        # Validate and parse the attribute name
-        validated_attribute_name = validate_string_parameter(
-            attribute_name,
-            "attribute_name",
-            allowed_values=["user_description", "certificate_status"],
-            allow_none=False,
-            allow_empty=False,
-        )
+    # Parse JSON parameters
+    parsed_assets = parse_json_parameter(assets)
+    parsed_attribute_values = parse_list_parameter(attribute_values)
 
-        # Parse attribute values as a list
-        parsed_attribute_values = parse_list_parameter(
-            attribute_values, "attribute_values", allow_none=False, ensure_list=True
-        )
+    # Convert string attribute name to enum
+    attr_enum = UpdatableAttribute(attribute_name)
 
-        # Parse assets parameter (could be single dict or list of dicts)
-        parsed_assets = parse_json_parameter(assets, "assets", allow_none=False)
+    # For certificate status, convert values to enum
+    if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
+        parsed_attribute_values = [
+            CertificateStatus(val) for val in parsed_attribute_values
+        ]
 
-        # Convert string attribute name to enum
-        attr_enum = UpdatableAttribute(validated_attribute_name)
+    # Convert assets to UpdatableAsset objects
+    if isinstance(parsed_assets, dict):
+        updatable_assets = [UpdatableAsset(**parsed_assets)]
+    else:
+        updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
 
-        # For certificate status, validate and convert values to enum
-        if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
-            validated_cert_values = []
-            for val in parsed_attribute_values:
-                validated_val = validate_string_parameter(
-                    val,
-                    "certificate_status_value",
-                    allowed_values=["VERIFIED", "DRAFT", "DEPRECATED"],
-                    allow_none=False,
-                    allow_empty=False,
-                )
-                validated_cert_values.append(CertificateStatus(validated_val))
-            parsed_attribute_values = validated_cert_values
-
-        # Convert assets to UpdatableAsset objects
-        if isinstance(parsed_assets, dict):
-            updatable_assets = [UpdatableAsset(**parsed_assets)]
-        elif isinstance(parsed_assets, list):
-            updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
-        else:
-            raise ParameterParsingError(
-                "assets",
-                parsed_assets,
-                "Must be a dictionary or a list of dictionaries",
-            )
-
-        return update_assets(
-            updatable_assets=updatable_assets,
-            attribute_name=attr_enum,
-            attribute_values=parsed_attribute_values,
-        )
-    except (ParameterParsingError, ValueError) as e:
-        return {"updated_count": 0, "errors": [str(e)]}
-    except Exception as e:
-        return {"updated_count": 0, "errors": [f"Unexpected error: {str(e)}"]}
+    return update_assets(
+        updatable_assets=updatable_assets,
+        attribute_name=attr_enum,
+        attribute_values=parsed_attribute_values,
+    )
 
 
 def main():
