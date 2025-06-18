@@ -1,4 +1,5 @@
 import argparse
+import json
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -10,7 +11,10 @@ from tools import (
     UpdatableAsset,
 )
 from pyatlan.model.lineage import LineageDirection
-from utils.parameters import parse_json_parameter, parse_list_parameter
+from utils.parameters import (
+    parse_json_parameter,
+    parse_list_parameter,
+)
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
@@ -199,35 +203,38 @@ def search_assets_tool(
         )
 
     """
-    # Parse JSON string parameters if needed
-    conditions = parse_json_parameter(conditions)
-    negative_conditions = parse_json_parameter(negative_conditions)
-    some_conditions = parse_json_parameter(some_conditions)
-    date_range = parse_json_parameter(date_range)
-    include_attributes = parse_list_parameter(include_attributes)
-    tags = parse_list_parameter(tags)
-    domain_guids = parse_list_parameter(domain_guids)
-    guids = parse_list_parameter(guids)
+    try:
+        # Parse JSON string parameters if needed
+        conditions = parse_json_parameter(conditions)
+        negative_conditions = parse_json_parameter(negative_conditions)
+        some_conditions = parse_json_parameter(some_conditions)
+        date_range = parse_json_parameter(date_range)
+        include_attributes = parse_list_parameter(include_attributes)
+        tags = parse_list_parameter(tags)
+        domain_guids = parse_list_parameter(domain_guids)
+        guids = parse_list_parameter(guids)
 
-    return search_assets(
-        conditions,
-        negative_conditions,
-        some_conditions,
-        min_somes,
-        include_attributes,
-        asset_type,
-        include_archived,
-        limit,
-        offset,
-        sort_by,
-        sort_order,
-        connection_qualified_name,
-        tags,
-        directly_tagged,
-        domain_guids,
-        date_range,
-        guids,
-    )
+        return search_assets(
+            conditions,
+            negative_conditions,
+            some_conditions,
+            min_somes,
+            include_attributes,
+            asset_type,
+            include_archived,
+            limit,
+            offset,
+            sort_by,
+            sort_order,
+            connection_qualified_name,
+            tags,
+            directly_tagged,
+            domain_guids,
+            date_range,
+            guids,
+        )
+    except (json.JSONDecodeError, ValueError) as e:
+        return {"error": f"Parameter parsing error: {str(e)}"}
 
 
 @mcp.tool()
@@ -344,8 +351,12 @@ def traverse_lineage_tool(
         for ref in lineage["references"]:
             print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
     """
-    # Convert direction string to enum
-    direction_enum = LineageDirection[str(direction).upper()]
+    try:
+        direction_enum = LineageDirection[direction.upper()]
+    except KeyError:
+        raise ValueError(
+            f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
+        )
 
     return traverse_lineage(
         guid=guid,
@@ -414,30 +425,36 @@ def update_assets_tool(
         )
 
     """
-    # Parse JSON parameters
-    parsed_assets = parse_json_parameter(assets)
-    parsed_attribute_values = parse_list_parameter(attribute_values)
+    try:
+        # Parse JSON parameters
+        parsed_assets = parse_json_parameter(assets)
+        parsed_attribute_values = parse_list_parameter(attribute_values)
 
-    # Convert string attribute name to enum
-    attr_enum = UpdatableAttribute(attribute_name)
+        # Convert string attribute name to enum
+        attr_enum = UpdatableAttribute(attribute_name)
 
-    # For certificate status, convert values to enum
-    if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
-        parsed_attribute_values = [
-            CertificateStatus(val) for val in parsed_attribute_values
-        ]
+        # For certificate status, convert values to enum
+        if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
+            parsed_attribute_values = [
+                CertificateStatus(val) for val in parsed_attribute_values
+            ]
 
-    # Convert assets to UpdatableAsset objects
-    if isinstance(parsed_assets, dict):
-        updatable_assets = [UpdatableAsset(**parsed_assets)]
-    else:
-        updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
+        # Convert assets to UpdatableAsset objects
+        if isinstance(parsed_assets, dict):
+            updatable_assets = [UpdatableAsset(**parsed_assets)]
+        else:
+            updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
 
-    return update_assets(
-        updatable_assets=updatable_assets,
-        attribute_name=attr_enum,
-        attribute_values=parsed_attribute_values,
-    )
+        return update_assets(
+            updatable_assets=updatable_assets,
+            attribute_name=attr_enum,
+            attribute_values=parsed_attribute_values,
+        )
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
+        return {
+            "error": f"Parameter parsing/conversion error: {str(e)}",
+            "updated_count": 0,
+        }
 
 
 def main():
