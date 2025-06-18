@@ -27,11 +27,6 @@ COPY --from=builder --chown=appuser:appuser /app /appuser
 # Set the PATH to use the virtual environment
 ENV PATH="/appuser/.venv/bin:$PATH"
 
-ENV MCP_TRANSPORT="stdio"
-ENV MCP_HOST="0.0.0.0"
-ENV MCP_PORT="8000"
-ENV MCP_PATH="/"
-
 USER appuser
 
-ENTRYPOINT exec python server.py --transport "$MCP_TRANSPORT" --host "$MCP_HOST" --port "$MCP_PORT" --path "$MCP_PATH"
+ENTRYPOINT ["bash", "/appuser/entrypoint.sh"]
