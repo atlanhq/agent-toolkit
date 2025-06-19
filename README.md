@@ -48,3 +48,7 @@ We welcome contributions to the Atlan Agent Toolkit! Please follow these guideli
 6. **Documentation:**
    - Update documentation to reflect your changes.
    - Add comments to your code where necessary.
+
+## Deployment
+
+For information on running the server in different environments (stdio, SSE, or streamable HTTP), see the [deployment guide](deployment/Readme.md).
