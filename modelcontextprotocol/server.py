@@ -441,30 +441,6 @@ def update_assets_tool(
             - Contains PII data
             - [Documentation](https://docs.example.com)''']
         )
-
-        # Update multiple assets with different user descriptions
-        result = update_assets_tool(
-            assets=[
-                {
-                    "guid": "column-guid-1",
-                    "name": "customer_id",
-                    "type_name": "Column",
-                    "qualified_name": "default/snowflake/DB/SCHEMA/TABLE/CUSTOMER_ID"
-                },
-                {
-                    "guid": "column-guid-2",
-                    "name": "order_date",
-                    "type_name": "Column",
-                    "qualified_name": "default/snowflake/DB/SCHEMA/TABLE/ORDER_DATE"
-                }
-            ],
-            attribute_name="user_description",
-            attribute_values=[
-                "Unique identifier for customer records",
-                "Date when the order was placed"
-            ]
-        )
-
     """
     try:
         # Parse JSON parameters
