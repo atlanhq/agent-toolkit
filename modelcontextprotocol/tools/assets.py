@@ -90,17 +90,6 @@ def update_assets(
                 )
 
                 if first := asset_readme_response.current_page():
-                    try:
-                        current_content = first[0].readme.description
-                        logger.info(
-                            f"Current readme content for {qualified_name}: {current_content}"
-                        )
-                    except Exception as e:
-                        logger.error(f"Error getting current readme content: {e}")
-                        logger.info(
-                            f"No existing readme content found for {qualified_name}"
-                        )
-
                     updated_content = attribute_values[index]
                     # We replace the existing readme content with the new content.
                     # If the existing readme content is not present, we create a new readme asset.
