@@ -389,9 +389,6 @@ def update_assets_tool(
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
-    Usage:
-        - If you already have the asset related information, that needs to be passed to the tool, then you can pass the asset as a dictionary. Otherwise call the search_assets tool to get the asset information.
-        - If you are updating the certificate status, then you can pass the value as a string. Otherwise pass the value as a list of strings.
 
     Examples:
         # Update certificate status for a single asset
