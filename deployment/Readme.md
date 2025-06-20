@@ -17,22 +17,22 @@ python modelcontextprotocol/server.py --transport streamable-http --host 0.0.0.0
 
 ### Transport options
 
-- **`stdio` (default)**  
-  Communicates over standard input/output.  
-  • Benefits: Zero network overhead; perfect for running the agent as a local subprocess.  
+- **`stdio` (default)**
+  Communicates over standard input/output.
+  • Benefits: Zero network overhead; perfect for running the agent as a local subprocess.
   • When to use: Local development or when integrating directly with parent processes or editors that spawn the server.
 
-- **`sse`**  
-  Uses **Server-Sent Events** over HTTP—the server keeps an HTTP connection open and pushes a `text/event-stream` as new data arrives.  
-  • Benefits: Built-in support in modern browsers & many HTTP reverse proxies; uni-directional and firewall-friendly; low-latency streaming suited for real-time UI updates.  
+- **`sse`**
+  Uses **Server-Sent Events** over HTTP—the server keeps an HTTP connection open and pushes a `text/event-stream` as new data arrives.
+  • Benefits: Built-in support in modern browsers & many HTTP reverse proxies; uni-directional and firewall-friendly; low-latency streaming suited for real-time UI updates.
   • When to use: When you are building a Web UI that consumes streamed completions, or you want a push-based model but do not need the bi-directionality of WebSockets.
 
-- **`streamable-http`**  
-  Sends a standard HTTP response whose body is streamed incrementally (chunked transfer-encoding).  
-  • Benefits: Works with any HTTP client (curl, Python `requests`, Java `HttpClient`, etc.); no special SSE handling required; plays nicely with infrastructure that terminates or transforms HTTP but does **not** understand event streams.  
+- **`streamable-http`**
+  Sends a standard HTTP response whose body is streamed incrementally (chunked transfer-encoding).
+  • Benefits: Works with any HTTP client (curl, Python `requests`, Java `HttpClient`, etc.); no special SSE handling required; plays nicely with infrastructure that terminates or transforms HTTP but does **not** understand event streams.
   • When to use: The consumer is a language or runtime lacking SSE support, or you want to keep the transport strictly within the HTTP spec without custom headers.
 
-> **Note**  
+> **Note**
 > The CLI flag is `--transport streamable-http` (with a hyphen), while you may see it described conceptually as *HTTP-streamable*.
 
 ### Choosing between **SSE** and **streamable-HTTP**
