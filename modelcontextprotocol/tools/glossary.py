@@ -2,104 +2,17 @@
 
 from __future__ import annotations  # PEP 563 postponed evaluation of annotations
 
-import json
 import logging
-from typing import Dict, Any, Optional, List, Union, Iterable, cast
+from typing import Dict, Any, Optional, List, Union
 
 from client import get_atlan_client
 from pyatlan.model.assets import AtlasGlossary, AtlasGlossaryCategory, AtlasGlossaryTerm
 from pyatlan.model.enums import AtlanIcon
+from utils import parse_list_parameter  # shared helper
 from .models import CertificateStatus
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-
-def _normalize_to_list(
-    value: Optional[Union[str, Iterable[str]]],
-) -> Optional[List[str]]:  # noqa: D401
-    """Return ``value`` as a list of strings.
-
-    This helper attempts to be forgiving with the shapes we receive from the LLM
-    front-end.  In particular, some models (for example, *Claude*) may serialise
-    Python lists as **JSON-encoded strings** instead of sending them as native
-    lists.  This normaliser handles the following cases gracefully:
-
-    1. ``None`` – the value is returned unchanged.
-    2. ``list`` / ``set`` / ``tuple`` of strings – converted to ``list``.
-    3. A single plain string – wrapped in a one-item ``list``.
-    4. A JSON string that represents a list – parsed into a list.
-
-    Args:
-        value: The incoming parameter that is expected to contain one or more
-            strings.
-
-    Returns:
-        A list of strings or ``None`` if *value* is falsy.
-
-    Raises:
-        TypeError: If *value* is of an unexpected type or if a JSON string does
-            not decode into a list of strings.
-    """
-
-    if not value:
-        # Covers both None and empty containers / empty strings.
-        return None
-
-    # If it's already an iterable of strings (but *not* a str), convert to list.
-    if isinstance(value, (list, set, tuple)):
-        return list(cast(Iterable[str], value))
-
-    # If it's a bare string we need to inspect further.
-    if isinstance(value, str):
-        stripped = value.strip()
-
-        # Attempt to parse JSON-encoded list.
-        if stripped.startswith("[") and stripped.endswith("]"):
-            try:
-                parsed = json.loads(stripped)
-                if not isinstance(parsed, list):
-                    raise TypeError(
-                        "JSON string did not decode into a list – got "
-                        f"{type(parsed).__name__}."
-                    )
-                # Ensure *all* items are strings.
-                if not all(isinstance(item, str) for item in parsed):
-                    raise TypeError("Decoded JSON list contains non-string items.")
-                return parsed
-            except json.JSONDecodeError as exc:  # pragma: no cover – defensive.
-                logger.debug("Value %s is not valid JSON: %s", value, exc)
-                # Attempt a graceful, best-effort parse for malformed JSON-like input.
-
-                # Remove the surrounding square brackets if present so that we can
-                # split on commas: "[foo, bar]" → "foo, bar".
-                inner = (
-                    stripped[1:-1]
-                    if stripped.startswith("[") and stripped.endswith("]")
-                    else stripped
-                )
-
-                # Split on commas **that are not inside quotes** (basic heuristic).
-                # We intentionally keep this simple – it does not try to parse
-                # escaped quotes or nested structures because the expected input
-                # is a *flat* list of names.
-                cleaned_parts: List[str] = []
-                for raw_part in inner.split(","):
-                    part = raw_part.strip().strip('"').strip("'")
-                    if part:
-                        cleaned_parts.append(part)
-                parts = cleaned_parts
-
-                if parts:
-                    return parts
-
-        # Final fallback – treat the entire value as a single string item.
-        return [stripped]
-
-    raise TypeError(
-        "Expected None, string, or iterable of strings for list-like parameter; "
-        f"got {type(value).__name__}."
-    )
 
 
 def create_glossary_asset(
@@ -162,11 +75,11 @@ def create_glossary_asset(
             except AttributeError:
                 logger.warning(f"Invalid icon: {asset_icon}. Using default.")
         # Normalise potential list-like inputs that might be JSON strings
-        normalised_owner_users = _normalize_to_list(owner_users)
+        normalised_owner_users = parse_list_parameter(owner_users)
         if normalised_owner_users:
             glossary.owner_users = set(normalised_owner_users)
 
-        normalised_owner_groups = _normalize_to_list(owner_groups)
+        normalised_owner_groups = parse_list_parameter(owner_groups)
         if normalised_owner_groups:
             glossary.owner_groups = set(normalised_owner_groups)
 
@@ -267,11 +180,11 @@ def create_glossary_category_asset(
                 certificate_status = CertificateStatus(certificate_status)
             category.certificate_status = certificate_status.value
 
-        normalised_owner_users = _normalize_to_list(owner_users)
+        normalised_owner_users = parse_list_parameter(owner_users)
         if normalised_owner_users:
             category.owner_users = set(normalised_owner_users)
 
-        normalised_owner_groups = _normalize_to_list(owner_groups)
+        normalised_owner_groups = parse_list_parameter(owner_groups)
         if normalised_owner_groups:
             category.owner_groups = set(normalised_owner_groups)
 
@@ -357,7 +270,7 @@ def create_glossary_term_asset(
         # Prepare category references (if any) upfront so they can be sent through the creator call itself.
         category_refs: Optional[List[AtlasGlossaryCategory]] = None
 
-        normalised_categories = _normalize_to_list(categories)
+        normalised_categories = parse_list_parameter(categories)
         if normalised_categories:
             category_refs = [
                 AtlasGlossaryCategory.ref_by_guid(cat_guid)
@@ -387,11 +300,11 @@ def create_glossary_term_asset(
                 certificate_status = CertificateStatus(certificate_status)
             term.certificate_status = certificate_status.value
 
-        normalised_owner_users = _normalize_to_list(owner_users)
+        normalised_owner_users = parse_list_parameter(owner_users)
         if normalised_owner_users:
             term.owner_users = set(normalised_owner_users)
 
-        normalised_owner_groups = _normalize_to_list(owner_groups)
+        normalised_owner_groups = parse_list_parameter(owner_groups)
         if normalised_owner_groups:
             term.owner_groups = set(normalised_owner_groups)
 

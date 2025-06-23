@@ -483,7 +483,6 @@ def create_glossary_asset_tool(
     description=None,
     long_description=None,
     certificate_status=None,
-    asset_icon=None,
     owner_users=None,
     owner_groups=None,
 ):
@@ -496,7 +495,6 @@ def create_glossary_asset_tool(
         long_description (str, optional): Detailed description of the glossary.
         certificate_status (str, optional): Certification status of the glossary.
             Can be "VERIFIED", "DRAFT", or "DEPRECATED".
-        asset_icon (str, optional): Icon for the glossary. For example: "BOOK_OPEN_TEXT".
         owner_users (List[str], optional): List of user names who should own this glossary.
         owner_groups (List[str], optional): List of group names who should own this glossary.
 
@@ -515,13 +513,12 @@ def create_glossary_asset_tool(
             description="Common business terminology used across the organization"
         )
 
-        # Create a glossary with icon, certification, and ownership
+        # Create a glossary with certification and ownership
         result = create_glossary_asset_tool(
             name="Data Quality Glossary",
             description="Terms related to data quality standards",
             long_description="This glossary contains comprehensive definitions of data quality metrics, standards, and processes used throughout our data platform.",
             certificate_status="VERIFIED",
-            asset_icon="BOOK_OPEN_TEXT",
             owner_users=["john.doe", "jane.smith"],
             owner_groups=["data-stewards"]
         )
@@ -543,7 +540,6 @@ def create_glossary_asset_tool(
         description=description,
         long_description=long_description,
         certificate_status=certificate_status,
-        asset_icon=asset_icon,
         owner_users=owner_users,
         owner_groups=owner_groups,
     )
