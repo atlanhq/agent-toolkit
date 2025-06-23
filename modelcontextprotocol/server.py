@@ -6,6 +6,7 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    query_asset,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -455,6 +456,68 @@ def update_assets_tool(
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
         }
+
+
+@mcp.tool()
+def query_asset_tool(
+    sql,
+    data_source_name,
+    default_schema=None,
+):
+    """
+    Execute a SQL query on a table/view asset.
+
+    This tool enables querying table/view assets on the source similar to 
+    what's available in the insights table. It uses the Atlan query capabilities
+    to execute SQL against connected data sources.
+
+    Args:
+        sql (str): The SQL query to execute
+        data_source_name (str): Unique name of the connection to use for the query
+            (e.g., "default/snowflake/1705755637")
+        default_schema (str, optional): Default schema name to use for unqualified 
+            objects in the SQL, in the form "DB.SCHEMA" 
+            (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - success: Boolean indicating if the query was successful
+            - data: Query result data (rows, columns) if successful
+            - error: Error message if query failed
+            - query_info: Additional query execution information
+
+    Examples:
+        # Query a specific table with schema
+        result = query_asset_tool(
+            sql='SELECT * FROM "CUSTOMERS" LIMIT 10',
+            data_source_name="default/snowflake/1705755637",
+            default_schema="RAW.WIDEWORLDIMPORTERS_WAREHOUSE"
+        )
+
+        # Query without specifying default schema (fully qualified table names)
+        result = query_asset_tool(
+            sql='SELECT COUNT(*) FROM "RAW"."WIDEWORLDIMPORTERS_WAREHOUSE"."ORDERS"',
+            data_source_name="default/postgres/connection123"
+        )
+
+        # Complex analytical query
+        result = query_asset_tool(
+            sql='''
+            SELECT 
+                category,
+                COUNT(*) AS product_count,
+                AVG(price) AS avg_price,
+                MAX(price) AS max_price
+            FROM products 
+            WHERE created_date >= '2024-01-01'
+            GROUP BY category 
+            ORDER BY product_count DESC
+            ''',
+            data_source_name="default/snowflake/analytics_db",
+            default_schema="ANALYTICS.PRODUCTS"
+        )
+    """
+    return query_asset(sql, data_source_name, default_schema)
 
 
 def main():
