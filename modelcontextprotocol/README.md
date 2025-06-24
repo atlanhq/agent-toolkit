@@ -15,6 +15,7 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 - [MCP configurations](#mcp-configurations)
   - [Python (Local)](#python-local)
   - [Container (Local)](#container-local)
+- [Deployment](#deployment)
 - [Production Deployment](#production-deployment)
   - [MCP configuration](#mcp-configuration)
 - [Develop Locally](#develop-locally)
@@ -181,6 +182,10 @@ docker build . -t atlan-mcp-server:latest
 **Note**:
 - Make sure to replace `your_api_key`, `your_instance`, and `your_agent_id` with your actual Atlan API key, instance URL, and agent ID(optional) respectively
 
+
+## Deployment
+
+For information on running the server in different environments (stdio, SSE, or streamable HTTP), see the [deployment guide](../deployment/Readme.md).
 
 ## Production Deployment
 - Host the Atlan MCP container image on the cloud/platform of your choice
