@@ -1,7 +1,7 @@
 """Configuration settings for the application."""
 
 from pydantic_settings import BaseSettings
-from version import __version__ as MCP_VERSION
+from .version import __version__ as MCP_VERSION
 
 
 class Settings(BaseSettings):
