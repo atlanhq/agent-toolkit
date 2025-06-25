@@ -1,7 +1,7 @@
 """Configuration settings for the application."""
 
 from pydantic_settings import BaseSettings
-from .version import __version__ as MCP_VERSION
+from version import __version__ as MCP_VERSION
 
 
 class Settings(BaseSettings):
@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     ATLAN_API_KEY: str
     ATLAN_AGENT_ID: str = "NA"
     ATLAN_AGENT: str = "atlan-mcp"
-    ATLAN_MCP_USER_AGENT: str = f"Atlan MCP Server {MCP_VERSION}"
+    ATLAN_MCP_USER_AGENT: str = "Atlan MCP Server 0.2.2"
 
     @property
     def headers(self) -> dict:
