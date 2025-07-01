@@ -55,25 +55,14 @@ def create_glossary_asset(
         glossary = AtlasGlossary.creator(name=name)
 
         # Set optional attributes
-        if description:
-            glossary.description = description
+        glossary.description = description
 
-        if long_description:
-            glossary.user_description = long_description
+        glossary.user_description = long_description
 
-        if certificate_status:
-            # Convert string to CertificateStatus enum if needed
-            if isinstance(certificate_status, str):
-                certificate_status = CertificateStatus(certificate_status)
-            glossary.certificate_status = certificate_status.value
+        if isinstance(certificate_status, str):
+            certificate_status = CertificateStatus(certificate_status)
+        glossary.certificate_status = certificate_status.value
 
-        if asset_icon:
-            try:
-                # Convert string to AtlanIcon enum
-                icon_enum = getattr(AtlanIcon, asset_icon.upper())
-                glossary.asset_icon = icon_enum
-            except AttributeError:
-                logger.warning(f"Invalid icon: {asset_icon}. Using default.")
         # Normalise potential list-like inputs that might be JSON strings
         normalised_owner_users = parse_list_parameter(owner_users)
         if normalised_owner_users:
@@ -168,17 +157,13 @@ def create_glossary_category_asset(
         )
 
         # Set optional attributes
-        if description:
-            category.description = description
+        category.description = description
 
-        if long_description:
-            category.user_description = long_description
+        category.user_description = long_description
 
-        if certificate_status:
-            # Convert string to CertificateStatus enum if needed
-            if isinstance(certificate_status, str):
-                certificate_status = CertificateStatus(certificate_status)
-            category.certificate_status = certificate_status.value
+        if isinstance(certificate_status, str):
+            certificate_status = CertificateStatus(certificate_status)
+        category.certificate_status = certificate_status.value
 
         normalised_owner_users = parse_list_parameter(owner_users)
         if normalised_owner_users:
@@ -288,17 +273,13 @@ def create_glossary_term_asset(
             term = AtlasGlossaryTerm.creator(name=name, anchor=anchor_glossary)
 
         # Set optional attributes
-        if description:
-            term.description = description
+        term.description = description
 
-        if long_description:
-            term.user_description = long_description
+        term.user_description = long_description
 
-        if certificate_status:
-            # Convert string to CertificateStatus enum if needed
-            if isinstance(certificate_status, str):
-                certificate_status = CertificateStatus(certificate_status)
-            term.certificate_status = certificate_status.value
+        if isinstance(certificate_status, str):
+            certificate_status = CertificateStatus(certificate_status)
+        term.certificate_status = certificate_status.value
 
         normalised_owner_users = parse_list_parameter(owner_users)
         if normalised_owner_users:
