@@ -360,7 +360,7 @@ def update_assets_tool(
 
 @mcp.tool()
 def create_glossary_assets_tool(
-    glossaries: Union[dict, List[Union[dict, GlossarySpecification]]],
+    glossaries: Union[str, dict, List[Union[dict, GlossarySpecification]]],
 ):
     """
     Create one or multiple AtlasGlossary assets in Atlan.
@@ -413,19 +413,29 @@ def create_glossary_assets_tool(
             }
         ])
     """
+    # Debug: Log what Claude is sending
+    print(f"DEBUG: glossaries type: {type(glossaries)}")
+    print(f"DEBUG: glossaries content: {repr(glossaries)}")
+    
     # Parse parameters to handle JSON strings
     if isinstance(glossaries, str):
         try:
-            glossaries = json.loads(glossaries)
-        except json.JSONDecodeError:
-            return {"error": "Invalid JSON format for glossaries parameter"}
+            parsed = json.loads(glossaries)
+            print(f"DEBUG: Successfully parsed JSON: {type(parsed)}")
+            glossaries = parsed
+        except json.JSONDecodeError as e:
+            print(f"DEBUG: JSON parse error: {e}")
+            return {
+                "error": f"Invalid JSON format for glossaries parameter: {str(e)}",
+                "raw_input": glossaries[:200] + "..." if len(glossaries) > 200 else glossaries
+            }
 
     return create_glossary_assets(glossaries)
 
 
 @mcp.tool()
 def create_glossary_term_assets_tool(
-    terms: Union[dict, List[Union[dict, GlossaryTermSpecification]]],
+    terms: Union[str, dict, List[Union[dict, GlossaryTermSpecification]]],
 ):
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
@@ -498,7 +508,7 @@ def create_glossary_term_assets_tool(
 
 @mcp.tool()
 def create_glossary_category_assets_tool(
-    categories: Union[dict, List[Union[dict, GlossaryCategorySpecification]]],
+    categories: Union[str, dict, List[Union[dict, GlossaryCategorySpecification]]],
 ):
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
