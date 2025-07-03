@@ -3,21 +3,31 @@ from .dsl import get_assets_by_dsl
 from .lineage import traverse_lineage
 from .assets import update_assets
 from .glossary import (
-    create_glossary_asset,
-    create_glossary_category_asset,
-    create_glossary_term_asset,
+    create_glossary_category_assets,
+    create_glossary_assets,
+    create_glossary_term_assets,
 )
-from .models import CertificateStatus, UpdatableAttribute, UpdatableAsset
+from .models import (
+    CertificateStatus,
+    UpdatableAttribute,
+    UpdatableAsset,
+    GlossarySpecification,
+    GlossaryCategorySpecification,
+    GlossaryTermSpecification,
+)
 
 __all__ = [
     "search_assets",
     "get_assets_by_dsl",
     "traverse_lineage",
     "update_assets",
-    "create_glossary_asset",
-    "create_glossary_category_asset",
-    "create_glossary_term_asset",
+    "create_glossary_category_assets",
+    "create_glossary_assets",
+    "create_glossary_term_assets",
     "CertificateStatus",
     "UpdatableAttribute",
     "UpdatableAsset",
+    "GlossarySpecification",
+    "GlossaryCategorySpecification",
+    "GlossaryTermSpecification",
 ]
