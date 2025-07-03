@@ -416,7 +416,7 @@ def create_glossary_assets_tool(
     # Debug: Log what Claude is sending
     print(f"DEBUG: glossaries type: {type(glossaries)}")
     print(f"DEBUG: glossaries content: {repr(glossaries)}")
-    
+
     # Parse parameters to handle JSON strings
     if isinstance(glossaries, str):
         try:
@@ -427,7 +427,9 @@ def create_glossary_assets_tool(
             print(f"DEBUG: JSON parse error: {e}")
             return {
                 "error": f"Invalid JSON format for glossaries parameter: {str(e)}",
-                "raw_input": glossaries[:200] + "..." if len(glossaries) > 200 else glossaries
+                "raw_input": glossaries[:200] + "..."
+                if len(glossaries) > 200
+                else glossaries,
             }
 
     return create_glossary_assets(glossaries)
