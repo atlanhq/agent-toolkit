@@ -35,23 +35,11 @@ python modelcontextprotocol/server.py --transport streamable-http --host 0.0.0.0
 > **Note**
 > The CLI flag is `--transport streamable-http` (with a hyphen), while you may see it described conceptually as *HTTP-streamable*.
 
-### Choosing between **SSE** and **streamable-HTTP**
-
-Both transports let you receive incremental updates over the network. The table below can help you decide:
-
-| Criterion | Choose **SSE** if… | Choose **streamable-HTTP** if… |
-|-----------|-------------------|------------------------------|
-| Client library availability | Your consumer is a browser or a library that natively understands `text/event-stream`. | You only have a basic HTTP client that can read a stream of bytes/chunks. |
-| Proxy / Load-balancer support | You have control over proxy settings and can enable event-stream passthrough. | You are behind a gateway that **rewrites** or **buffers** SSE but still supports chunked HTTP responses. |
-| Simplicity of parsing | You prefer the simple event structure (`data: ...\n\n`). | You prefer raw JSON or text chunks without the SSE framing. |
-| Bi-directionality | Not required. | Not required. *(If you need full duplex, consider WebSockets—currently not exposed by the server.)* |
 
 ### Environment variables & production tips
 
 * Ensure `ATLAN_BASE_URL` and `ATLAN_API_KEY` are provided (e.g., via a secrets manager).
 * Expose the chosen port (`--port`, default `8000`) in your container or deployment manifest.
-* Use health checks (e.g., `GET /healthz`) if you add one via a reverse proxy.
-* Pin the server image/tag that matches the library versions required by your agent.
 
 ---
 
