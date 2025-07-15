@@ -202,6 +202,12 @@ def search_assets_tool(
             include_attributes=["categories"]
         )
 
+    Additional attributes you can include in the conditions to extract more metadata from an asset:
+        - columns
+        - column_count
+        - row_count
+        - readme
+        - owner_users
     """
     try:
         # Parse JSON string parameters if needed
