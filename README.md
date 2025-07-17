@@ -15,9 +15,16 @@ An MCP server that enables interaction with Atlan services through tool calling.
 
 You can find the documentation and setup instructions for the MCP server [here](modelcontextprotocol/README.md).
 
+
+## 🔍 DeepWiki: Ask Questions About This Project
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/atlanhq/agent-toolkit)
+
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to the Atlan Agent Toolkit.
+
 
 ## License
 
