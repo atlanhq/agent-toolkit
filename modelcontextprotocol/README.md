@@ -49,10 +49,6 @@ Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json`
 
 ### Add to Cursor
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=atlan&config=eyJjb21tYW5kIjoiZG9ja2VyIHJ1biAtaSAtLXJtIC1lIEFUTEFOX0FQSV9LRVk9PFlPVVJfQVBJX0tFWT4gLWUgQVRMQU5fQkFTRV9VUkw9aHR0cHM6Ly88WU9VUl9JTlNUQU5DRT4uYXRsYW4uY29tIC1lIEFUTEFOX0FHRU5UX0lEPTxZT1VSX0FHRU5UX0lEPiBnaGNyLmlvL2F0bGFuaHEvYXRsYW4tbWNwLXNlcnZlcjpsYXRlc3Q%3D)
-
-OR
-
 Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the following:
 
 ```json
@@ -120,10 +116,6 @@ Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json`
 ```
 
 ### Add to Cursor
-
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=atlan&config=eyJjb21tYW5kIjoidXZ4IGF0bGFuLW1jcC1zZXJ2ZXIiLCJlbnYiOnsiQVRMQU5fQVBJX0tFWSI6InlvdXJfYXBpX2tleSIsIkFUTEFOX0JBU0VfVVJMIjoiaHR0cHM6Ly95b3VyLWluc3RhbmNlLmF0bGFuLmNvbSIsIkFUTEFOX0FHRU5UX0lEIjoieW91cl9hZ2VudF9pZCJ9fQ%3D%3D)
-
-OR
 
 Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the following:
 
