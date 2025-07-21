@@ -2,41 +2,28 @@
 
 The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction) server allows your AI agents to interact with Atlan services.
 
-## Prerequisites
-
-- Python 3.11 or higher
-- [uv](https://docs.astral.sh/uv/) Package Manager or [Docker](https://www.docker.com/) (based on your preference)
-
 ## Quick Start
 
-An Atlan API key is required for any of the installation types you choose. To generate the API key, refer to the [Atlan documentation](https://ask.atlan.com/hc/en-us/articles/8312649180049-API-authentication).
+1. Generate Atlan API key by following the [documentation](https://ask.atlan.com/hc/en-us/articles/8312649180049-API-authentication).
+2. Select one of the following approaches based on your preference:
+   - **[Install via Docker](#install-via-docker)** - Uses Docker containers (recommended)
+   - **[Install via uv](#install-via-uv)** - Uses UV package manager
 
 > [!NOTE]
-> Make sure to replace `<YOUR_API_KEY>`, `<YOUR_INSTANCE>`, and `<YOUR_AGENT_ID>` with your actual Atlan API key, instance URL, and agent ID(optional) respectively
+> Make sure to replace `<YOUR_API_KEY>`, `<YOUR_INSTANCE>`, and `<YOUR_AGENT_ID>` with your actual Atlan API key, instance URL, and agent ID(optional) in the configuration file respectively.
 
-### Add to Claude Desktop (via uv)
+## Install via Docker
 
-Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json` to include the following:
+**Prerequisites:**
+- Follow the official [Docker installation guide](https://docs.docker.com/get-docker/) for your operating system
+- Verify Docker is running:
+   ```bash
+   docker --version
+   ```
 
-```json
-{
-  "mcpServers": {
-    "atlan": {
-      "command": "uvx",
-      "args": ["atlan-mcp-server"],
-      "env": {
-        "ATLAN_API_KEY": "<YOUR_API_KEY>",
-        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
-        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
-      }
-    }
-  }
-}
-```
+### Add to Claude Desktop
 
-### Add to Claude Desktop (via Docker)
-
-Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json` to include the following:
+Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json` and add:
 
 ```json
 {
@@ -60,35 +47,7 @@ Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json`
 }
 ```
 
-### Add to Cursor (via uv)
-
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=atlan&config=eyJjb21tYW5kIjoidXZ4IGF0bGFuLW1jcC1zZXJ2ZXIiLCJlbnYiOnsiQVRMQU5fQVBJX0tFWSI6InlvdXJfYXBpX2tleSIsIkFUTEFOX0JBU0VfVVJMIjoiaHR0cHM6Ly95b3VyLWluc3RhbmNlLmF0bGFuLmNvbSIsIkFUTEFOX0FHRU5UX0lEIjoieW91cl9hZ2VudF9pZCJ9fQ%3D%3D)
-
-OR
-
-Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the following:
-
-```json
-{
-  "mcpServers": {
-    "atlan": {
-      "command": "uvx",
-      "args": ["atlan-mcp-server"],
-      "env": {
-        "ATLAN_API_KEY": "<YOUR_API_KEY>",
-        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
-        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
-      }
-    }
-  }
-}
-```
-
-### Add to Cursor (via Docker)
-
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=atlan&config=eyJjb21tYW5kIjoiZG9ja2VyIHJ1biAtaSAtLXJtIC1lIEFUTEFOX0FQSV9LRVk9PFlPVVJfQVBJX0tFWT4gLWUgQVRMQU5fQkFTRV9VUkw9aHR0cHM6Ly88WU9VUl9JTlNUQU5DRT4uYXRsYW4uY29tIC1lIEFUTEFOX0FHRU5UX0lEPTxZT1VSX0FHRU5UX0lEPiBnaGNyLmlvL2F0bGFuaHEvYXRsYW4tbWNwLXNlcnZlcjpsYXRlc3QifQ%3D%3D)
-
-OR
+### Add to Cursor
 
 Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the following:
 
@@ -109,6 +68,68 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
         "ATLAN_AGENT_ID=<YOUR_AGENT_ID>",
         "ghcr.io/atlanhq/atlan-mcp-server:latest"
       ]
+    }
+  }
+}
+```
+
+## Install via uv
+
+**Prerequisites:**
+- Install uv:
+   ```bash
+   # macOS/Linux
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
+   # Windows (PowerShell)
+   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+   # Alternative: if you already have Python/pip
+   pip install uv
+   ```
+- Verify installation:
+  ```bash
+  uv --version
+  ```
+
+> [!NOTE]
+> With uv, `uvx` automatically fetches the latest version each time you run it. For more predictable behavior, consider using the Docker option.
+
+### Add to Claude Desktop
+
+Go to `Claude > Settings > Developer > Edit Config > claude_desktop_config.json` to include the following:
+
+```json
+{
+  "mcpServers": {
+    "atlan": {
+      "command": "uvx",
+      "args": ["atlan-mcp-server"],
+      "env": {
+        "ATLAN_API_KEY": "<YOUR_API_KEY>",
+        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
+      }
+    }
+  }
+}
+```
+
+### Add to Cursor
+
+Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the following:
+
+```json
+{
+  "mcpServers": {
+    "atlan": {
+      "command": "uvx",
+      "args": ["atlan-mcp-server"],
+      "env": {
+        "ATLAN_API_KEY": "<YOUR_API_KEY>",
+        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
+      }
     }
   }
 }
@@ -156,6 +177,17 @@ Want to develop locally? Check out our [Local Build](./docs/LOCAL_BUILD.md) Guid
 
 - Reach out to support@atlan.com for any questions or feedback
 - You can also directly create a [GitHub issue](https://github.com/atlanhq/agent-toolkit/issues) and we will answer it for you
+
+## Frequently Asked Questions
+
+### Do I need Python installed?
+
+**Short answer**: It depends on your installation method.
+
+- **Docker (Recommended)**: No Python installation required on your host machine. The container includes everything needed.
+- **uv**: A Python runtime is needed, but uv will automatically download and manage Python 3.11+ for you if it's not already available.
+
+**Technical details**: The Atlan MCP server is implemented as a Python application. The Model Context Protocol itself is language-agnostic, but our current implementation requires Python 3.11+ to run.
 
 ## Troubleshooting
 
