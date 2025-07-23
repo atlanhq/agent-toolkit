@@ -14,8 +14,6 @@ from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
     parse_json_parameter,
     parse_list_parameter,
-    to_int,
-    to_bool,
 )
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -224,12 +222,24 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
-        # Convert numeric and boolean parameters that might arrive as strings
-        min_somes = to_int(min_somes, default=1)
-        limit = to_int(limit, default=10)
-        offset = to_int(offset, default=0)
-        include_archived = to_bool(include_archived, default=False)
-        directly_tagged = to_bool(directly_tagged, default=True)
+        # Cast numeric and boolean parameters to their proper types
+        try:
+            min_somes = int(min_somes) 
+        except ValueError:
+            min_somes = 1
+
+        try:
+            limit = int(limit) 
+        except ValueError:
+            limit = 10
+
+        try:
+            offset = int(offset)
+        except ValueError:
+            offset = 0
+
+        include_archived = bool(include_archived)
+        directly_tagged = bool(directly_tagged)
 
         return search_assets(
             conditions,
@@ -381,9 +391,17 @@ def traverse_lineage_tool(
     # Claude and other clients sometimes provide numeric parameters as strings.
     # Convert them to integers while validating their correctness.
 
-    depth_int = to_int(depth, default=1000000)
-    size_int = to_int(size, default=10)
-    immediate_neighbors = to_bool(immediate_neighbors, default=True)
+    try:
+        depth_int = int(depth)
+    except ValueError:
+        depth_int = 1000000
+
+    try:
+        size_int = int(size)
+    except ValueError:
+        size_int = 10
+
+    immediate_neighbors = bool(immediate_neighbors)
 
     return traverse_lineage(
         guid=guid,
