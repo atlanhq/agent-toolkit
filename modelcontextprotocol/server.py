@@ -18,7 +18,6 @@ from utils.parameters import (
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
-
 @mcp.tool()
 def search_assets_tool(
     conditions=None,
@@ -220,6 +219,13 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
+        # direct casting for parameters since LLM sends stringified values for int and bool
+        min_somes = int(min_somes)
+        limit = int(limit)
+        offset = int(offset)
+        include_archived = bool(include_archived)
+        directly_tagged = bool(directly_tagged)
+
         return search_assets(
             conditions,
             negative_conditions,
@@ -329,8 +335,10 @@ def traverse_lineage_tool(
     Args:
         guid (str): GUID of the starting asset
         direction (str): Direction to traverse ("UPSTREAM" or "DOWNSTREAM")
-        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
-        size (int, optional): Maximum number of results to return. Defaults to 10.
+        depth (int | str, optional): Maximum depth to traverse. Accepts either
+            an integer or its string representation. Defaults to 1,000,000.
+        size (int | str, optional): Maximum number of results to return. Accepts either
+            an integer or its string representation. Defaults to 10.
         immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
 
     Returns:
@@ -363,6 +371,11 @@ def traverse_lineage_tool(
         raise ValueError(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
+
+
+    depth= int(depth)
+    size= int(size)
+    immediate_neighbors = bool(immediate_neighbors)
 
     return traverse_lineage(
         guid=guid,
