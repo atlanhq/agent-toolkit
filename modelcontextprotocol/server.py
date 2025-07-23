@@ -18,6 +18,56 @@ from utils.parameters import (
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
+# -----------------------------------------------------------------------------
+# Internal helpers for parameter sanitization
+# -----------------------------------------------------------------------------
+
+
+def _to_bool(value, *, default: bool | None = None):
+    """Convert a stringified boolean ("true" / "false") to :pyclass:`bool`.
+
+    If *value* is already a boolean it is returned as-is. For strings, only the
+    exact (case-insensitive) literals "true" and "false" are recognised. Any
+    other value results in the *default* being returned.
+    """
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+
+    return default
+
+
+def _to_int(value, *, default: int | None = None):
+    """Attempt to cast *value* to an :pyclass:`int`.
+
+    Returns *default* if conversion fails or *value* is ``None``.
+    """
+
+    if value is None:
+        return default
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+
+    # Fallback for other numeric types
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
 
 @mcp.tool()
 def search_assets_tool(
@@ -220,6 +270,13 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
+        # Convert numeric and boolean parameters that might arrive as strings
+        min_somes = _to_int(min_somes, default=1)
+        limit = _to_int(limit, default=10)
+        offset = _to_int(offset, default=0)
+        include_archived = _to_bool(include_archived, default=False)
+        directly_tagged = _to_bool(directly_tagged, default=True)
+
         return search_assets(
             conditions,
             negative_conditions,
@@ -329,8 +386,10 @@ def traverse_lineage_tool(
     Args:
         guid (str): GUID of the starting asset
         direction (str): Direction to traverse ("UPSTREAM" or "DOWNSTREAM")
-        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
-        size (int, optional): Maximum number of results to return. Defaults to 10.
+        depth (int | str, optional): Maximum depth to traverse. Accepts either
+            an integer or its string representation. Defaults to 1,000,000.
+        size (int | str, optional): Maximum number of results to return. Accepts either
+            an integer or its string representation. Defaults to 10.
         immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
 
     Returns:
@@ -364,11 +423,19 @@ def traverse_lineage_tool(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
 
+    # --- Parameter sanitization -------------------------------------------------
+    # Claude and other clients sometimes provide numeric parameters as strings.
+    # Convert them to integers while validating their correctness.
+
+    depth_int = _to_int(depth, default=1000000)
+    size_int = _to_int(size, default=10)
+    immediate_neighbors = _to_bool(immediate_neighbors, default=True)
+
     return traverse_lineage(
         guid=guid,
         direction=direction_enum,
-        depth=depth,
-        size=size,
+        depth=depth_int,
+        size=size_int,
         immediate_neighbors=immediate_neighbors,
     )
 
