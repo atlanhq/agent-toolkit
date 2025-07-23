@@ -14,59 +14,13 @@ from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
     parse_json_parameter,
     parse_list_parameter,
+    to_int,
+    to_bool,
 )
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
-# -----------------------------------------------------------------------------
-# Internal helpers for parameter sanitization
-# -----------------------------------------------------------------------------
-
-
-def _to_bool(value, *, default: bool | None = None):
-    """Convert a stringified boolean ("true" / "false") to :pyclass:`bool`.
-
-    If *value* is already a boolean it is returned as-is. For strings, only the
-    exact (case-insensitive) literals "true" and "false" are recognised. Any
-    other value results in the *default* being returned.
-    """
-
-    if isinstance(value, bool):
-        return value
-
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered == "true":
-            return True
-        if lowered == "false":
-            return False
-
-    return default
-
-
-def _to_int(value, *, default: int | None = None):
-    """Attempt to cast *value* to an :pyclass:`int`.
-
-    Returns *default* if conversion fails or *value* is ``None``.
-    """
-
-    if value is None:
-        return default
-
-    if isinstance(value, int):
-        return value
-
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return default
-
-    # Fallback for other numeric types
-    try:
-        return int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return default
+# Internal helper functions migrated to utils.parameters
 
 
 @mcp.tool()
@@ -271,11 +225,11 @@ def search_assets_tool(
         guids = parse_list_parameter(guids)
 
         # Convert numeric and boolean parameters that might arrive as strings
-        min_somes = _to_int(min_somes, default=1)
-        limit = _to_int(limit, default=10)
-        offset = _to_int(offset, default=0)
-        include_archived = _to_bool(include_archived, default=False)
-        directly_tagged = _to_bool(directly_tagged, default=True)
+        min_somes = to_int(min_somes, default=1)
+        limit = to_int(limit, default=10)
+        offset = to_int(offset, default=0)
+        include_archived = to_bool(include_archived, default=False)
+        directly_tagged = to_bool(directly_tagged, default=True)
 
         return search_assets(
             conditions,
@@ -427,9 +381,9 @@ def traverse_lineage_tool(
     # Claude and other clients sometimes provide numeric parameters as strings.
     # Convert them to integers while validating their correctness.
 
-    depth_int = _to_int(depth, default=1000000)
-    size_int = _to_int(size, default=10)
-    immediate_neighbors = _to_bool(immediate_neighbors, default=True)
+    depth_int = to_int(depth, default=1000000)
+    size_int = to_int(size, default=10)
+    immediate_neighbors = to_bool(immediate_neighbors, default=True)
 
     return traverse_lineage(
         guid=guid,

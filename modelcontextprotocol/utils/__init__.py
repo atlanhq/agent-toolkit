@@ -9,6 +9,8 @@ from .search import SearchUtils
 from .parameters import (
     parse_json_parameter,
     parse_list_parameter,
+    to_int,
+    to_bool,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "SearchUtils",
     "parse_json_parameter",
     "parse_list_parameter",
+    "to_int",
+    "to_bool",
 ]
