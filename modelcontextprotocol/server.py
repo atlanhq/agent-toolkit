@@ -18,9 +18,6 @@ from utils.parameters import (
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
-# Internal helper functions migrated to utils.parameters
-
-
 @mcp.tool()
 def search_assets_tool(
     conditions=None,
@@ -222,24 +219,12 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
-        # Cast numeric and boolean parameters to their proper types
-        try:
-            min_somes = int(min_somes) 
-        except ValueError:
-            min_somes = 1
-
-        try:
-            limit = int(limit) 
-        except ValueError:
-            limit = 10
-
-        try:
-            offset = int(offset)
-        except ValueError:
-            offset = 0
-
+        # direct casting for parameters since LLM sends stringified values for int and bool
+        min_somes = int(min_somes)
+        limit = int(limit)
+        offset = int(offset)
         include_archived = bool(include_archived)
-        directly_tagged = bool(directly_tagged)
+        directly_tagged = bool(directly_tagged.lower())
 
         return search_assets(
             conditions,
@@ -387,27 +372,16 @@ def traverse_lineage_tool(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
 
-    # --- Parameter sanitization -------------------------------------------------
-    # Claude and other clients sometimes provide numeric parameters as strings.
-    # Convert them to integers while validating their correctness.
 
-    try:
-        depth_int = int(depth)
-    except ValueError:
-        depth_int = 1000000
-
-    try:
-        size_int = int(size)
-    except ValueError:
-        size_int = 10
-
-    immediate_neighbors = bool(immediate_neighbors)
+    depth= int(depth)
+    size= int(size)
+    immediate_neighbors = bool(immediate_neighbors.lower())
 
     return traverse_lineage(
         guid=guid,
         direction=direction_enum,
-        depth=depth_int,
-        size=size_int,
+        depth=depth,
+        size=size,
         immediate_neighbors=immediate_neighbors,
     )
 
