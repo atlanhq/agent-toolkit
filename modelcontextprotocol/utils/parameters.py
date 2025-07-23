@@ -69,6 +69,3 @@ def parse_list_parameter(param: Any) -> Optional[List[Any]]:
         return param
 
     return [param]
-
-
-# Helpers removed as per latest requirement

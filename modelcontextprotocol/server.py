@@ -224,7 +224,7 @@ def search_assets_tool(
         limit = int(limit)
         offset = int(offset)
         include_archived = bool(include_archived)
-        directly_tagged = bool(directly_tagged.lower())
+        directly_tagged = bool(directly_tagged)
 
         return search_assets(
             conditions,
@@ -375,7 +375,7 @@ def traverse_lineage_tool(
 
     depth= int(depth)
     size= int(size)
-    immediate_neighbors = bool(immediate_neighbors.lower())
+    immediate_neighbors = bool(immediate_neighbors)
 
     return traverse_lineage(
         guid=guid,
