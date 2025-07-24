@@ -103,6 +103,80 @@ def search_assets_tool(
             }
         )
 
+        # Search for assets with multiple type names (OR logic)
+        assets = search_assets(
+            conditions={
+                "type_name": ["Table", "Column", "View"]  # Uses .within() for OR logic
+            }
+        )
+
+        # Search for assets with compliant business policy
+        assets = search_assets(
+            conditions={
+                "asset_policy_guids": "business_policy_guid"
+            },
+            include_attributes=["asset_policy_guids"]
+        )
+
+        # Search for assets with non compliant business policy
+        assets = search_assets(
+            conditions={
+                "non_compliant_asset_policy_guids": "business_policy_guid"
+            },
+            include_attributes=["non_compliant_asset_policy_guids"]
+        )
+
+        # get non compliant business policies for an asset
+         assets = search_assets(
+            conditions={
+                "name": "has_any_value",
+                "displayName": "has_any_value",
+                "guid": "has_any_value"
+            },
+            include_attributes=["non_compliant_asset_policy_guids"]
+        )
+
+        # get compliant business policies for an asset
+         assets = search_assets(
+            conditions={
+                "name": "has_any_value",
+                "displayName": "has_any_value",
+                "guid": "has_any_value"
+            },
+            include_attributes=["asset_policy_guids"]
+        )
+
+        # get incident for a business policy
+         assets = search_assets(
+            conditions={
+                "asset_type": "BusinessPolicyIncident",
+                "business_policy_incident_related_policy_guids": "business_policy_guid"
+            },
+            some_conditions={
+                "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
+            }
+        )
+
+        # Search for glossary terms by name and status
+        glossary_terms = search_assets(
+            asset_type="AtlasGlossaryTerm",
+            conditions={
+                "certificate_status": CertificateStatus.VERIFIED.value,
+                "name": {
+                    "operator": "contains",
+                    "value": "customer",
+                    "case_insensitive": True
+                }
+            },
+            include_attributes=["categories"]
+        )
+
+    Additional attributes you can include in the conditions to extract more metadata from an asset:
+        - columns
+        - column_count
+        - row_count
+        - readme
+        - owner_users
     """
     try:
         # Parse JSON string parameters if needed

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-07-16
+
+### Added
+- Expanded docstring attributes for LLM context in `server.py` for improved clarity and developer experience
+
+### Changed
+- Major documentation and README refactoring for easier setup and integration with Claude Desktop and Cursor, including clearer configuration examples and troubleshooting guidance
+
+### Fixed
+- Made `ATLAN_MCP_USER_AGENT` dynamic in `settings.py` to always reflect the current MCP server version in API requests
+
+## [0.2.2] - 2025-06-23
+
+### Added
+- Multi-architecture build support for Docker images (ARM64 and AMD64)
+- README support for asset updates - allows updating asset documentation/readme using markdown content
+- Enhanced parameter parsing utilities for better Claude Desktop integration
+
+### Fixed
+- Search and Update Assets Tool compatibility issues with Claude Desktop
+- String input parsing from Claude Desktop for better tool interaction
+- Parameter validation and error handling improvements
+
+### Changed
+- Upgraded FastMCP dependency version for improved performance and stability
+- Enhanced tool parameter processing with better error handling
+- Improved asset update functionality with support for README content management
+
 ## [0.2.1] - 2025-05-24
 
 ### Added

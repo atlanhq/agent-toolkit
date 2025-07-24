@@ -1,50 +1,31 @@
 # Atlan Agent Toolkit
 
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
+[![PyPI - Version](https://img.shields.io/pypi/v/atlan-mcp-server.svg)](https://pypi.org/project/atlan-mcp-server)
+[![License](https://img.shields.io/github/license/atlanhq/agent-toolkit.svg)](https://github.com/atlanhq/agent-toolkit/blob/main/LICENSE)
+
+
 This repository contains a collection of tools and protocols for interacting with Atlan services for AI agents. Each component is designed to provide specific functionality and can be used independently or together.
 
 ## Components
 
-### [Model Context Protocol (MCP)](modelcontextprotocol/README.md)
-A protocol server that enables interaction with Atlan services through function calling. Provides tools for asset search, and retrieval using [pyatlan](https://developer.atlan.com/sdks/python/).
+### Model Context Protocol (MCP)
+
+An MCP server that enables interaction with Atlan services through tool calling. Provides tools for asset search, and retrieval using [pyatlan](https://developer.atlan.com/sdks/python/).
+
+You can find the documentation and setup instructions for the MCP server [here](modelcontextprotocol/README.md).
 
 
-## Contributing Guidelines
+## 🔍 DeepWiki: Ask Questions About This Project
 
-We welcome contributions to the Atlan Agent Toolkit! Please follow these guidelines when submitting pull requests:
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/atlanhq/agent-toolkit)
 
-1. **Create a New Branch:**
-   - Create a new branch for your changes.
-   - Use a descriptive name for the branch (e.g., `feature/add-new-tool`).
 
-2. **Make Your Changes:**
-   - Make your changes in the new branch.
-   - Ensure your tools are well-defined and follow the MCP specification.
+## Contributing
 
-3. **Submit a Pull Request:**
-   - Push your changes to your branch.
-   - Create a pull request against the `main` branch.
-   - Provide a clear description of the changes and any related issues.
-   - Ensure the PR passes all CI checks before requesting a review.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to the Atlan Agent Toolkit.
 
-4. **Code Quality:**
-   - We use pre-commit hooks to maintain code quality.
-   - Install pre-commit in your local environment:
-     ```bash
-     uv pip install pre-commit
-     pre-commit install
-     ```
-   - Pre-commit will automatically run checks before each commit, including:
-     - Code formatting with Ruff
-     - Trailing whitespace removal
-     - End-of-file fixing
-     - YAML and JSON validation
-     - Other quality checks
 
-5. **Environment Setup:**
-   - This project uses UV for dependency management.
-   - Refer to the [Model Context Protocol README](modelcontextprotocol/README.md) for setup instructions.
-   - Python 3.11 or higher is required.
+## License
 
-6. **Documentation:**
-   - Update documentation to reflect your changes.
-   - Add comments to your code where necessary.
+The project is licensed under the [MIT License](LICENSE). Please see the [LICENSE](LICENSE) file for details.
