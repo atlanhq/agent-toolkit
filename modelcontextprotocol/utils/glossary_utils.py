@@ -11,7 +11,9 @@ from pyatlan.model.assets import Asset
 logger = logging.getLogger(__name__)
 
 
-def save_asset(asset: Asset, extra: Optional[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+def save_asset(
+    asset: Asset, extra: Optional[Dict[str, Any]] | None = None
+) -> Dict[str, Any]:
     """Persist *asset* to Atlan and return a compact success / error dict.
 
     The helper keeps glossary-tool code short while avoiding additional layers
@@ -29,7 +31,9 @@ def save_asset(asset: Asset, extra: Optional[Dict[str, Any]] | None = None) -> D
     try:
         client = get_atlan_client()
         response = client.asset.save(asset)
-        guid = next(iter(response.guid_assignments.values()), None) if response else None
+        guid = (
+            next(iter(response.guid_assignments.values()), None) if response else None
+        )
 
         return {
             "guid": guid,

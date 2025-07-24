@@ -34,7 +34,6 @@ def create_glossary_asset(
         description (Optional[str]): Short description of the glossary.
         long_description (Optional[str]): Detailed description of the glossary.
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status.
-        asset_icon (Optional[str]): Icon for the glossary.
         owner_users (Optional[List[str]]): List of user names who should own this glossary.
         owner_groups (Optional[List[str]]): List of group names who should own this glossary.
 
@@ -137,9 +136,7 @@ def create_glossary_category_asset(
 
         return category
 
-    return save_asset(
-        asset_creator(), extra={"glossary_guid": glossary_guid}
-    )
+    return save_asset(asset_creator(), extra={"glossary_guid": glossary_guid})
 
 
 def create_glossary_term_asset(
@@ -211,13 +208,15 @@ def create_glossary_term_asset(
 
         return term
 
-    return save_asset(
-        asset_creator(), extra={"glossary_guid": glossary_guid}
-    )
+    return save_asset(asset_creator(), extra={"glossary_guid": glossary_guid})
 
 
 def _normalize_input(
-    raw: Union[Dict[str, Any], GlossarySpecification, List[Union[Dict[str, Any], GlossarySpecification]]],
+    raw: Union[
+        Dict[str, Any],
+        GlossarySpecification,
+        List[Union[Dict[str, Any], GlossarySpecification]],
+    ],
     spec_cls,
 ):
     """Return list of validated specification objects."""
@@ -237,8 +236,10 @@ def _normalize_input(
 
 def create_glossary_assets(
     glossaries: Union[
-        Dict[str, Any], GlossarySpecification, List[Union[Dict[str, Any], GlossarySpecification]]
-    ]
+        Dict[str, Any],
+        GlossarySpecification,
+        List[Union[Dict[str, Any], GlossarySpecification]],
+    ],
 ) -> Dict[str, Any]:
     """Create one or many glossaries and return a summary dictionary."""
 
@@ -272,8 +273,10 @@ def create_glossary_assets(
 
 def create_glossary_category_assets(
     categories: Union[
-        Dict[str, Any], GlossaryCategorySpecification, List[Union[Dict[str, Any], GlossaryCategorySpecification]]
-    ]
+        Dict[str, Any],
+        GlossaryCategorySpecification,
+        List[Union[Dict[str, Any], GlossaryCategorySpecification]],
+    ],
 ) -> Dict[str, Any]:
     """Create glossary categories and return summary."""
 
@@ -309,8 +312,10 @@ def create_glossary_category_assets(
 
 def create_glossary_term_assets(
     terms: Union[
-        Dict[str, Any], GlossaryTermSpecification, List[Union[Dict[str, Any], GlossaryTermSpecification]]
-    ]
+        Dict[str, Any],
+        GlossaryTermSpecification,
+        List[Union[Dict[str, Any], GlossaryTermSpecification]],
+    ],
 ) -> Dict[str, Any]:
     """Create glossary terms and return summary."""
 
