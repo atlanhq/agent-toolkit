@@ -437,6 +437,23 @@ def update_assets_tool(
                 "New description for asset 1", "New description for asset 2"
             ]
         )
+
+        # Update readme for a single asset with Markdown
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            },
+            attribute_name="readme",
+            attribute_values=['''# Customer Data Table
+            Contains customer transaction records for analytics.
+            **Key Info:**
+            - Updated daily at 2 AM
+            - Contains PII data
+            - [Documentation](https://docs.example.com)''']
+        )
     """
     try:
         # Parse JSON parameters
