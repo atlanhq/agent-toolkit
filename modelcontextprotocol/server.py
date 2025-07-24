@@ -1,6 +1,6 @@
 import argparse
 import json
-from typing import List, Union
+from typing import List, Union, Any
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -361,7 +361,7 @@ def update_assets_tool(
 @mcp.tool()
 def create_glossary_assets_tool(
     glossaries: Union[str, dict, List[Union[dict, GlossarySpecification]]],
-):
+) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
 
@@ -413,24 +413,12 @@ def create_glossary_assets_tool(
             }
         ])
     """
-    # Debug: Log what Claude is sending
-    print(f"DEBUG: glossaries type: {type(glossaries)}")
-    print(f"DEBUG: glossaries content: {repr(glossaries)}")
 
-    # Parse parameters to handle JSON strings
-    if isinstance(glossaries, str):
-        try:
-            parsed = json.loads(glossaries)
-            print(f"DEBUG: Successfully parsed JSON: {type(parsed)}")
-            glossaries = parsed
-        except json.JSONDecodeError as e:
-            print(f"DEBUG: JSON parse error: {e}")
-            return {
-                "error": f"Invalid JSON format for glossaries parameter: {str(e)}",
-                "raw_input": glossaries[:200] + "..."
-                if len(glossaries) > 200
-                else glossaries,
-            }
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        glossaries = parse_json_parameter(glossaries)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
 
     return create_glossary_assets(glossaries)
 
@@ -438,7 +426,7 @@ def create_glossary_assets_tool(
 @mcp.tool()
 def create_glossary_term_assets_tool(
     terms: Union[str, dict, List[Union[dict, GlossaryTermSpecification]]],
-):
+) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
@@ -498,12 +486,11 @@ def create_glossary_term_assets_tool(
             }
         ])
     """
-    # Parse parameters to handle JSON strings
-    if isinstance(terms, str):
-        try:
-            terms = json.loads(terms)
-        except json.JSONDecodeError:
-            return {"error": "Invalid JSON format for terms parameter"}
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        terms = parse_json_parameter(terms)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
 
     return create_glossary_term_assets(terms)
 
@@ -511,7 +498,7 @@ def create_glossary_term_assets_tool(
 @mcp.tool()
 def create_glossary_category_assets_tool(
     categories: Union[str, dict, List[Union[dict, GlossaryCategorySpecification]]],
-):
+) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
@@ -569,12 +556,11 @@ def create_glossary_category_assets_tool(
             }
         ])
     """
-    # Parse parameters to handle JSON strings
-    if isinstance(categories, str):
-        try:
-            categories = json.loads(categories)
-        except json.JSONDecodeError:
-            return {"error": "Invalid JSON format for categories parameter"}
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        categories = parse_json_parameter(categories)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
 

@@ -6,18 +6,13 @@ import logging
 from typing import Dict, Any, Optional, List, Union
 
 from pyatlan.model.assets import AtlasGlossary, AtlasGlossaryCategory, AtlasGlossaryTerm
-from utils import parse_list_parameter
+from utils.parameters import parse_list_parameter
+from utils.glossary_utils import save_asset
 from .models import (
     CertificateStatus,
     GlossarySpecification,
     GlossaryCategorySpecification,
     GlossaryTermSpecification,
-)
-from utils import (
-    process_certificate_status,
-    process_owners,
-    create_asset_with_error_handling,
-    create_batch_processor,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,7 +23,6 @@ def create_glossary_asset(
     description: Optional[str] = None,
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
-    asset_icon: Optional[str] = None,
     owner_users: Optional[List[str]] = None,
     owner_groups: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
@@ -56,17 +50,27 @@ def create_glossary_asset(
         glossary.description = description
         glossary.user_description = long_description
 
-        # Process certificate status and owners using utilities
-        process_certificate_status(glossary, certificate_status)
-        process_owners(glossary, owner_users, owner_groups)
+        # Certificate status
+        if certificate_status is not None:
+            cs = (
+                CertificateStatus(certificate_status)
+                if isinstance(certificate_status, str)
+                else certificate_status
+            )
+            glossary.certificate_status = cs.value
+
+        # Owners
+        users = parse_list_parameter(owner_users)
+        if users:
+            glossary.owner_users = set(users)
+
+        groups = parse_list_parameter(owner_groups)
+        if groups:
+            glossary.owner_groups = set(groups)
 
         return glossary
 
-    return create_asset_with_error_handling(
-        asset_creator=asset_creator,
-        asset_name=name,
-        asset_type="glossary",
-    )
+    return save_asset(asset_creator())
 
 
 def create_glossary_category_asset(
@@ -115,24 +119,32 @@ def create_glossary_category_asset(
         category.description = description
         category.user_description = long_description
 
-        # Process certificate status and owners using utilities
-        process_certificate_status(category, certificate_status)
-        process_owners(category, owner_users, owner_groups)
+        if certificate_status is not None:
+            cs = (
+                CertificateStatus(certificate_status)
+                if isinstance(certificate_status, str)
+                else certificate_status
+            )
+            category.certificate_status = cs.value
+
+        users = parse_list_parameter(owner_users)
+        if users:
+            category.owner_users = set(users)
+
+        groups = parse_list_parameter(owner_groups)
+        if groups:
+            category.owner_groups = set(groups)
 
         return category
 
-    return create_asset_with_error_handling(
-        asset_creator=asset_creator,
-        asset_name=name,
-        asset_type="glossary category",
-        extra_result_fields={"glossary_guid": glossary_guid},
+    return save_asset(
+        asset_creator(), extra={"glossary_guid": glossary_guid}
     )
 
 
 def create_glossary_term_asset(
     name: str,
     glossary_guid: str,
-    alias: Optional[str] = None,
     description: Optional[str] = None,
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
@@ -146,7 +158,6 @@ def create_glossary_term_asset(
     Args:
         name (str): Name of the term (required).
         glossary_guid (str): GUID of the glossary this term belongs to (required).
-        alias (Optional[str]): An alias for the term.
         description (Optional[str]): Short description of the term.
         long_description (Optional[str]): Detailed description of the term.
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status.
@@ -182,81 +193,152 @@ def create_glossary_term_asset(
         term.description = description
         term.user_description = long_description
 
-        # Process certificate status and owners using utilities
-        process_certificate_status(term, certificate_status)
-        process_owners(term, owner_users, owner_groups)
+        if certificate_status is not None:
+            cs = (
+                CertificateStatus(certificate_status)
+                if isinstance(certificate_status, str)
+                else certificate_status
+            )
+            term.certificate_status = cs.value
+
+        users = parse_list_parameter(owner_users)
+        if users:
+            term.owner_users = set(users)
+
+        groups = parse_list_parameter(owner_groups)
+        if groups:
+            term.owner_groups = set(groups)
 
         return term
 
-    return create_asset_with_error_handling(
-        asset_creator=asset_creator,
-        asset_name=name,
-        asset_type="glossary term",
-        extra_result_fields={"glossary_guid": glossary_guid},
+    return save_asset(
+        asset_creator(), extra={"glossary_guid": glossary_guid}
     )
 
 
-# Helper functions to adapt specifications to individual creation functions
-def _create_glossary_from_spec(spec: GlossarySpecification) -> Dict[str, Any]:
-    """Adapter function to create glossary from specification."""
-    return create_glossary_asset(
-        name=spec.name,
-        description=spec.description,
-        long_description=spec.long_description,
-        certificate_status=spec.certificate_status,
-        asset_icon=spec.asset_icon,
-        owner_users=spec.owner_users,
-        owner_groups=spec.owner_groups,
-    )
+def _normalize_input(
+    raw: Union[Dict[str, Any], GlossarySpecification, List[Union[Dict[str, Any], GlossarySpecification]]],
+    spec_cls,
+):
+    """Return list of validated specification objects."""
+    if isinstance(raw, list):
+        data = raw
+    else:
+        data = [raw]
+
+    specs: List[spec_cls] = []
+    for item in data:
+        if isinstance(item, spec_cls):
+            specs.append(item)
+        else:
+            specs.append(spec_cls(**item))  # type: ignore[arg-type]
+    return specs
 
 
-def _create_category_from_spec(spec: GlossaryCategorySpecification) -> Dict[str, Any]:
-    """Adapter function to create category from specification."""
-    return create_glossary_category_asset(
-        name=spec.name,
-        glossary_guid=spec.glossary_guid,
-        description=spec.description,
-        long_description=spec.long_description,
-        certificate_status=spec.certificate_status,
-        parent_category_guid=spec.parent_category_guid,
-        owner_users=spec.owner_users,
-        owner_groups=spec.owner_groups,
-    )
+def create_glossary_assets(
+    glossaries: Union[
+        Dict[str, Any], GlossarySpecification, List[Union[Dict[str, Any], GlossarySpecification]]
+    ]
+) -> Dict[str, Any]:
+    """Create one or many glossaries and return a summary dictionary."""
+
+    specs = _normalize_input(glossaries, GlossarySpecification)
+    results: List[Dict[str, Any]] = []
+
+    for idx, spec in enumerate(specs):
+        res = create_glossary_asset(
+            name=spec.name,
+            description=spec.description,
+            long_description=spec.long_description,
+            certificate_status=spec.certificate_status,
+            owner_users=spec.owner_users,
+            owner_groups=spec.owner_groups,
+        )
+        res["index"] = idx
+        results.append(res)
+
+    success_count = sum(1 for r in results if r["success"])
+    failed_count = len(results) - success_count
+
+    return {
+        "results": results,
+        "successful_count": success_count,
+        "failed_count": failed_count,
+        "overall_success": failed_count == 0,
+        "errors": [],
+        "is_batch": len(specs) > 1,
+    }
 
 
-def _create_term_from_spec(spec: GlossaryTermSpecification) -> Dict[str, Any]:
-    """Adapter function to create term from specification."""
-    return create_glossary_term_asset(
-        name=spec.name,
-        glossary_guid=spec.glossary_guid,
-        alias=spec.alias,
-        description=spec.description,
-        long_description=spec.long_description,
-        certificate_status=spec.certificate_status,
-        categories=spec.categories,
-        owner_users=spec.owner_users,
-        owner_groups=spec.owner_groups,
-    )
+def create_glossary_category_assets(
+    categories: Union[
+        Dict[str, Any], GlossaryCategorySpecification, List[Union[Dict[str, Any], GlossaryCategorySpecification]]
+    ]
+) -> Dict[str, Any]:
+    """Create glossary categories and return summary."""
+
+    specs = _normalize_input(categories, GlossaryCategorySpecification)
+    results: List[Dict[str, Any]] = []
+
+    for idx, spec in enumerate(specs):
+        res = create_glossary_category_asset(
+            name=spec.name,
+            glossary_guid=spec.glossary_guid,
+            description=spec.description,
+            long_description=spec.long_description,
+            certificate_status=spec.certificate_status,
+            parent_category_guid=spec.parent_category_guid,
+            owner_users=spec.owner_users,
+            owner_groups=spec.owner_groups,
+        )
+        res["index"] = idx
+        results.append(res)
+
+    success_count = sum(1 for r in results if r["success"])
+    failed_count = len(results) - success_count
+
+    return {
+        "results": results,
+        "successful_count": success_count,
+        "failed_count": failed_count,
+        "overall_success": failed_count == 0,
+        "errors": [],
+        "is_batch": len(specs) > 1,
+    }
 
 
-# Create batch processors using the generic utility
-create_glossary_assets = create_batch_processor(
-    single_creation_func=_create_glossary_from_spec,
-    spec_class=GlossarySpecification,
-    required_fields=["name"],
-    item_type="glossary",
-)
+def create_glossary_term_assets(
+    terms: Union[
+        Dict[str, Any], GlossaryTermSpecification, List[Union[Dict[str, Any], GlossaryTermSpecification]]
+    ]
+) -> Dict[str, Any]:
+    """Create glossary terms and return summary."""
 
-create_glossary_category_assets = create_batch_processor(
-    single_creation_func=_create_category_from_spec,
-    spec_class=GlossaryCategorySpecification,
-    required_fields=["name", "glossary_guid"],
-    item_type="category",
-)
+    specs = _normalize_input(terms, GlossaryTermSpecification)
+    results: List[Dict[str, Any]] = []
 
-create_glossary_term_assets = create_batch_processor(
-    single_creation_func=_create_term_from_spec,
-    spec_class=GlossaryTermSpecification,
-    required_fields=["name", "glossary_guid"],
-    item_type="term",
-)
+    for idx, spec in enumerate(specs):
+        res = create_glossary_term_asset(
+            name=spec.name,
+            glossary_guid=spec.glossary_guid,
+            description=spec.description,
+            long_description=spec.long_description,
+            certificate_status=spec.certificate_status,
+            categories=spec.categories,
+            owner_users=spec.owner_users,
+            owner_groups=spec.owner_groups,
+        )
+        res["index"] = idx
+        results.append(res)
+
+    success_count = sum(1 for r in results if r["success"])
+    failed_count = len(results) - success_count
+
+    return {
+        "results": results,
+        "successful_count": success_count,
+        "failed_count": failed_count,
+        "overall_success": failed_count == 0,
+        "errors": [],
+        "is_batch": len(specs) > 1,
+    }
