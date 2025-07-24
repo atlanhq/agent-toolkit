@@ -86,14 +86,6 @@ def traverse_lineage(
             logger.debug(f"Including attribute: {attr_name}")
             lineage_builder = lineage_builder.include_on_results(attr_obj)
 
-        # Include additional AtlanField objects specified by user
-        if include_attributes:
-            for attr in include_attributes:
-                if not isinstance(attr, str):
-                    # Assume it's already an AtlanField object
-                    logger.debug(f"Including attribute object: {attr}")
-                    lineage_builder = lineage_builder.include_on_results(attr)
-
         # Execute request
         logger.debug("Converting FluentLineage to request object")
         request = lineage_builder.request
