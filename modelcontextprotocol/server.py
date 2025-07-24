@@ -87,6 +87,40 @@ def search_assets_tool(
             conditions={"certificate_status": CertificateStatus.VERIFIED.value}
         )
 
+        # Search for assets missing descriptions
+        missing_desc = search_assets(
+            negative_conditions={
+                "description": "has_any_value",
+                "user_description": "has_any_value"
+            },
+            include_attributes=["owner_users", "owner_groups"]
+        )
+
+        # Search for columns with specific certificate status
+        columns = search_assets(
+            asset_type="Column",
+            some_conditions={
+                "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
+            },
+            tags=["PRD"],
+            conditions={"created_by": "username"},
+            date_range={"create_time": {"gte": 1641034800000, "lte": 1672570800000}}
+        )
+        # Search for assets with a specific search text
+        assets = search_assets(
+            conditions = {
+                "name": {
+                    "operator": "match",
+                    "value": "search_text"
+                },
+                "description": {
+                    "operator": "match",
+                    "value": "search_text"
+                }
+            }
+        )
+
+
         # Search for assets using advanced operators
         assets = search_assets(
             conditions={
@@ -99,6 +133,10 @@ def search_assets_tool(
                     "operator": "contains",
                     "value": "important data",
                     "case_insensitive": True
+                },
+                "create_time": {
+                    "operator": "between",
+                    "value": [1640995200000, 1643673600000]
                 }
             }
         )
