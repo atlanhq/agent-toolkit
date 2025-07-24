@@ -67,11 +67,8 @@ def traverse_lineage(
         if include_attributes:
             logger.debug(f"Adding user-specified attributes: {include_attributes}")
             for attr in include_attributes:
-                if isinstance(attr, str):
-                    if attr not in all_attributes:
-                        all_attributes.append(attr)
-                else:
-                    pass
+                if isinstance(attr, str) and attr not in all_attributes:
+                    all_attributes.append(attr)
 
         logger.debug(f"Total attributes to include: {all_attributes}")
 
