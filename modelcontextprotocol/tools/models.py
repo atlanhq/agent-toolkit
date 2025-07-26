@@ -38,7 +38,6 @@ class GlossarySpecification(BaseModel):
     description: Optional[str] = None
     long_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
-    asset_icon: Optional[str] = None
     owner_users: Optional[List[str]] = None
     owner_groups: Optional[List[str]] = None
 
@@ -61,7 +60,6 @@ class GlossaryTermSpecification(BaseModel):
 
     name: str
     glossary_guid: str
-    alias: Optional[str] = None
     description: Optional[str] = None
     long_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None

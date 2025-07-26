@@ -496,7 +496,6 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
             - description (str, optional): Short description of the glossary
             - long_description (str, optional): Detailed description of the glossary
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - asset_icon (str, optional): Icon for the glossary (e.g., "BOOK_OPEN_TEXT")
             - owner_users (List[str], optional): List of user names who should own this glossary
             - owner_groups (List[str], optional): List of group names who should own this glossary
 
@@ -509,11 +508,8 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
                 - qualified_name: The qualified name of the created glossary (if successful)
                 - success: Boolean indicating if creation was successful
                 - errors: List of any errors encountered for this specific glossary
-            - successful_count: Number of glossaries created successfully
-            - failed_count: Number of glossaries that failed to create
             - overall_success: Boolean indicating if all glossaries were created successfully
             - errors: List of overall errors (not specific to individual glossaries)
-            - is_batch: Boolean indicating if this was a batch operation
 
     Examples:
         # Create a single glossary
@@ -557,7 +553,6 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
             Each specification can be a dictionary or GlossaryTermSpecification object containing:
             - name (str): Name of the term (required)
             - glossary_guid (str): GUID of the glossary this term belongs to (required)
-            - alias (str, optional): An alias for the term
             - description (str, optional): Short description of the term
             - long_description (str, optional): Detailed description of the term
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
@@ -575,11 +570,8 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
                 - glossary_guid: The GUID of the parent glossary
                 - success: Boolean indicating if creation was successful
                 - errors: List of any errors encountered for this specific term
-            - successful_count: Number of terms created successfully
-            - failed_count: Number of terms that failed to create
             - overall_success: Boolean indicating if all terms were created successfully
             - errors: List of overall errors (not specific to individual terms)
-            - is_batch: Boolean indicating if this was a batch operation
 
     Examples:
         # Create a single term
@@ -644,11 +636,8 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
                 - glossary_guid: The GUID of the parent glossary
                 - success: Boolean indicating if creation was successful
                 - errors: List of any errors encountered for this specific category
-            - successful_count: Number of categories created successfully
-            - failed_count: Number of categories that failed to create
             - overall_success: Boolean indicating if all categories were created successfully
             - errors: List of overall errors (not specific to individual categories)
-            - is_batch: Boolean indicating if this was a batch operation
 
     Examples:
         # Create a single category
