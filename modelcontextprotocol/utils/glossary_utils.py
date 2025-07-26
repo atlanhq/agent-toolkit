@@ -15,9 +15,7 @@ def save_asset(
     asset: Asset, extra: Optional[Dict[str, Any]] | None = None
 ) -> Dict[str, Any]:
     """Persist *asset* to Atlan and return a compact success / error dict.
-
-    The helper keeps glossary-tool code short while avoiding additional layers
-    of indirection.  On success it returns::
+    On success it returns:
 
         {"guid": "…", "name": "…", "qualified_name": "…", "success": True, "errors": [], …extra}
 
@@ -44,7 +42,7 @@ def save_asset(
             **extra,
         }
 
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         logger.error("Error saving %s '%s': %s", asset.type_name, asset.name, exc)
         return {
             "guid": None,

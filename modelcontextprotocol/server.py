@@ -1,6 +1,6 @@
 import argparse
 import json
-from typing import List, Union, Any
+from typing import Any
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -13,9 +13,6 @@ from tools import (
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
-    GlossarySpecification,
-    GlossaryCategorySpecification,
-    GlossaryTermSpecification,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -488,9 +485,7 @@ def update_assets_tool(
 
 
 @mcp.tool()
-def create_glossary_assets_tool(
-    glossaries: Union[str, dict, List[Union[dict, GlossarySpecification]]],
-) -> dict[str, Any]:
+def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
 
@@ -553,9 +548,7 @@ def create_glossary_assets_tool(
 
 
 @mcp.tool()
-def create_glossary_term_assets_tool(
-    terms: Union[str, dict, List[Union[dict, GlossaryTermSpecification]]],
-) -> dict[str, Any]:
+def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
@@ -625,9 +618,7 @@ def create_glossary_term_assets_tool(
 
 
 @mcp.tool()
-def create_glossary_category_assets_tool(
-    categories: Union[str, dict, List[Union[dict, GlossaryCategorySpecification]]],
-) -> dict[str, Any]:
+def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 

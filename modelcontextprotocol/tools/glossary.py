@@ -41,35 +41,29 @@ def create_glossary_asset(
         Dict[str, Any]: Result dictionary with creation details.
     """
 
-    def asset_creator() -> AtlasGlossary:
-        # Create the glossary using the creator method
-        glossary = AtlasGlossary.creator(name=name)
+    glossary = AtlasGlossary.creator(name=name)
 
-        # Set optional attributes
-        glossary.description = description
-        glossary.user_description = long_description
+    glossary.description = description
+    glossary.user_description = long_description
 
-        # Certificate status
-        if certificate_status is not None:
-            cs = (
-                CertificateStatus(certificate_status)
-                if isinstance(certificate_status, str)
-                else certificate_status
-            )
-            glossary.certificate_status = cs.value
+    if certificate_status is not None:
+        cs = (
+            CertificateStatus(certificate_status)
+            if isinstance(certificate_status, str)
+            else certificate_status
+        )
+        glossary.certificate_status = cs.value
 
-        # Owners
-        users = parse_list_parameter(owner_users)
-        if users:
-            glossary.owner_users = set(users)
+    # Owners
+    users = parse_list_parameter(owner_users)
+    if users:
+        glossary.owner_users = set(users)
 
-        groups = parse_list_parameter(owner_groups)
-        if groups:
-            glossary.owner_groups = set(groups)
+    groups = parse_list_parameter(owner_groups)
+    if groups:
+        glossary.owner_groups = set(groups)
 
-        return glossary
-
-    return save_asset(asset_creator())
+    return save_asset(glossary)
 
 
 def create_glossary_category_asset(
@@ -99,44 +93,40 @@ def create_glossary_category_asset(
         Dict[str, Any]: Result dictionary with creation details.
     """
 
-    def asset_creator() -> AtlasGlossaryCategory:
-        # Create a reference to the parent glossary
-        anchor_glossary = AtlasGlossary.ref_by_guid(glossary_guid)
+    # Create a reference to the parent glossary
+    anchor_glossary = AtlasGlossary.ref_by_guid(glossary_guid)
 
-        # Create the category
-        category = AtlasGlossaryCategory.creator(
-            name=name,
-            anchor=anchor_glossary,
-            parent_category=(
-                AtlasGlossaryCategory.ref_by_guid(parent_category_guid)
-                if parent_category_guid
-                else None
-            ),
+    # Create the category
+    category = AtlasGlossaryCategory.creator(
+        name=name,
+        anchor=anchor_glossary,
+        parent_category=(
+            AtlasGlossaryCategory.ref_by_guid(parent_category_guid)
+            if parent_category_guid
+            else None
+        ),
+    )
+
+    category.description = description
+    category.user_description = long_description
+
+    if certificate_status is not None:
+        cs = (
+            CertificateStatus(certificate_status)
+            if isinstance(certificate_status, str)
+            else certificate_status
         )
+        category.certificate_status = cs.value
 
-        # Set optional attributes
-        category.description = description
-        category.user_description = long_description
+    users = parse_list_parameter(owner_users)
+    if users:
+        category.owner_users = set(users)
 
-        if certificate_status is not None:
-            cs = (
-                CertificateStatus(certificate_status)
-                if isinstance(certificate_status, str)
-                else certificate_status
-            )
-            category.certificate_status = cs.value
+    groups = parse_list_parameter(owner_groups)
+    if groups:
+        category.owner_groups = set(groups)
 
-        users = parse_list_parameter(owner_users)
-        if users:
-            category.owner_users = set(users)
-
-        groups = parse_list_parameter(owner_groups)
-        if groups:
-            category.owner_groups = set(groups)
-
-        return category
-
-    return save_asset(asset_creator(), extra={"glossary_guid": glossary_guid})
+    return save_asset(category, extra={"glossary_guid": glossary_guid})
 
 
 def create_glossary_term_asset(
@@ -166,86 +156,56 @@ def create_glossary_term_asset(
         Dict[str, Any]: Result dictionary with creation details.
     """
 
-    def asset_creator() -> AtlasGlossaryTerm:
-        # Build minimal references required for creation
-        anchor_glossary = AtlasGlossary.ref_by_guid(glossary_guid)
+    # Build minimal references required for creation
+    anchor_glossary = AtlasGlossary.ref_by_guid(glossary_guid)
 
-        # Prepare category references if any
-        category_refs = None
-        normalised_categories = parse_list_parameter(categories)
-        if normalised_categories:
-            category_refs = [
-                AtlasGlossaryCategory.ref_by_guid(cat_guid)
-                for cat_guid in normalised_categories
-            ]
+    # Prepare category references if any
+    category_refs = None
+    normalised_categories = parse_list_parameter(categories)
+    if normalised_categories:
+        category_refs = [
+            AtlasGlossaryCategory.ref_by_guid(cat_guid)
+            for cat_guid in normalised_categories
+        ]
 
-        # Create the term
-        term = AtlasGlossaryTerm.creator(
-            name=name,
-            anchor=anchor_glossary,
-            categories=category_refs,
+    term = AtlasGlossaryTerm.creator(
+        name=name,
+        anchor=anchor_glossary,
+        categories=category_refs,
+    )
+    term.description = description
+    term.user_description = long_description
+
+    if certificate_status is not None:
+        cs = (
+            CertificateStatus(certificate_status)
+            if isinstance(certificate_status, str)
+            else certificate_status
         )
+        term.certificate_status = cs.value
 
-        # Set optional attributes
-        term.description = description
-        term.user_description = long_description
+    users = parse_list_parameter(owner_users)
+    if users:
+        term.owner_users = set(users)
 
-        if certificate_status is not None:
-            cs = (
-                CertificateStatus(certificate_status)
-                if isinstance(certificate_status, str)
-                else certificate_status
-            )
-            term.certificate_status = cs.value
+    groups = parse_list_parameter(owner_groups)
+    if groups:
+        term.owner_groups = set(groups)
 
-        users = parse_list_parameter(owner_users)
-        if users:
-            term.owner_users = set(users)
-
-        groups = parse_list_parameter(owner_groups)
-        if groups:
-            term.owner_groups = set(groups)
-
-        return term
-
-    return save_asset(asset_creator(), extra={"glossary_guid": glossary_guid})
-
-
-def _normalize_input(
-    raw: Union[
-        Dict[str, Any],
-        GlossarySpecification,
-        List[Union[Dict[str, Any], GlossarySpecification]],
-    ],
-    spec_cls,
-):
-    """Return list of validated specification objects."""
-    if isinstance(raw, list):
-        data = raw
-    else:
-        data = [raw]
-
-    specs: List[spec_cls] = []
-    for item in data:
-        if isinstance(item, spec_cls):
-            specs.append(item)
-        else:
-            specs.append(spec_cls(**item))  # type: ignore[arg-type]
-    return specs
+    return save_asset(term, extra={"glossary_guid": glossary_guid})
 
 
 def create_glossary_assets(
-    glossaries: Union[
-        Dict[str, Any],
-        GlossarySpecification,
-        List[Union[Dict[str, Any], GlossarySpecification]],
-    ],
+    glossaries: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
-    """Create one or many glossaries and return a summary dictionary."""
+    """Create one or many glossaries from dict payload(s) and return summary."""
 
-    specs = _normalize_input(glossaries, GlossarySpecification)
+    data = glossaries if isinstance(glossaries, list) else [glossaries]
+    specs = [GlossarySpecification(**item) for item in data]
+
     results: List[Dict[str, Any]] = []
 
+    success_count = 0
     for idx, spec in enumerate(specs):
         res = create_glossary_asset(
             name=spec.name,
@@ -257,31 +217,28 @@ def create_glossary_assets(
         )
         res["index"] = idx
         results.append(res)
+        if res["success"]:
+            success_count += 1
 
-    success_count = sum(1 for r in results if r["success"])
-    failed_count = len(results) - success_count
+    failed_count = len(specs) - success_count
 
     return {
         "results": results,
-        "successful_count": success_count,
-        "failed_count": failed_count,
         "overall_success": failed_count == 0,
         "errors": [],
-        "is_batch": len(specs) > 1,
     }
 
 
 def create_glossary_category_assets(
-    categories: Union[
-        Dict[str, Any],
-        GlossaryCategorySpecification,
-        List[Union[Dict[str, Any], GlossaryCategorySpecification]],
-    ],
+    categories: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
-    """Create glossary categories and return summary."""
+    """Create one or many glossary categories from dict payload(s)."""
 
-    specs = _normalize_input(categories, GlossaryCategorySpecification)
+    data = categories if isinstance(categories, list) else [categories]
+    specs = [GlossaryCategorySpecification(**item) for item in data]
+
     results: List[Dict[str, Any]] = []
+    success_count = 0
 
     for idx, spec in enumerate(specs):
         res = create_glossary_category_asset(
@@ -296,31 +253,28 @@ def create_glossary_category_assets(
         )
         res["index"] = idx
         results.append(res)
+        if res["success"]:
+            success_count += 1
 
-    success_count = sum(1 for r in results if r["success"])
-    failed_count = len(results) - success_count
+    failed_count = len(specs) - success_count
 
     return {
         "results": results,
-        "successful_count": success_count,
-        "failed_count": failed_count,
         "overall_success": failed_count == 0,
         "errors": [],
-        "is_batch": len(specs) > 1,
     }
 
 
 def create_glossary_term_assets(
-    terms: Union[
-        Dict[str, Any],
-        GlossaryTermSpecification,
-        List[Union[Dict[str, Any], GlossaryTermSpecification]],
-    ],
+    terms: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
-    """Create glossary terms and return summary."""
+    """Create one or many glossary terms from dict payload(s)."""
 
-    specs = _normalize_input(terms, GlossaryTermSpecification)
+    data = terms if isinstance(terms, list) else [terms]
+    specs = [GlossaryTermSpecification(**item) for item in data]
+
     results: List[Dict[str, Any]] = []
+    success_count = 0
 
     for idx, spec in enumerate(specs):
         res = create_glossary_term_asset(
@@ -335,15 +289,13 @@ def create_glossary_term_assets(
         )
         res["index"] = idx
         results.append(res)
+        if res["success"]:
+            success_count += 1
 
-    success_count = sum(1 for r in results if r["success"])
-    failed_count = len(results) - success_count
+    failed_count = len(specs) - success_count
 
     return {
         "results": results,
-        "successful_count": success_count,
-        "failed_count": failed_count,
         "overall_success": failed_count == 0,
         "errors": [],
-        "is_batch": len(specs) > 1,
     }
