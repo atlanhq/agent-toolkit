@@ -19,7 +19,7 @@ from utils.parameters import (
     parse_json_parameter,
     parse_list_parameter,
 )
-
+from tools.ownership import suggest_groups, suggest_usernames
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
 
@@ -489,6 +489,13 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
 
+    NOTE:
+        If ``owner_users`` or ``owner_groups`` are included you **must**:
+           1. Call the relevant suggestion tool.
+           2. If the suggestion list has more than one value, ask the user to
+              choose; then supply **that exact** name here.
+         Skipping this handshake can result in the wrong owner being stored.
+
     Args:
         glossaries: Either a single glossary specification (dict) or a list of glossary specifications.
             Each specification can be a dictionary or GlossarySpecification object containing:
@@ -543,10 +550,15 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
     return create_glossary_assets(glossaries)
 
 
+
 @mcp.tool()
 def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
+
+    NOTE:
+        When setting ``owner_users`` or ``owner_groups`` you must validate them
+        through the suggestion tools before invoking this function.
 
     Args:
         terms: Either a single term specification (dict) or a list of term specifications.
@@ -614,6 +626,11 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
+    NOTE:
+        Always resolve any ``owner_users`` or ``owner_groups`` via
+        ``suggest_usernames_tool`` / ``suggest_groups_tool`` first and supply
+        the canonical name in the payload.
+
     Args:
         categories: Either a single category specification (dict) or a list of category specifications.
             Each specification can be a dictionary or GlossaryCategorySpecification object containing:
@@ -672,6 +689,37 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
+
+
+@mcp.tool()
+def suggest_usernames_tool(query: str, max_suggestions: int = 5) -> list[str]:
+    """
+    Suggest usernames similar to *query* (case-insensitive).
+
+    Usage contract for agents / callers:
+      1. Call this tool when the user has provided a free-text owner name.
+      2. If the result list contains **more than one** item you **must** ask
+         the human which one is correct and rerun the creation request with
+         that canonical value. Never pick arbitrarily.
+      3. If the list is empty, prompt the user to re-enter a valid name.
+
+    This tool **must** be used before any create_glossary_* tool when an
+    ``owner_user`` field is supplied."""
+    return suggest_usernames(query=query, max_suggestions=max_suggestions)
+
+
+@mcp.tool()
+def suggest_groups_tool(query: str, max_suggestions: int = 5) -> list[str]:
+    """
+    Suggest group aliases similar to *query*.
+
+    Usage contract is identical to ``suggest_usernames_tool``: always obtain
+    confirmation from the human when multiple aliases are returned.
+
+    Must be called before any glossary creation tool that includes
+    ``owner_groups``."""
+
+    return suggest_groups(query=query, max_suggestions=max_suggestions)
 
 
 def main():

@@ -205,7 +205,6 @@ def create_glossary_assets(
 
     results: List[Dict[str, Any]] = []
 
-    success_count = 0
     for idx, spec in enumerate(specs):
         res = create_glossary_asset(
             name=spec.name,
@@ -217,14 +216,9 @@ def create_glossary_assets(
         )
         res["index"] = idx
         results.append(res)
-        if res["success"]:
-            success_count += 1
-
-    failed_count = len(specs) - success_count
 
     return {
         "results": results,
-        "overall_success": failed_count == 0,
         "errors": [],
     }
 
@@ -238,7 +232,6 @@ def create_glossary_category_assets(
     specs = [GlossaryCategorySpecification(**item) for item in data]
 
     results: List[Dict[str, Any]] = []
-    success_count = 0
 
     for idx, spec in enumerate(specs):
         res = create_glossary_category_asset(
@@ -253,14 +246,9 @@ def create_glossary_category_assets(
         )
         res["index"] = idx
         results.append(res)
-        if res["success"]:
-            success_count += 1
-
-    failed_count = len(specs) - success_count
 
     return {
         "results": results,
-        "overall_success": failed_count == 0,
         "errors": [],
     }
 
@@ -274,7 +262,6 @@ def create_glossary_term_assets(
     specs = [GlossaryTermSpecification(**item) for item in data]
 
     results: List[Dict[str, Any]] = []
-    success_count = 0
 
     for idx, spec in enumerate(specs):
         res = create_glossary_term_asset(
@@ -289,13 +276,8 @@ def create_glossary_term_assets(
         )
         res["index"] = idx
         results.append(res)
-        if res["success"]:
-            success_count += 1
-
-    failed_count = len(specs) - success_count
 
     return {
         "results": results,
-        "overall_success": failed_count == 0,
         "errors": [],
     }
