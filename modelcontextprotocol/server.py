@@ -496,8 +496,6 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
             - description (str, optional): Short description of the glossary
             - long_description (str, optional): Detailed description of the glossary
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - owner_users (List[str], optional): List of user names who should own this glossary
-            - owner_groups (List[str], optional): List of group names who should own this glossary
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -557,8 +555,6 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
             - long_description (str, optional): Detailed description of the term
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - categories (List[str], optional): List of category GUIDs this term belongs to
-            - owner_users (List[str], optional): List of user names who should own this term
-            - owner_groups (List[str], optional): List of group names who should own this term
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -623,8 +619,6 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
             - long_description (str, optional): Detailed description of the category
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - parent_category_guid (str, optional): GUID of the parent category if this is a subcategory
-            - owner_users (List[str], optional): List of user names who should own this category
-            - owner_groups (List[str], optional): List of group names who should own this category
 
     Returns:
         Dict[str, Any]: Dictionary containing:
