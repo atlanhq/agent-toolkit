@@ -335,10 +335,8 @@ def traverse_lineage_tool(
     Args:
         guid (str): GUID of the starting asset
         direction (str): Direction to traverse ("UPSTREAM" or "DOWNSTREAM")
-        depth (int | str, optional): Maximum depth to traverse. Accepts either
-            an integer or its string representation. Defaults to 1,000,000.
-        size (int | str, optional): Maximum number of results to return. Accepts either
-            an integer or its string representation. Defaults to 10.
+        depth (int): Maximum depth to traverse.
+        size (int): Maximum number of results to return. 
         immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
 
     Returns:
