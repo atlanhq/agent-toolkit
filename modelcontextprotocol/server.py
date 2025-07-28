@@ -591,8 +591,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
                 "glossary_guid": "glossary-guid-here",
                 "description": "The yearly value of recurring revenue from customers",
                 "certificate_status": "DRAFT",
-                "categories": ["category-guid-1"],
-                "owner_users": ["revenue.analyst"]
+                "categories": ["category-guid-1"]
             }
         ])
     """
@@ -654,8 +653,7 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
                 "name": "Product Data",
                 "glossary_guid": "glossary-guid-here",
                 "description": "Terms related to product information and attributes",
-                "certificate_status": "DRAFT",
-                "owner_users": ["product.manager"]
+                "certificate_status": "DRAFT"
             }
         ])
     """
