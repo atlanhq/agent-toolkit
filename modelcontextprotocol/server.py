@@ -326,41 +326,43 @@ def traverse_lineage_tool(
     direction,
     depth=1000000,
     size=10,
-    immediate_neighbors=True,
+    immediate_neighbors=False,
+    include_attributes=None,
 ):
     """
     Traverse asset lineage in specified direction.
+
+    By default, essential attributes are included in results. Additional attributes can be
+    specified via include_attributes parameter for richer lineage information.
 
     Args:
         guid (str): GUID of the starting asset
         direction (str): Direction to traverse ("UPSTREAM" or "DOWNSTREAM")
         depth (int): Maximum depth to traverse. Defaults to 1000000.
         size (int): Maximum number of results to return. Defaults to 10.
-        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+        immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to False.
+        include_attributes (List[str], optional): List of additional attribute names to include in results.
+            These will be added to the default set.
+
+    Default Attributes (always included):
+        - name, display_name, description, qualified_name, user_description
+        - certificate_status, owner_users, owner_groups
+        - connector_name, has_lineage, source_created_at, source_updated_at
+        - readme, asset_tags
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - assets: List of assets in the lineage
-            - references: List of dictionaries containing:
-                - source_guid: GUID of the source asset
-                - target_guid: GUID of the target asset
-                - direction: Direction of the reference (upstream/downstream)
+            - assets: List of assets in the lineage with processed attributes
+            - error: None if no error occurred, otherwise the error message
 
-    Example:
-        # Get lineage with specific depth and size
+    Examples:
+        # Get lineage with default attributes
         lineage = traverse_lineage_tool(
             guid="asset-guid-here",
             direction="DOWNSTREAM",
-            depth=1000000,
+            depth=1000,
             size=10
         )
-
-        # Access assets and their references
-        for asset in lineage["assets"]:
-            print(f"Asset: {asset.guid}")
-
-        for ref in lineage["references"]:
-            print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
     """
     try:
         direction_enum = LineageDirection[direction.upper()]
@@ -369,9 +371,13 @@ def traverse_lineage_tool(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
 
+    # Convert and validate numeric and boolean parameters
     depth = int(depth)
     size = int(size)
     immediate_neighbors = bool(immediate_neighbors)
+
+    # Parse include_attributes parameter if provided
+    parsed_include_attributes = parse_list_parameter(include_attributes)
 
     return traverse_lineage(
         guid=guid,
@@ -379,6 +385,7 @@ def traverse_lineage_tool(
         depth=depth,
         size=size,
         immediate_neighbors=immediate_neighbors,
+        include_attributes=parsed_include_attributes,
     )
 
 
