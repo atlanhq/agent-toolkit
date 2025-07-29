@@ -22,7 +22,7 @@ def create_glossary_asset(
     name: str,
     description: Optional[str] = None,
     long_description: Optional[str] = None,
-    certificate_status: Optional[Union[str, CertificateStatus]] = None
+    certificate_status: Optional[Union[str, CertificateStatus]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossary asset in Atlan.
@@ -59,7 +59,7 @@ def create_glossary_category_asset(
     description: Optional[str] = None,
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
-    parent_category_guid: Optional[str] = None
+    parent_category_guid: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossaryCategory asset in Atlan.
@@ -110,7 +110,7 @@ def create_glossary_term_asset(
     description: Optional[str] = None,
     long_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
-    categories: Optional[List[str]] = None
+    categories: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Create a new AtlasGlossaryTerm asset in Atlan.
