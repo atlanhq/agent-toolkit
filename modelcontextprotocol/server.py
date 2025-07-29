@@ -18,6 +18,7 @@ from utils.parameters import (
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
+
 @mcp.tool()
 def search_assets_tool(
     conditions=None,
@@ -370,9 +371,8 @@ def traverse_lineage_tool(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
 
-
-    depth= int(depth)
-    size= int(size)
+    depth = int(depth)
+    size = int(size)
     immediate_neighbors = bool(immediate_neighbors)
 
     return traverse_lineage(
