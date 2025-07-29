@@ -219,8 +219,6 @@ def search_assets_tool(
         tags = parse_list_parameter(tags)
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
-
-        # direct casting for parameters since LLM sends stringified values for int and bool
         min_somes = int(min_somes)
         limit = int(limit)
         offset = int(offset)
@@ -336,8 +334,8 @@ def traverse_lineage_tool(
     Args:
         guid (str): GUID of the starting asset
         direction (str): Direction to traverse ("UPSTREAM" or "DOWNSTREAM")
-        depth (int): Maximum depth to traverse.Defaults to 1000000
-        size (int): Maximum number of results to return. Defaults to 10
+        depth (int): Maximum depth to traverse. Defaults to 1000000.
+        size (int): Maximum number of results to return. Defaults to 10.
         immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
 
     Returns:
