@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-07-24
+
+### Added
+- Enhanced lineage traversal tool with configurable attribute inclusion support
+- `include_attributes` parameter in `traverse_lineage_tool` allowing users to specify additional attributes beyond defaults
+- Default attributes are now always included: name, display_name, description, qualified_name, user_description, certificate_status, owner_users, owner_groups, connector_name, has_lineage, source_created_at, source_updated_at, readme, asset_tags
+
+### Changed
+- Improved lineage tool return format to standardized dictionary structure with `assets` and `error` keys
+- Enhanced lineage processing using Pydantic serialization with `dict(by_alias=True, exclude_unset=True)` for consistent API responses
+- Updated `immediate_neighbors` default value from `True` to `False` to align with underlying FluentLineage behavior
+- Better error handling and logging throughout lineage traversal operations
+
+### Fixed
+- Lineage tool now returns richer attribute information instead of just default minimal attributes
+- Resolved issue where lineage results only contained basic metadata without requested additional attributes
+
 ## [0.2.3] - 2025-07-16
 
 ### Added
