@@ -524,6 +524,7 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
         })
 
         # Create multiple glossaries
+        NOTE-When someone asks to create multiple glossaries do it in a single call.
         result = create_glossary_assets_tool([
             {
                 "name": "Business Terms",
@@ -585,6 +586,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
         })
 
         # Create multiple terms
+        NOTE-When someone asks to create multiple terms do it in a single call.
         result = create_glossary_term_assets_tool([
             {
                 "name": "Customer",
@@ -648,6 +650,7 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
         })
 
         # Create multiple categories
+        NOTE-When someone asks to create multiple categories do it in a single call.
         result = create_glossary_category_assets_tool([
             {
                 "name": "Customer Data",
