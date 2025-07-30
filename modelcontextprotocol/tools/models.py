@@ -36,7 +36,7 @@ class Glossary(BaseModel):
 
     name: str
     description: Optional[str] = None
-    long_description: Optional[str] = None
+    user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
 
 
@@ -46,7 +46,7 @@ class GlossaryCategory(BaseModel):
     name: str
     glossary_guid: str
     description: Optional[str] = None
-    long_description: Optional[str] = None
+    user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     parent_category_guid: Optional[str] = None
 
@@ -57,6 +57,6 @@ class GlossaryTerm(BaseModel):
     name: str
     glossary_guid: str
     description: Optional[str] = None
-    long_description: Optional[str] = None
+    user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     categories: Optional[List[str]] = None

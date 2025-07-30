@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Dict, Any, Optional, List, Union
 
-from pyatlan.model.assets import AtlasGlossary, AtlasGlossaryCategory, AtlasGlossaryTerm
+from pyatlan.model.assets import AtlasGlossary, AtlasGlossaryCategory, AtlasGlossaryTerm, Asset
 from utils.parameters import parse_list_parameter
-from utils.glossary_utils import save_asset
+from client import get_atlan_client
 from .models import (
     CertificateStatus,
     Glossary,
@@ -17,6 +17,47 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+def save_asset(
+    asset: Asset, extra: Optional[Dict[str, Any]] | None = None
+) -> Dict[str, Any]:
+    """Persist *asset* to Atlan and return a compact success / error dict.
+    On success it returns:
+
+        {"guid": "…", "name": "…", "qualified_name": "…", "success": True, "errors": [], …extra}
+
+    and on failure::
+
+        {"guid": None, "name": "…", "qualified_name": None, "success": False, "errors": ["msg"], …extra}
+    """
+
+    extra = extra or {}
+
+    try:
+        client = get_atlan_client()
+        response = client.asset.save(asset)
+        guid = (
+            next(iter(response.guid_assignments.values()), None) if response else None
+        )
+
+        return {
+            "guid": guid,
+            "name": asset.name,
+            "qualified_name": asset.qualified_name,
+            "success": True,
+            "errors": [],
+            **extra,
+        }
+
+    except Exception as exc:
+        logger.error("Error saving %s '%s': %s", asset.type_name, asset.name, exc)
+        return {
+            "guid": None,
+            "name": asset.name,
+            "qualified_name": None,
+            "success": False,
+            "errors": [str(exc)],
+            **extra,
+        }
 
 def create_glossary_asset(
     name: str,
