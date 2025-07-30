@@ -500,7 +500,7 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
             Each specification can be a dictionary or GlossarySpecification object containing:
             - name (str): Name of the glossary (required)
             - description (str, optional): Short description of the glossary
-            - long_description (str, optional): Detailed description of the glossary
+            - user_description (str, optional): Detailed description of the glossary proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
 
     Returns:
@@ -559,7 +559,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
             - name (str): Name of the term (required)
             - glossary_guid (str): GUID of the glossary this term belongs to (required)
             - description (str, optional): Short description of the term
-            - long_description (str, optional): Detailed description of the term
+            - user_description (str, optional): Detailed description of the term proposed by the user   
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - categories (List[str], optional): List of category GUIDs this term belongs to
 
@@ -623,7 +623,7 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
             - name (str): Name of the category (required)
             - glossary_guid (str): GUID of the glossary this category belongs to (required)
             - description (str, optional): Short description of the category
-            - long_description (str, optional): Detailed description of the category
+            - user_description (str, optional): Detailed description of the category proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - parent_category_guid (str, optional): GUID of the parent category if this is a subcategory
 
