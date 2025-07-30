@@ -10,9 +10,9 @@ from utils.parameters import parse_list_parameter
 from utils.glossary_utils import save_asset
 from .models import (
     CertificateStatus,
-    GlossarySpecification,
-    GlossaryCategorySpecification,
-    GlossaryTermSpecification,
+    Glossary,
+    GlossaryCategory,
+    GlossaryTerm,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def create_glossary_asset(
     name: str,
     description: Optional[str] = None,
-    long_description: Optional[str] = None,
+    user_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
 ) -> Dict[str, Any]:
     """
@@ -30,7 +30,7 @@ def create_glossary_asset(
     Args:
         name (str): Name of the glossary (required).
         description (Optional[str]): Short description of the glossary.
-        long_description (Optional[str]): Detailed description of the glossary.
+        user_description (Optional[str]): Detailed description of the glossary proposed by the user.
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status.
 
     Returns:
@@ -40,7 +40,7 @@ def create_glossary_asset(
     glossary = AtlasGlossary.creator(name=name)
 
     glossary.description = description
-    glossary.user_description = long_description
+    glossary.user_description = user_description
 
     if certificate_status is not None:
         cs = (
@@ -57,7 +57,7 @@ def create_glossary_category_asset(
     name: str,
     glossary_guid: str,
     description: Optional[str] = None,
-    long_description: Optional[str] = None,
+    user_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     parent_category_guid: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -68,7 +68,7 @@ def create_glossary_category_asset(
         name (str): Name of the category (required).
         glossary_guid (str): GUID of the glossary this category belongs to (required).
         description (Optional[str]): Short description of the category.
-        long_description (Optional[str]): Detailed description of the category.
+        user_description (Optional[str]): Detailed description of the category proposed by the user.
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status.
         parent_category_guid (Optional[str]): GUID of the parent category if subcategory.
 
@@ -91,7 +91,7 @@ def create_glossary_category_asset(
     )
 
     category.description = description
-    category.user_description = long_description
+    category.user_description = user_description
 
     if certificate_status is not None:
         cs = (
@@ -108,7 +108,7 @@ def create_glossary_term_asset(
     name: str,
     glossary_guid: str,
     description: Optional[str] = None,
-    long_description: Optional[str] = None,
+    user_description: Optional[str] = None,
     certificate_status: Optional[Union[str, CertificateStatus]] = None,
     categories: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
@@ -119,7 +119,7 @@ def create_glossary_term_asset(
         name (str): Name of the term (required).
         glossary_guid (str): GUID of the glossary this term belongs to (required).
         description (Optional[str]): Short description of the term.
-        long_description (Optional[str]): Detailed description of the term.
+        user_description (Optional[str]): Detailed description of the term proposed by the user.
         certificate_status (Optional[Union[str, CertificateStatus]]): Certification status.
         categories (Optional[List[str]]): List of category GUIDs this term belongs to.
 
@@ -145,7 +145,7 @@ def create_glossary_term_asset(
         categories=category_refs,
     )
     term.description = description
-    term.user_description = long_description
+    term.user_description = user_description
 
     if certificate_status is not None:
         cs = (
@@ -163,7 +163,7 @@ def create_glossary_assets(
     """Create one or many glossaries from dict payload(s) and return summary."""
 
     data = glossaries if isinstance(glossaries, list) else [glossaries]
-    specs = [GlossarySpecification(**item) for item in data]
+    specs = [Glossary(**item) for item in data]
 
     results: List[Dict[str, Any]] = []
 
@@ -171,7 +171,7 @@ def create_glossary_assets(
         res = create_glossary_asset(
             name=spec.name,
             description=spec.description,
-            long_description=spec.long_description,
+            user_description=spec.user_description,
             certificate_status=spec.certificate_status,
         )
         res["index"] = idx
@@ -189,7 +189,7 @@ def create_glossary_category_assets(
     """Create one or many glossary categories from dict payload(s)."""
 
     data = categories if isinstance(categories, list) else [categories]
-    specs = [GlossaryCategorySpecification(**item) for item in data]
+    specs = [GlossaryCategory(**item) for item in data]
 
     results: List[Dict[str, Any]] = []
 
@@ -198,7 +198,7 @@ def create_glossary_category_assets(
             name=spec.name,
             glossary_guid=spec.glossary_guid,
             description=spec.description,
-            long_description=spec.long_description,
+            user_description=spec.user_description,
             certificate_status=spec.certificate_status,
             parent_category_guid=spec.parent_category_guid,
         )
@@ -217,7 +217,7 @@ def create_glossary_term_assets(
     """Create one or many glossary terms from dict payload(s)."""
 
     data = terms if isinstance(terms, list) else [terms]
-    specs = [GlossaryTermSpecification(**item) for item in data]
+    specs = [GlossaryTerm(**item) for item in data]
 
     results: List[Dict[str, Any]] = []
 
@@ -226,7 +226,7 @@ def create_glossary_term_assets(
             name=spec.name,
             glossary_guid=spec.glossary_guid,
             description=spec.description,
-            long_description=spec.long_description,
+            user_description=spec.user_description,
             certificate_status=spec.certificate_status,
             categories=spec.categories,
         )

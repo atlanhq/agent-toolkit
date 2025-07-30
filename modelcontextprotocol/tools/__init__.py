@@ -11,9 +11,9 @@ from .models import (
     CertificateStatus,
     UpdatableAttribute,
     UpdatableAsset,
-    GlossarySpecification,
-    GlossaryCategorySpecification,
-    GlossaryTermSpecification,
+    Glossary,
+    GlossaryCategory,
+    GlossaryTerm,
 )
 
 __all__ = [
@@ -27,7 +27,7 @@ __all__ = [
     "CertificateStatus",
     "UpdatableAttribute",
     "UpdatableAsset",
-    "GlossarySpecification",
-    "GlossaryCategorySpecification",
-    "GlossaryTermSpecification",
+    "Glossary",
+    "GlossaryCategory",
+    "GlossaryTerm",
 ]

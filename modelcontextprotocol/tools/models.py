@@ -31,19 +31,17 @@ class UpdatableAsset(BaseModel):
     certificate_status: Optional[CertificateStatus] = None
 
 
-class GlossarySpecification(BaseModel):
-    """Class representing specifications for creating a glossary."""
+class Glossary(BaseModel):
+    """Payload model for creating a glossary asset."""
 
     name: str
     description: Optional[str] = None
     long_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
-    owner_users: Optional[List[str]] = None
-    owner_groups: Optional[List[str]] = None
 
 
-class GlossaryCategorySpecification(BaseModel):
-    """Class representing specifications for creating a glossary category."""
+class GlossaryCategory(BaseModel):
+    """Payload model for creating a glossary category asset."""
 
     name: str
     glossary_guid: str
@@ -51,12 +49,10 @@ class GlossaryCategorySpecification(BaseModel):
     long_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     parent_category_guid: Optional[str] = None
-    owner_users: Optional[List[str]] = None
-    owner_groups: Optional[List[str]] = None
 
 
-class GlossaryTermSpecification(BaseModel):
-    """Class representing specifications for creating a glossary term."""
+class GlossaryTerm(BaseModel):
+    """Payload model for creating a glossary term asset."""
 
     name: str
     glossary_guid: str
@@ -64,5 +60,3 @@ class GlossaryTermSpecification(BaseModel):
     long_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     categories: Optional[List[str]] = None
-    owner_users: Optional[List[str]] = None
-    owner_groups: Optional[List[str]] = None
