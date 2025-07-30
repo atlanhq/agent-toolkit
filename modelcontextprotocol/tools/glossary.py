@@ -44,11 +44,12 @@ def save_asset(
         guid = (
             next(iter(response.guid_assignments.values()), None) if response else None
         )
-
+        qualified = client.asset.get_by_guid(guid=guid, min_ext_info=False)
+        qualified_name = qualified.qualified_name
         return {
             "guid": guid,
             "name": asset.name,
-            "qualified_name": asset.qualified_name,
+            "qualified_name": qualified_name,
             "success": True,
             "errors": [],
             **extra,
