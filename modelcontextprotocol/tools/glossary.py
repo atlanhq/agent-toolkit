@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Dict, Any, Optional, List, Union
 
-from pyatlan.model.assets import AtlasGlossary, AtlasGlossaryCategory, AtlasGlossaryTerm, Asset
+from pyatlan.model.assets import (
+    AtlasGlossary,
+    AtlasGlossaryCategory,
+    AtlasGlossaryTerm,
+    Asset,
+)
 from utils.parameters import parse_list_parameter
 from client import get_atlan_client
 from .models import (
@@ -16,6 +21,7 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 def save_asset(
     asset: Asset, extra: Optional[Dict[str, Any]] | None = None
@@ -58,6 +64,7 @@ def save_asset(
             "errors": [str(exc)],
             **extra,
         }
+
 
 def create_glossary_asset(
     name: str,
