@@ -512,7 +512,6 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
                 - qualified_name: The qualified name of the created glossary (if successful)
                 - success: Boolean indicating if creation was successful
                 - errors: List of any errors encountered for this specific glossary
-            - overall_success: Boolean indicating if all glossaries were created successfully
             - errors: List of overall errors (not specific to individual glossaries)
 
     Examples:
@@ -573,7 +572,6 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
                 - glossary_guid: The GUID of the parent glossary
                 - success: Boolean indicating if creation was successful
                 - errors: List of any errors encountered for this specific term
-            - overall_success: Boolean indicating if all terms were created successfully
             - errors: List of overall errors (not specific to individual terms)
 
     Examples:
@@ -637,7 +635,6 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
                 - glossary_guid: The GUID of the parent glossary
                 - success: Boolean indicating if creation was successful
                 - errors: List of any errors encountered for this specific category
-            - overall_success: Boolean indicating if all categories were created successfully
             - errors: List of overall errors (not specific to individual categories)
 
     Examples:
