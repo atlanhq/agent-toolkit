@@ -143,9 +143,9 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `get_assets_by_dsl` | Retrieve assets using a DSL query                                 |
 | `traverse_lineage`  | Retrieve lineage for an asset                                     |
 | `update_assets`     | Update asset attributes (user description and certificate status) |
-| `create_glossary_assets` | Create glossaries |
-| `create_glossary_category_assets` | Create glossary categories |
-| `create_glossary_term_assets` | Create glossary terms |
+| `create_glossaries` | Create glossaries                                                 |
+| `create_glossary_categories` | Create glossary categories                               |
+| `create_glossary_terms` | Create glossary terms                                         |
 
 ## Production Deployment
 

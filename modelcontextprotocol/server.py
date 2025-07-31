@@ -491,7 +491,7 @@ def update_assets_tool(
 
 
 @mcp.tool()
-def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
+def create_glossaries(glossaries) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
 
@@ -516,7 +516,7 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
 
     Examples:
         # Create a single glossary
-        result = create_glossary_assets_tool({
+        result = create_glossaries({
             "name": "Business Terms",
             "description": "Common business terminology",
             "certificate_status": "VERIFIED"
@@ -524,7 +524,7 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
 
         # Create multiple glossaries
         NOTE-When someone asks to create multiple glossaries do it in a single call.
-        result = create_glossary_assets_tool([
+        result = create_glossaries([
             {
                 "name": "Business Terms",
                 "description": "Common business terminology",
@@ -548,7 +548,7 @@ def create_glossary_assets_tool(glossaries) -> dict[str, Any]:
 
 
 @mcp.tool()
-def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
+def create_glossary_terms(terms) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
@@ -576,7 +576,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
 
     Examples:
         # Create a single term
-        result = create_glossary_term_assets_tool({
+        result = create_glossary_terms({
             "name": "Customer",
             "glossary_guid": "glossary-guid-here",
             "description": "An individual or organization that purchases goods or services",
@@ -585,7 +585,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
 
         # Create multiple terms
         NOTE-When someone asks to create multiple terms do it in a single call.
-        result = create_glossary_term_assets_tool([
+        result = create_glossary_terms([
             {
                 "name": "Customer",
                 "glossary_guid": "glossary-guid-here",
@@ -611,7 +611,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
 
 
 @mcp.tool()
-def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
+def create_glossary_categories(categories) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
@@ -639,7 +639,7 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
 
     Examples:
         # Create a single category
-        result = create_glossary_category_assets_tool({
+        result = create_glossary_categories({
             "name": "Customer Data",
             "glossary_guid": "glossary-guid-here",
             "description": "Terms related to customer information and attributes",
@@ -648,7 +648,7 @@ def create_glossary_category_assets_tool(categories) -> dict[str, Any]:
 
         # Create multiple categories
         NOTE-When someone asks to create multiple categories do it in a single call.
-        result = create_glossary_category_assets_tool([
+        result = create_glossary_categories([
             {
                 "name": "Customer Data",
                 "glossary_guid": "glossary-guid-here",
