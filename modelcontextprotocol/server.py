@@ -558,7 +558,7 @@ def create_glossary_term_assets_tool(terms) -> dict[str, Any]:
             - name (str): Name of the term (required)
             - glossary_guid (str): GUID of the glossary this term belongs to (required)
             - description (str, optional): Short description of the term
-            - user_description (str, optional): Detailed description of the term proposed by the user   
+            - user_description (str, optional): Detailed description of the term proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - categories (List[str], optional): List of category GUIDs this term belongs to
 
