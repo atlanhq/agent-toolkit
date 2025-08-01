@@ -22,45 +22,50 @@ from .models import (
 
 def save_assets(assets: List[Asset]) -> Dict[str, Any]:
     """Common bulk save and response processing for any asset type."""
-    client = get_atlan_client()
-    response = client.asset.save(assets)
-    results: List[Dict[str, Any]] = []
-    created_assets = response.mutated_entities.CREATE
+    try:
+        client = get_atlan_client()
+        response = client.asset.save(assets)
+        results: List[Dict[str, Any]] = []
+        created_assets = response.mutated_entities.CREATE
 
-    for i, original_asset in enumerate(assets):
-        created_asset = created_assets[i]
-        if created_asset and created_asset.guid:
-            result = {
-                "guid": created_asset.guid,
-                "name": created_asset.name or original_asset.name,
-                "qualified_name": created_asset.qualified_name,
-                "success": True,
-            }
-
-            if hasattr(original_asset, "anchor") and original_asset.anchor:
-                result["glossary_guid"] = original_asset.anchor.guid
-            if (
-                hasattr(original_asset, "parent_category")
-                and original_asset.parent_category
-            ):
-                result["parent_category_guid"] = original_asset.parent_category.guid
-            if hasattr(original_asset, "categories") and original_asset.categories:
-                result["category_guids"] = [
-                    cat.guid for cat in original_asset.categories if cat.guid
-                ]
-
-            results.append(result)
-        else:
-            results.append(
-                {
-                    "guid": None,
-                    "name": original_asset.name,
-                    "qualified_name": None,
-                    "success": False,
+        for i, original_asset in enumerate(assets):
+            created_asset = created_assets[i]
+            if created_asset and created_asset.guid:
+                result = {
+                    "guid": created_asset.guid,
+                    "name": created_asset.name or original_asset.name,
+                    "qualified_name": created_asset.qualified_name,
+                    "success": True,
                 }
-            )
 
-    return {"results": results}
+                if hasattr(original_asset, "anchor") and original_asset.anchor:
+                    result["glossary_guid"] = original_asset.anchor.guid
+                if (
+                    hasattr(original_asset, "parent_category")
+                    and original_asset.parent_category
+                ):
+                    result["parent_category_guid"] = original_asset.parent_category.guid
+                if hasattr(original_asset, "categories") and original_asset.categories:
+                    result["category_guids"] = [
+                        cat.guid for cat in original_asset.categories if cat.guid
+                    ]
+
+                results.append(result)
+            else:
+                results.append(
+                    {
+                        "guid": None,
+                        "name": original_asset.name,
+                        "qualified_name": None,
+                        "success": False,
+                    }
+                )
+
+        return {"results": results}
+
+    except Exception as e:
+        # Simple error handling - just return the actual error message
+        return {"error": str(e), "results": []}
 
 
 def create_glossary_assets(
@@ -83,6 +88,7 @@ def create_glossary_assets(
                 - name: The name of the glossary
                 - qualified_name: The qualified name of the created glossary (if successful)
                 - success: Boolean indicating if creation was successful
+            - error: Error message if the entire operation failed (optional)
     """
 
     data = glossaries if isinstance(glossaries, list) else [glossaries]
@@ -128,6 +134,7 @@ def create_glossary_category_assets(
                 - glossary_guid: The GUID of the parent glossary (if available)
                 - parent_category_guid: The GUID of the parent category (if subcategory)
                 - success: Boolean indicating if creation was successful
+            - error: Error message if the entire operation failed (optional)
     """
 
     data = categories if isinstance(categories, list) else [categories]
@@ -182,6 +189,7 @@ def create_glossary_term_assets(
                 - glossary_guid: The GUID of the parent glossary (if available)
                 - category_guids: List of category GUIDs this term belongs to (if any)
                 - success: Boolean indicating if creation was successful
+            - error: Error message if the entire operation failed (optional)
     """
 
     data = terms if isinstance(terms, list) else [terms]

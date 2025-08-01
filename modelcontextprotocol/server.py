@@ -510,6 +510,7 @@ def create_glossaries(glossaries) -> dict[str, Any]:
                 - name: The name of the glossary
                 - qualified_name: The qualified name of the created glossary (if successful)
                 - success: Boolean indicating if creation was successful
+            - error: Error message if the entire operation failed (optional)
 
     Examples:
         # Create a single glossary
@@ -568,6 +569,7 @@ def create_glossary_terms(terms) -> dict[str, Any]:
                 - glossary_guid: The GUID of the parent glossary (if available)
                 - category_guids: List of category GUIDs this term belongs to (if any)
                 - success: Boolean indicating if creation was successful
+            - error: Error message if the entire operation failed (optional)
 
     Examples:
         # Create a single term
@@ -629,6 +631,7 @@ def create_glossary_categories(categories) -> dict[str, Any]:
                 - glossary_guid: The GUID of the parent glossary (if available)
                 - parent_category_guid: The GUID of the parent category (if subcategory)
                 - success: Boolean indicating if creation was successful
+            - error: Error message if the entire operation failed (optional)
 
     Examples:
         # Create a single category
