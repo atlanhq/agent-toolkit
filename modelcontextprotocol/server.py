@@ -617,7 +617,6 @@ def create_glossary_categories(categories) -> dict[str, Any]:
             Each specification can be a dictionary or GlossaryCategorySpecification object containing:
             - name (str): Name of the category (required)
             - glossary_guid (str): GUID of the glossary this category belongs to (required)
-
             - user_description (str, optional): Detailed description of the category proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - parent_category_guid (str, optional): GUID of the parent category if this is a subcategory
