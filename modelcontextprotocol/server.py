@@ -499,40 +499,37 @@ def create_glossaries(glossaries) -> dict[str, Any]:
         glossaries: Either a single glossary specification (dict) or a list of glossary specifications.
             Each specification can be a dictionary or GlossarySpecification object containing:
             - name (str): Name of the glossary (required)
-            - description (str, optional): Short description of the glossary
+
             - user_description (str, optional): Detailed description of the glossary proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - results: List of dictionaries for each glossary creation attempt with details:
-                - index: Index of the glossary in the input (0 for single glossary)
                 - guid: The GUID of the created glossary (if successful)
                 - name: The name of the glossary
                 - qualified_name: The qualified name of the created glossary (if successful)
                 - success: Boolean indicating if creation was successful
-                - errors: List of any errors encountered for this specific glossary
-            - errors: List of overall errors (not specific to individual glossaries)
 
     Examples:
         # Create a single glossary
         result = create_glossaries({
             "name": "Business Terms",
-            "description": "Common business terminology",
+            "user_description": "Common business terminology",
             "certificate_status": "VERIFIED"
         })
 
         # Create multiple glossaries
-        NOTE-When someone asks to create multiple glossaries do it in a single call.
+        NOTE: When someone asks to create multiple glossaries, do it in a single call.
         result = create_glossaries([
             {
                 "name": "Business Terms",
-                "description": "Common business terminology",
+                "user_description": "Common business terminology",
                 "certificate_status": "VERIFIED"
             },
             {
                 "name": "Technical Dictionary",
-                "description": "Technical terminology and definitions",
+                "user_description": "Technical terminology and definitions",
                 "certificate_status": "DRAFT"
             }
         ])
@@ -557,7 +554,7 @@ def create_glossary_terms(terms) -> dict[str, Any]:
             Each specification can be a dictionary or GlossaryTermSpecification object containing:
             - name (str): Name of the term (required)
             - glossary_guid (str): GUID of the glossary this term belongs to (required)
-            - description (str, optional): Short description of the term
+
             - user_description (str, optional): Detailed description of the term proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - categories (List[str], optional): List of category GUIDs this term belongs to
@@ -565,37 +562,35 @@ def create_glossary_terms(terms) -> dict[str, Any]:
     Returns:
         Dict[str, Any]: Dictionary containing:
             - results: List of dictionaries for each term creation attempt with details:
-                - index: Index of the term in the input (0 for single term)
                 - guid: The GUID of the created term (if successful)
                 - name: The name of the term
                 - qualified_name: The qualified name of the created term (if successful)
-                - glossary_guid: The GUID of the parent glossary
+                - glossary_guid: The GUID of the parent glossary (if available)
+                - category_guids: List of category GUIDs this term belongs to (if any)
                 - success: Boolean indicating if creation was successful
-                - errors: List of any errors encountered for this specific term
-            - errors: List of overall errors (not specific to individual terms)
 
     Examples:
         # Create a single term
         result = create_glossary_terms({
             "name": "Customer",
             "glossary_guid": "glossary-guid-here",
-            "description": "An individual or organization that purchases goods or services",
+            "user_description": "An individual or organization that purchases goods or services",
             "certificate_status": "VERIFIED"
         })
 
         # Create multiple terms
-        NOTE-When someone asks to create multiple terms do it in a single call.
+        NOTE: When someone asks to create multiple terms, do it in a single call.
         result = create_glossary_terms([
             {
                 "name": "Customer",
                 "glossary_guid": "glossary-guid-here",
-                "description": "An individual or organization that purchases goods or services",
+                "user_description": "An individual or organization that purchases goods or services",
                 "certificate_status": "VERIFIED"
             },
             {
                 "name": "Annual Recurring Revenue",
                 "glossary_guid": "glossary-guid-here",
-                "description": "The yearly value of recurring revenue from customers",
+                "user_description": "The yearly value of recurring revenue from customers",
                 "certificate_status": "DRAFT",
                 "categories": ["category-guid-1"]
             }
@@ -620,7 +615,7 @@ def create_glossary_categories(categories) -> dict[str, Any]:
             Each specification can be a dictionary or GlossaryCategorySpecification object containing:
             - name (str): Name of the category (required)
             - glossary_guid (str): GUID of the glossary this category belongs to (required)
-            - description (str, optional): Short description of the category
+
             - user_description (str, optional): Detailed description of the category proposed by the user
             - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
             - parent_category_guid (str, optional): GUID of the parent category if this is a subcategory
@@ -628,37 +623,35 @@ def create_glossary_categories(categories) -> dict[str, Any]:
     Returns:
         Dict[str, Any]: Dictionary containing:
             - results: List of dictionaries for each category creation attempt with details:
-                - index: Index of the category in the input (0 for single category)
                 - guid: The GUID of the created category (if successful)
                 - name: The name of the category
                 - qualified_name: The qualified name of the created category (if successful)
-                - glossary_guid: The GUID of the parent glossary
+                - glossary_guid: The GUID of the parent glossary (if available)
+                - parent_category_guid: The GUID of the parent category (if subcategory)
                 - success: Boolean indicating if creation was successful
-                - errors: List of any errors encountered for this specific category
-            - errors: List of overall errors (not specific to individual categories)
 
     Examples:
         # Create a single category
         result = create_glossary_categories({
             "name": "Customer Data",
             "glossary_guid": "glossary-guid-here",
-            "description": "Terms related to customer information and attributes",
+            "user_description": "Terms related to customer information and attributes",
             "certificate_status": "VERIFIED"
         })
 
         # Create multiple categories
-        NOTE-When someone asks to create multiple categories do it in a single call.
+        NOTE: When someone asks to create multiple categories, do it in a single call.
         result = create_glossary_categories([
             {
                 "name": "Customer Data",
                 "glossary_guid": "glossary-guid-here",
-                "description": "Terms related to customer information and attributes",
+                "user_description": "Terms related to customer information and attributes",
                 "certificate_status": "VERIFIED"
             },
             {
                 "name": "Product Data",
                 "glossary_guid": "glossary-guid-here",
-                "description": "Terms related to product information and attributes",
+                "user_description": "Terms related to product information and attributes",
                 "certificate_status": "DRAFT"
             }
         ])
