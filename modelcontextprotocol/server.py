@@ -496,32 +496,28 @@ def create_glossaries(glossaries) -> dict[str, Any]:
     Create one or multiple AtlasGlossary assets in Atlan.
 
     Args:
-        glossaries: Either a single glossary specification (dict) or a list of glossary specifications.
-            Each specification can be a dictionary or GlossarySpecification object containing:
+        glossaries (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single glossary
+            specification (dict) or a list of glossary specifications. Each specification
+            can be a dictionary containing:
             - name (str): Name of the glossary (required)
-
-            - user_description (str, optional): Detailed description of the glossary proposed by the user
-            - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - user_description (str, optional): Detailed description of the glossary
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
 
     Returns:
-        Dict[str, Any]: Dictionary containing:
-            - results: List of dictionaries for each glossary creation attempt with details:
-                - guid: The GUID of the created glossary (if successful)
-                - name: The name of the glossary
-                - qualified_name: The qualified name of the created glossary (if successful)
-                - success: Boolean indicating if creation was successful
-            - error: Error message if the entire operation failed (optional)
+        Dict[str, Any]: Dictionary containing results list with details for each glossary
+            creation attempt:
+            - guid: The GUID of the created glossary (if successful)
+            - name: The name of the glossary
+            - qualified_name: The qualified name of the created glossary (if successful)
+            - success: Boolean indicating if creation was successful
 
-    Examples:
-        # Create a single glossary
-        result = create_glossaries({
-            "name": "Business Terms",
-            "user_description": "Common business terminology",
-            "certificate_status": "VERIFIED"
-        })
+    Raises:
+        Exception: If there's an error creating the glossary assets.
 
-        # Create multiple glossaries
-        NOTE: When someone asks to create multiple glossaries, do it in a single call.
+    NOTE: When someone asks to create multiple glossaries, do it in a single call.
+        # Create glossaries
         result = create_glossaries([
             {
                 "name": "Business Terms",
@@ -550,38 +546,44 @@ def create_glossary_terms(terms) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
+    NOTE: When someone asks to create multiple terms , do it in a single call.
+
+    CRITICAL: When a user requests creating term/terms under multiple categories (e.g., "create term/terms
+    'noodle' under all subcategories of Asian foods"), you MUST ask the user to clarify their intent:
+    - Option A: Single term with multiple category memberships (One "noodle" term that appears in all categories)
+    - Option B: Separate terms per category (Individual "noodle" terms created separately for each category)
+    DO NOT assume which approach they want - always ask for clarification first.
+
     Args:
-        terms: Either a single term specification (dict) or a list of term specifications.
-            Each specification can be a dictionary or GlossaryTermSpecification object containing:
+        terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
+            specification (dict) or a list of term specifications. Each specification
+            can be a dictionary containing:
             - name (str): Name of the term (required)
             - glossary_guid (str): GUID of the glossary this term belongs to (required)
-
-            - user_description (str, optional): Detailed description of the term proposed by the user
-            - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - categories (List[str], optional): List of category GUIDs this term belongs to
+            - user_description (str, optional): Detailed description of the term
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - categories (List[str], optional): List of category GUIDs this term
+              belongs to. When user asks to create a term under multiple categories,
+              you MUST ask: "Do you want ONE term in multiple categories OR separate
+              terms for each category?" DO NOT PROCEED without clarification.
 
     Returns:
-        Dict[str, Any]: Dictionary containing:
-            - results: List of dictionaries for each term creation attempt with details:
-                - guid: The GUID of the created term (if successful)
-                - name: The name of the term
-                - qualified_name: The qualified name of the created term (if successful)
-                - glossary_guid: The GUID of the parent glossary (if available)
-                - category_guids: List of category GUIDs this term belongs to (if any)
-                - success: Boolean indicating if creation was successful
-            - error: Error message if the entire operation failed (optional)
+        Dict[str, Any]: Dictionary containing results list with details for each term
+            creation attempt:
+            - guid: The GUID of the created term (if successful)
+            - name: The name of the term
+            - qualified_name: The qualified name of the created term (if successful)
+            - glossary_guid: The GUID of the parent glossary (if available)
+            - category_guids: List of category GUIDs this term belongs to (if any)
+            - success: Boolean indicating if creation was successful
+
+    Raises:
+        Exception: If there's an error creating the glossary term assets.
 
     Examples:
-        # Create a single term
-        result = create_glossary_terms({
-            "name": "Customer",
-            "glossary_guid": "glossary-guid-here",
-            "user_description": "An individual or organization that purchases goods or services",
-            "certificate_status": "VERIFIED"
-        })
-
-        # Create multiple terms
-        NOTE: When someone asks to create multiple terms, do it in a single call.
+        # Create terms
         result = create_glossary_terms([
             {
                 "name": "Customer",
@@ -613,36 +615,34 @@ def create_glossary_categories(categories) -> dict[str, Any]:
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
     Args:
-        categories: Either a single category specification (dict) or a list of category specifications.
-            Each specification can be a dictionary or GlossaryCategorySpecification object containing:
+        categories (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single category
+            specification (dict) or a list of category specifications. Each specification
+            can be a dictionary containing:
             - name (str): Name of the category (required)
             - glossary_guid (str): GUID of the glossary this category belongs to (required)
-            - user_description (str, optional): Detailed description of the category proposed by the user
-            - certificate_status (str, optional): Certification status ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - parent_category_guid (str, optional): GUID of the parent category if this is a subcategory
+            - user_description (str, optional): Detailed description of the category
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - parent_category_guid (str, optional): GUID of the parent category if this
+              is a subcategory
 
     Returns:
-        Dict[str, Any]: Dictionary containing:
-            - results: List of dictionaries for each category creation attempt with details:
-                - guid: The GUID of the created category (if successful)
-                - name: The name of the category
-                - qualified_name: The qualified name of the created category (if successful)
-                - glossary_guid: The GUID of the parent glossary (if available)
-                - parent_category_guid: The GUID of the parent category (if subcategory)
-                - success: Boolean indicating if creation was successful
-            - error: Error message if the entire operation failed (optional)
+        Dict[str, Any]: Dictionary containing results list with details for each category
+            creation attempt:
+            - guid: The GUID of the created category (if successful)
+            - name: The name of the category
+            - qualified_name: The qualified name of the created category (if successful)
+            - glossary_guid: The GUID of the parent glossary (if available)
+            - parent_category_guid: The GUID of the parent category (if subcategory)
+            - success: Boolean indicating if creation was successful
 
+    Raises:
+        Exception: If there's an error creating the glossary category assets.
+
+    NOTE: When someone asks to create multiple categories, do it in a single call.
     Examples:
-        # Create a single category
-        result = create_glossary_categories({
-            "name": "Customer Data",
-            "glossary_guid": "glossary-guid-here",
-            "user_description": "Terms related to customer information and attributes",
-            "certificate_status": "VERIFIED"
-        })
-
-        # Create multiple categories
-        NOTE: When someone asks to create multiple categories, do it in a single call.
+        # Create categories
         result = create_glossary_categories([
             {
                 "name": "Customer Data",
