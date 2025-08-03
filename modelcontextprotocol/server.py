@@ -513,10 +513,13 @@ def create_glossaries(glossaries) -> dict[str, Any]:
             - qualified_name: The qualified name of the created glossary (if successful)
             - success: Boolean indicating if creation was successful
 
-    Raises:
-        Exception: If there's an error creating the glossary assets.
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - There cannot be two glossaries with the same name in the system
+    - When creating multiple glossaries, do it in a single call
+    - Always check for duplicate names in the request and ask user to choose different names
+    - If user gives ambiguous instructions, ask clarifying questions
 
-    NOTE: When someone asks to create multiple glossaries, do it in a single call.
+    Examples:
         # Create glossaries
         result = create_glossaries([
             {
@@ -546,13 +549,16 @@ def create_glossary_terms(terms) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
-    NOTE: When someone asks to create multiple terms , do it in a single call.
-
-    CRITICAL: When a user requests creating term/terms under multiple categories (e.g., "create term/terms
-    'noodle' under all subcategories of Asian foods"), you MUST ask the user to clarify their intent:
-    - Option A: Single term with multiple category memberships (One "noodle" term that appears in all categories)
-    - Option B: Separate terms per category (Individual "noodle" terms created separately for each category)
-    DO NOT assume which approach they want - always ask for clarification first.
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Under one glossary, a single term (with one GUID) can be associated with many categories
+    - However, two terms with the same name CANNOT exist under different categories within the same glossary
+    - A term can exist either directly under a glossary OR under a category/subcategory inside the glossary, but NOT both
+    - When creating multiple terms, do it in a single call
+    - When user requests creating term/terms under multiple categories, MUST ask to clarify intent:
+      • Option A: Single term with multiple category memberships (One term that appears in all categories)
+      • Option B: Separate terms per category (Individual terms created separately for each category)
+    - DO NOT assume which approach they want - always ask for clarification first
+    - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
         terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
@@ -578,9 +584,6 @@ def create_glossary_terms(terms) -> dict[str, Any]:
             - glossary_guid: The GUID of the parent glossary (if available)
             - category_guids: List of category GUIDs this term belongs to (if any)
             - success: Boolean indicating if creation was successful
-
-    Raises:
-        Exception: If there's an error creating the glossary term assets.
 
     Examples:
         # Create terms
@@ -637,10 +640,16 @@ def create_glossary_categories(categories) -> dict[str, Any]:
             - parent_category_guid: The GUID of the parent category (if subcategory)
             - success: Boolean indicating if creation was successful
 
-    Raises:
-        Exception: If there's an error creating the glossary category assets.
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - There cannot be two categories with the same name under the same glossary (at the same level)
+    - Under a parent category, there cannot be subcategories with the same name (at the same level)
+    - Categories with the same name can exist under different glossaries (this is allowed)
+    - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
+    - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
+    - When creating multiple categories, do it in a single call
+    - Always check for duplicate names at the same level and ask user to choose different names
+    - If user gives ambiguous instructions, ask clarifying questions
 
-    NOTE: When someone asks to create multiple categories, do it in a single call.
     Examples:
         # Create categories
         result = create_glossary_categories([
