@@ -495,6 +495,12 @@ def create_glossaries(glossaries) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
 
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - There cannot be two glossaries with the same name in the system
+    - When creating multiple glossaries, do it in a single call
+    - Always check for duplicate names in the request and ask user to choose different names
+    - If user gives ambiguous instructions, ask clarifying questions
+
     Args:
         glossaries (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single glossary
             specification (dict) or a list of glossary specifications. Each specification
@@ -513,11 +519,6 @@ def create_glossaries(glossaries) -> dict[str, Any]:
             - qualified_name: The qualified name of the created glossary (if successful)
             - success: Boolean indicating if creation was successful
 
-    IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - There cannot be two glossaries with the same name in the system
-    - When creating multiple glossaries, do it in a single call
-    - Always check for duplicate names in the request and ask user to choose different names
-    - If user gives ambiguous instructions, ask clarifying questions
 
     Examples:
         # Create glossaries
@@ -617,6 +618,16 @@ def create_glossary_categories(categories) -> dict[str, Any]:
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - There cannot be two categories with the same name under the same glossary (at the same level)
+    - Under a parent category, there cannot be subcategories with the same name (at the same level)
+    - Categories with the same name can exist under different glossaries (this is allowed)
+    - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
+    - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
+    - When creating multiple categories, do it in a single call
+    - Always check for duplicate names at the same level and ask user to choose different names
+    - If user gives ambiguous instructions, ask clarifying questions
+
     Args:
         categories (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single category
             specification (dict) or a list of category specifications. Each specification
@@ -639,16 +650,6 @@ def create_glossary_categories(categories) -> dict[str, Any]:
             - glossary_guid: The GUID of the parent glossary (if available)
             - parent_category_guid: The GUID of the parent category (if subcategory)
             - success: Boolean indicating if creation was successful
-
-    IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - There cannot be two categories with the same name under the same glossary (at the same level)
-    - Under a parent category, there cannot be subcategories with the same name (at the same level)
-    - Categories with the same name can exist under different glossaries (this is allowed)
-    - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
-    - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
-    - When creating multiple categories, do it in a single call
-    - Always check for duplicate names at the same level and ask user to choose different names
-    - If user gives ambiguous instructions, ask clarifying questions
 
     Examples:
         # Create categories
