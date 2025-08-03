@@ -44,40 +44,42 @@ def save_assets(assets: List[Asset]) -> Dict[str, Any]:
     logger.info(f"Save operation completed, processing {len(created_assets)} results")
 
     for i, created_asset in enumerate(created_assets):
-            if created_asset and created_asset.guid:
-                logger.debug(f"Successfully created asset {i}: {created_asset.guid}")
-                result = {
-                    "guid": created_asset.guid,
-                    "name": created_asset.name or assets[i].name,
-                    "qualified_name": created_asset.qualified_name,
-                    "success": True,
+        if created_asset and created_asset.guid:
+            logger.debug(f"Successfully created asset {i}: {created_asset.guid}")
+            result = {
+                "guid": created_asset.guid,
+                "name": created_asset.name if created_asset else assets[i].name,
+                "qualified_name": created_asset.qualified_name,
+                "success": True,
+            }
+
+            if hasattr(created_asset, "anchor") and created_asset.anchor:
+                result["glossary_guid"] = created_asset.anchor.guid
+            if (
+                hasattr(created_asset, "parent_category")
+                and created_asset.parent_category
+            ):
+                result["parent_category_guid"] = created_asset.parent_category.guid
+            if hasattr(created_asset, "categories") and created_asset.categories:
+                result["category_guids"] = [
+                    cat.guid for cat in created_asset.categories if cat.guid
+                ]
+
+            results.append(result)
+        else:
+            logger.warning(f"Failed to create asset {i}: {assets[i].name}")
+            results.append(
+                {
+                    "guid": None,
+                    "name": created_asset.name if created_asset else assets[i].name,
+                    "qualified_name": None,
+                    "success": False,
                 }
+            )
 
-                if hasattr(created_asset, "anchor") and created_asset.anchor:
-                    result["glossary_guid"] = created_asset.anchor.guid
-                if (
-                    hasattr(created_asset, "parent_category")
-                    and created_asset.parent_category
-                ):
-                    result["parent_category_guid"] = created_asset.parent_category.guid
-                if hasattr(created_asset, "categories") and created_asset.categories:
-                    result["category_guids"] = [
-                        cat.guid for cat in created_asset.categories if cat.guid
-                    ]
-
-                results.append(result)
-            else:
-                logger.warning(f"Failed to create asset {i}: {assets[i].name}")
-                results.append(
-                    {
-                        "guid": None,
-                        "name": created_asset.name if created_asset else assets[i].name,
-                        "qualified_name": None,
-                        "success": False,
-                    }
-                )
-
-    logger.info(f"Bulk save completed: {sum(1 for r in results if r['success'])} successful, {sum(1 for r in results if not r['success'])} failed")
+    logger.info(
+        f"Bulk save completed: {sum(1 for r in results if r['success'])} successful, {sum(1 for r in results if not r['success'])} failed"
+    )
     return {"results": results}
 
 
@@ -88,17 +90,17 @@ def create_glossary_assets(
     Create one or multiple AtlasGlossary assets in Atlan.
 
     Args:
-        glossaries (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single glossary 
-            specification (dict) or a list of glossary specifications. Each specification 
+        glossaries (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single glossary
+            specification (dict) or a list of glossary specifications. Each specification
             can be a dictionary containing:
             - name (str): Name of the glossary (required)
-            - user_description (str, optional): Detailed description of the glossary 
+            - user_description (str, optional): Detailed description of the glossary
               proposed by the user
-            - certificate_status (str, optional): Certification status 
+            - certificate_status (str, optional): Certification status
               ("VERIFIED", "DRAFT", or "DEPRECATED")
 
     Returns:
-        Dict[str, Any]: Dictionary containing results list with details for each glossary 
+        Dict[str, Any]: Dictionary containing results list with details for each glossary
             creation attempt:
             - guid: The GUID of the created glossary (if successful)
             - name: The name of the glossary
@@ -111,7 +113,7 @@ def create_glossary_assets(
     data = glossaries if isinstance(glossaries, list) else [glossaries]
     logger.info(f"Creating {len(data)} glossary asset(s)")
     logger.debug(f"Glossary specifications: {data}")
-    
+
     specs = [Glossary(**item) for item in data]
 
     assets: List[AtlasGlossary] = []
@@ -139,20 +141,20 @@ def create_glossary_category_assets(
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
     Args:
-        categories (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single category 
-            specification (dict) or a list of category specifications. Each specification 
+        categories (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single category
+            specification (dict) or a list of category specifications. Each specification
             can be a dictionary containing:
             - name (str): Name of the category (required)
             - glossary_guid (str): GUID of the glossary this category belongs to (required)
-            - user_description (str, optional): Detailed description of the category 
+            - user_description (str, optional): Detailed description of the category
               proposed by the user
-            - certificate_status (str, optional): Certification status 
+            - certificate_status (str, optional): Certification status
               ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - parent_category_guid (str, optional): GUID of the parent category if this 
+            - parent_category_guid (str, optional): GUID of the parent category if this
               is a subcategory
 
     Returns:
-        Dict[str, Any]: Dictionary containing results list with details for each category 
+        Dict[str, Any]: Dictionary containing results list with details for each category
             creation attempt:
             - guid: The GUID of the created category (if successful)
             - name: The name of the category
@@ -167,7 +169,7 @@ def create_glossary_category_assets(
     data = categories if isinstance(categories, list) else [categories]
     logger.info(f"Creating {len(data)} glossary category asset(s)")
     logger.debug(f"Category specifications: {data}")
-    
+
     specs = [GlossaryCategory(**item) for item in data]
 
     assets: List[AtlasGlossaryCategory] = []
@@ -193,7 +195,9 @@ def create_glossary_category_assets(
             category.certificate_status = cs.value
             logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
         if spec.parent_category_guid:
-            logger.debug(f"Set parent category for {spec.name}: {spec.parent_category_guid}")
+            logger.debug(
+                f"Set parent category for {spec.name}: {spec.parent_category_guid}"
+            )
         assets.append(category)
 
     return save_assets(assets)
@@ -206,20 +210,20 @@ def create_glossary_term_assets(
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
     Args:
-        terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term 
-            specification (dict) or a list of term specifications. Each specification 
+        terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
+            specification (dict) or a list of term specifications. Each specification
             can be a dictionary containing:
             - name (str): Name of the term (required)
             - glossary_guid (str): GUID of the glossary this term belongs to (required)
-            - user_description (str, optional): Detailed description of the term 
+            - user_description (str, optional): Detailed description of the term
               proposed by the user
-            - certificate_status (str, optional): Certification status 
+            - certificate_status (str, optional): Certification status
               ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - categories (List[str], optional): List of category GUIDs this term 
+            - categories (List[str], optional): List of category GUIDs this term
               belongs to
 
     Returns:
-        Dict[str, Any]: Dictionary containing results list with details for each term 
+        Dict[str, Any]: Dictionary containing results list with details for each term
             creation attempt:
             - guid: The GUID of the created term (if successful)
             - name: The name of the term
@@ -234,7 +238,7 @@ def create_glossary_term_assets(
     data = terms if isinstance(terms, list) else [terms]
     logger.info(f"Creating {len(data)} glossary term asset(s)")
     logger.debug(f"Term specifications: {data}")
-    
+
     specs = [GlossaryTerm(**item) for item in data]
 
     assets: List[AtlasGlossaryTerm] = []
