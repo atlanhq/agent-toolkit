@@ -15,6 +15,28 @@ from utils.parameters import (
     parse_json_parameter,
     parse_list_parameter,
 )
+from prompts.data_analysis import (
+    data_quality_analysis_prompt,
+    lineage_documentation_prompt,
+    asset_comparison_prompt,
+)
+from prompts.governance import (
+    compliance_assessment_prompt,
+    policy_recommendation_prompt,
+)
+from resources.config import (
+    atlan_config_resource,
+    connection_info_resource,
+)
+from resources.templates import (
+    data_governance_templates_resource,
+    quality_assessment_template_resource,
+    lineage_documentation_template_resource,
+)
+from resources.reports import (
+    asset_summary_report_resource,
+    quality_metrics_report_resource,
+)
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
@@ -484,6 +506,245 @@ def update_assets_tool(
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
         }
+
+
+# Prompts for data analysis and governance workflows
+@mcp.prompt()
+async def data_quality_analysis(
+    asset_type: str,
+    conditions: str = None,
+    focus_areas: str = None,
+) -> str:
+    """
+    Generate a comprehensive data quality analysis prompt for Atlan assets.
+    
+    Args:
+        asset_type: Type of asset to analyze (Table, Column, View, etc.)
+        conditions: JSON string of search conditions for filtering assets
+        focus_areas: Comma-separated list of quality dimensions to focus on
+    """
+    try:
+        parsed_conditions = parse_json_parameter(conditions) if conditions else None
+        parsed_focus_areas = focus_areas.split(',') if focus_areas else None
+        
+        return await data_quality_analysis_prompt(
+            asset_type=asset_type,
+            conditions=parsed_conditions,
+            focus_areas=parsed_focus_areas
+        )
+    except Exception as e:
+        return f"Error generating prompt: {str(e)}"
+
+
+@mcp.prompt()
+async def lineage_documentation(
+    asset_guid: str,
+    direction: str = "BOTH",
+    include_impact: bool = True,
+) -> str:
+    """
+    Generate a prompt for creating comprehensive lineage documentation.
+    
+    Args:
+        asset_guid: GUID of the asset to document
+        direction: Lineage direction (UPSTREAM, DOWNSTREAM, BOTH)
+        include_impact: Whether to include business impact analysis
+    """
+    return await lineage_documentation_prompt(
+        asset_guid=asset_guid,
+        direction=direction,
+        include_impact=include_impact
+    )
+
+
+@mcp.prompt()
+async def asset_comparison(
+    asset_guids: str,
+    comparison_criteria: str = None,
+) -> str:
+    """
+    Generate a prompt for comparing multiple Atlan assets.
+    
+    Args:
+        asset_guids: Comma-separated list of asset GUIDs to compare
+        comparison_criteria: Comma-separated list of aspects to compare
+    """
+    guids_list = [guid.strip() for guid in asset_guids.split(',')]
+    criteria_list = comparison_criteria.split(',') if comparison_criteria else None
+    
+    return await asset_comparison_prompt(
+        asset_guids=guids_list,
+        comparison_criteria=criteria_list
+    )
+
+
+@mcp.prompt()
+async def compliance_assessment(
+    regulation_type: str,
+    asset_types: str = None,
+    risk_level: str = "medium",
+) -> str:
+    """
+    Generate a compliance assessment prompt for regulatory requirements.
+    
+    Args:
+        regulation_type: Type of regulation (GDPR, CCPA, SOX, etc.)
+        asset_types: Comma-separated list of asset types to assess
+        risk_level: Risk assessment level (low, medium, high)
+    """
+    types_list = asset_types.split(',') if asset_types else None
+    
+    return await compliance_assessment_prompt(
+        regulation_type=regulation_type,
+        asset_types=types_list,
+        risk_level=risk_level
+    )
+
+
+@mcp.prompt()
+async def policy_recommendation(
+    business_domain: str,
+    current_challenges: str = None,
+    governance_maturity: str = "developing",
+) -> str:
+    """
+    Generate data governance policy recommendations.
+    
+    Args:
+        business_domain: Business domain or department
+        current_challenges: Comma-separated list of current governance challenges
+        governance_maturity: Current maturity level (basic, developing, advanced)
+    """
+    challenges_list = current_challenges.split(',') if current_challenges else None
+    
+    return await policy_recommendation_prompt(
+        business_domain=business_domain,
+        current_challenges=challenges_list,
+        governance_maturity=governance_maturity
+    )
+
+
+@mcp.prompt()
+async def test_prompt() -> str:
+    """
+    Simple test prompt with no parameters for debugging cloud connections.
+    """
+    return """# Test Prompt - MCP Server Working! 🎉
+
+This is a simple test prompt to verify that prompts are working correctly in your MCP client.
+
+## Purpose
+This prompt confirms that:
+- ✅ MCP server is running
+- ✅ Prompts are properly registered  
+- ✅ Communication between client and server is working
+- ✅ You can see this content in your MCP client
+
+## Next Steps
+If you can see this prompt, your MCP server prompts are working correctly! 
+
+You can now test the other prompts:
+- `data_quality_analysis` - For data quality assessments
+- `lineage_documentation` - For data lineage documentation
+- `asset_comparison` - For comparing multiple assets
+- `compliance_assessment` - For regulatory compliance
+- `policy_recommendation` - For data governance policies
+
+## Troubleshooting
+If you're not seeing other prompts/resources in your cloud client:
+1. Check your MCP client configuration
+2. Verify server connection settings
+3. Ensure all dependencies are installed
+4. Check server logs for errors
+
+**Server Status: ✅ ACTIVE**
+"""
+
+
+# Resources for configuration, templates, and reports
+@mcp.resource("resource://atlan-config")
+async def atlan_config() -> dict:
+    """Provide Atlan configuration information and server capabilities."""
+    return await atlan_config_resource()
+
+
+@mcp.resource("resource://connection-info/{connection_name}")
+async def connection_info(connection_name: str = None) -> dict:
+    """Provide information about Atlan connections and their capabilities."""
+    return await connection_info_resource(connection_name=connection_name)
+
+
+@mcp.resource("resource://governance-templates/{template_type}")
+async def governance_templates(template_type: str) -> dict:
+    """Provide data governance templates for various use cases."""
+    return await data_governance_templates_resource(template_type=template_type)
+
+
+@mcp.resource("resource://quality-templates/{assessment_type}")
+async def quality_templates(assessment_type: str = "comprehensive") -> dict:
+    """Provide templates for data quality assessments."""
+    return await quality_assessment_template_resource(assessment_type=assessment_type)
+
+
+@mcp.resource("resource://lineage-templates/{documentation_level}")
+async def lineage_templates(documentation_level: str = "standard") -> dict:
+    """Provide templates for data lineage documentation."""
+    return await lineage_documentation_template_resource(documentation_level=documentation_level)
+
+
+@mcp.resource("resource://asset-summary/{asset_type}")
+async def asset_summary_report(asset_type: str = None, timeframe_days: int = 30) -> dict:
+    """Generate a summary report of assets in the Atlan environment."""
+    return await asset_summary_report_resource(
+        asset_type=asset_type,
+        timeframe_days=timeframe_days
+    )
+
+
+@mcp.resource("resource://quality-metrics/{metric_type}")
+async def quality_metrics_report(metric_type: str = "overview") -> dict:
+    """Generate detailed data quality metrics report."""
+    return await quality_metrics_report_resource(metric_type=metric_type)
+
+
+@mcp.resource("resource://test-info")
+async def test_info() -> dict:
+    """Simple test resource with no parameters for debugging cloud connections."""
+    return {
+        "text": """# Test Resource - MCP Server Active! 🚀
+
+## Server Status
+- ✅ MCP Server: RUNNING
+- ✅ Resources: WORKING
+- ✅ Communication: ESTABLISHED
+- 📅 Generated: """ + str(__import__('datetime').datetime.now()) + """
+
+## Available Resources
+1. **resource://atlan-config** - Server configuration
+2. **resource://connection-info/{name}** - Connection details  
+3. **resource://governance-templates/{type}** - Data governance templates
+4. **resource://quality-templates/{type}** - Quality assessment templates
+5. **resource://lineage-templates/{level}** - Lineage documentation templates
+6. **resource://asset-summary/{type}** - Asset summary reports
+7. **resource://quality-metrics/{type}** - Quality metrics reports
+8. **resource://test-info** - This test resource
+
+## Server Information
+- **Name**: Atlan MCP Server
+- **Framework**: FastMCP
+- **Transport**: STDIO
+- **Dependencies**: pyatlan, fastmcp
+
+## Troubleshooting
+If you can read this resource but not others:
+- Check resource URI formatting
+- Verify parameter requirements
+- Check server logs for errors
+- Ensure proper authentication if required
+
+**Connection Status: 🟢 CONNECTED**
+"""
+    }
 
 
 def main():
