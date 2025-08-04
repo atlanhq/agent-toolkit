@@ -496,10 +496,10 @@ def create_glossaries(glossaries) -> dict[str, Any]:
     Create one or multiple AtlasGlossary assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - Use search tool before creating glossaries to check if the glossary/glossaries already exist
-    - There cannot be two glossaries with the same name in the system
     - When creating multiple glossaries, do it in a single call
+    - There cannot be two glossaries with the same name in the system
     - Always check for duplicate names in the request and ask user to choose different names
+    - Use search tool before creating glossaries to check if the glossary/glossaries already exist
     - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
@@ -553,14 +553,12 @@ def create_glossary_terms(terms) -> dict[str, Any]:
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - When creating multiple terms, do it in a single call
     - Under one glossary, a single term (with one GUID) can be associated with many categories
     - However, two terms with the same name CANNOT exist under different categories within the same glossary
     - A term can exist either directly under a glossary OR under a category/subcategory inside the glossary, but NOT both
-    - When creating multiple terms, do it in a single call
-    - When user requests creating term/terms under multiple categories, MUST ask to clarify intent:
-      • Option A: Single term with multiple category memberships (One term that appears in all categories)
-      • Option B: Separate terms per category (Individual terms created separately for each category)
-    - DO NOT assume which approach they want - always ask for clarification first
+    - When user requests creating a single term under multiple categories, it should create one term associated with all the categories
+    - Use search tool before creating terms to check if the term/terms already exist
     - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
@@ -622,13 +620,14 @@ def create_glossary_categories(categories) -> dict[str, Any]:
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - When creating multiple categories, do it in a single call
     - There cannot be two categories with the same name under the same glossary (at the same level)
     - Under a parent category, there cannot be subcategories with the same name (at the same level)
     - Categories with the same name can exist under different glossaries (this is allowed)
     - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
     - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
-    - When creating multiple categories, do it in a single call
     - Always check for duplicate names at the same level and ask user to choose different names
+    - Use search tool before creating categories to check if the category/categories already exist
     - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
