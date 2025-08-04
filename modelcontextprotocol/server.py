@@ -496,9 +496,11 @@ def create_glossaries(glossaries) -> dict[str, Any]:
     Create one or multiple AtlasGlossary assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Use search tool before creating glossaries to check if the glossary/glossaries already exist
     - There cannot be two glossaries with the same name in the system
     - When creating multiple glossaries, do it in a single call
     - Always check for duplicate names in the request and ask user to choose different names
+    - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -509,7 +511,7 @@ def create_glossaries(glossaries) -> dict[str, Any]:
             - user_description (str, optional): Detailed description of the glossary
               proposed by the user
             - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED")
+              ("VERIFIED", "DRAFT", or "DEPRECATED"). Defaults to "VERIFIED" if omitted.
 
     Returns:
         Dict[str, Any]: Dictionary containing results list with details for each glossary
@@ -559,6 +561,7 @@ def create_glossary_terms(terms) -> dict[str, Any]:
       • Option A: Single term with multiple category memberships (One term that appears in all categories)
       • Option B: Separate terms per category (Individual terms created separately for each category)
     - DO NOT assume which approach they want - always ask for clarification first
+    - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -570,7 +573,7 @@ def create_glossary_terms(terms) -> dict[str, Any]:
             - user_description (str, optional): Detailed description of the term
               proposed by the user
             - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED")
+              ("VERIFIED", "DRAFT", or "DEPRECATED"). Defaults to "VERIFIED" if omitted.
             - categories (List[str], optional): List of category GUIDs this term
               belongs to. When user asks to create a term under multiple categories,
               you MUST ask: "Do you want ONE term in multiple categories OR separate
@@ -626,6 +629,7 @@ def create_glossary_categories(categories) -> dict[str, Any]:
     - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
     - When creating multiple categories, do it in a single call
     - Always check for duplicate names at the same level and ask user to choose different names
+    - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -637,7 +641,7 @@ def create_glossary_categories(categories) -> dict[str, Any]:
             - user_description (str, optional): Detailed description of the category
               proposed by the user
             - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED")
+              ("VERIFIED", "DRAFT", or "DEPRECATED"). Defaults to "VERIFIED" if omitted.
             - parent_category_guid (str, optional): GUID of the parent category if this
               is a subcategory
 
