@@ -59,7 +59,7 @@ def search_assets_tool(
         offset (int, optional): Offset for pagination. Defaults to 0.
         sort_by (str, optional): Attribute to sort by. Defaults to None.
         sort_order (str, optional): Sort order, "ASC" or "DESC". Defaults to "ASC".
-        connection_qualified_name (str, optional): Connection qualified name to filter by.
+        connection_qualified_name (str, optional): Connection qualified name to filter by. ex: default/snowflake/123456/abc
         tags (List[str], optional): List of tags to filter by.
         directly_tagged (bool): Whether to filter for directly tagged assets only. Defaults to True.
         domain_guids (List[str], optional): List of domain GUIDs to filter by.
@@ -80,8 +80,9 @@ def search_assets_tool(
             conditions={"certificate_status": CertificateStatus.VERIFIED.value}
         )
 
-        # Search for assets missing descriptions
+        # Search for assets missing descriptions from the database/connection default/snowflake/123456/abc
         missing_desc = search_assets(
+            connection_qualified_name="default/snowflake/123456/abc",
             negative_conditions={
                 "description": "has_any_value",
                 "user_description": "has_any_value"
@@ -134,10 +135,11 @@ def search_assets_tool(
             }
         )
 
-        # Search for assets with multiple type names (OR logic)
+        # For multiple asset types queries. ex: Search for Table, Column, or View assets from the database/connection default/snowflake/123456/abc
         assets = search_assets(
+            connection_qualified_name="default/snowflake/123456/abc",
             conditions={
-                "type_name": ["Table", "Column", "View"]  # Uses .within() for OR logic
+                "type_name": ["Table", "Column", "View"],
             }
         )
 
