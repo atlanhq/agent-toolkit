@@ -8,7 +8,6 @@ from pyatlan.model.assets import (
     AtlasGlossaryTerm,
     Asset,
 )
-from pyatlan.model.fluent_search import FluentSearch
 from utils.parameters import parse_list_parameter
 from client import get_atlan_client
 from .models import (
@@ -46,14 +45,10 @@ def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
 
     logger.info(f"Save operation completed, processing {len(created_assets)} results")
 
-    for created_asset in created_assets:
-        results.append(
-            {
-                "guid": created_asset.guid,
-                "name": created_asset.name,
-                "qualified_name": created_asset.qualified_name,
-            }
-        )
+    results = [
+        {"guid": a.guid, "name": a.name, "qualified_name": a.qualified_name}
+        for a in created_assets
+    ]
 
     logger.info(f"Bulk save completed successfully for {len(results)} assets")
     return results
@@ -196,6 +191,7 @@ def create_glossary_term_assets(
             - qualified_name: The qualified name of the created term
 
     Raises:
+        ValueError: If any provided category_guids are not found.
         Exception: If there's an error creating the glossary term assets.
     """
     data = terms if isinstance(terms, list) else [terms]
@@ -203,36 +199,14 @@ def create_glossary_term_assets(
     logger.debug(f"Term specifications: {data}")
 
     specs = [GlossaryTerm(**item) for item in data]
-    # Collect and fetch category objects per term
-    term_category_objects = []
-    for spec in specs:
-        category_guids = (
-            parse_list_parameter(spec.category_guids) if spec.category_guids else []
-        )
-
-        if category_guids:
-            try:
-                search = (
-                    FluentSearch()
-                    .where(Asset.GUID.within(category_guids))
-                    .where(Asset.TYPE_NAME.eq("AtlasGlossaryCategory"))
-                )
-                search_response = get_atlan_client().asset.search(search.to_request())
-                term_category_objects.append(list(search_response.current_page()))
-            except Exception as e:
-                logger.warning(
-                    f"Failed to fetch category objects for GUIDs {category_guids}: {e}"
-                )
-                term_category_objects.append([])
-        else:
-            term_category_objects.append([])
+    per_term_guids = [set(parse_list_parameter(s.category_guids) or []) for s in specs]
 
     assets: List[AtlasGlossaryTerm] = []
-    for i, spec in enumerate(specs):
-        logger.debug(f"Creating AtlasGlossaryTerm for: {spec.name}")
-        anchor = AtlasGlossary.ref_by_guid(spec.glossary_guid)
+    for spec, guids in zip(specs, per_term_guids):
         term = AtlasGlossaryTerm.creator(
-            name=spec.name, anchor=anchor, categories=term_category_objects[i] or None
+            name=spec.name,
+            anchor=AtlasGlossary.ref_by_guid(spec.glossary_guid),
+            categories=[AtlasGlossaryCategory.ref_by_guid(g) for g in guids] or None,
         )
         term.user_description = spec.user_description
         if spec.certificate_status is not None:
@@ -242,7 +216,6 @@ def create_glossary_term_assets(
                 else spec.certificate_status
             )
             term.certificate_status = cs.value
-            logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
         assets.append(term)
 
     return save_assets(assets)

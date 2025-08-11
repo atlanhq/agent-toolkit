@@ -519,7 +519,7 @@ def create_glossaries(glossaries) -> List[Dict[str, Any]]:
 
 
     Examples:
-        Multiple glossaries payload:
+        Multiple glossaries creation:
         [
             {
                 "name": "Business Terms",
@@ -552,6 +552,15 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     - Within a glossary, a term (single GUID) can be associated with many categories
     - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
     - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
+    - Use search tool before creating terms under categories and glossaries to check if the glossary, categories and terms already exist or not . search for all the assets in one search call (skip if you already have the glossary and category guids)
+    -Example call for searching glossary and categories before term creation:
+        {
+            "limit": 10,
+            "conditions": {
+                "type_name": ["AtlasGlossary", "AtlasGlossaryCategory","AtlasGlossaryTerm"],
+                "name": ["Marvel Cinematic Universe (MCU)", "Characters", "Locations","fighterz"]
+            }
+        }
 
     Args:
         terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
@@ -573,7 +582,7 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
             - qualified_name: The qualified name of the created term
 
     Examples:
-        Multiple terms payload:
+        Multiple terms creation:
         [
             {
                 "name": "Customer",
@@ -611,7 +620,15 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
     - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
     - Always check for duplicate names at the same level and ask user to choose different names
-    - Use search tool before creating categories to check if the category/categories already exist
+    - Use search tool before creating categories to check if the glossary and category already exists.(skip if you already have the glossary guids)
+    - Example call for searching glossary and categories before category creation:
+        {
+            "limit": 10,
+            "conditions": {
+                "type_name": ["AtlasGlossary", "AtlasGlossaryCategory"],
+                "name": ["Marvel Cinematic Universe (MCU)", "Characters", "Locations"]
+            }
+        }
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -634,7 +651,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
             - qualified_name: The qualified name of the created category
 
     Examples:
-        Multiple categories payload (with parent category example):
+        Multiple categories creation:
         [
             {
                 "name": "Customer Data",
