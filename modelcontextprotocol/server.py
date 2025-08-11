@@ -1,6 +1,6 @@
 import argparse
 import json
-from typing import Any
+from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -491,16 +491,14 @@ def update_assets_tool(
 
 
 @mcp.tool()
-def create_glossaries(glossaries) -> dict[str, Any]:
+def create_glossaries(glossaries) -> List[Dict[str, Any]]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - When creating multiple glossaries, do it in a single call
     - There cannot be two glossaries with the same name in the system
     - Always check for duplicate names in the request and ask user to choose different names
     - Use search tool before creating glossaries to check if the glossary/glossaries already exist
-    - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -511,20 +509,18 @@ def create_glossaries(glossaries) -> dict[str, Any]:
             - user_description (str, optional): Detailed description of the glossary
               proposed by the user
             - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED"). Defaults to "VERIFIED" if omitted.
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
 
     Returns:
-        Dict[str, Any]: Dictionary containing results list with details for each glossary
-            creation attempt:
-            - guid: The GUID of the created glossary (if successful)
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created glossary:
+            - guid: The GUID of the created glossary
             - name: The name of the glossary
-            - qualified_name: The qualified name of the created glossary (if successful)
-            - success: Boolean indicating if creation was successful
+            - qualified_name: The qualified name of the created glossary
 
 
     Examples:
-        # Create glossaries
-        result = create_glossaries([
+        Multiple glossaries payload:
+        [
             {
                 "name": "Business Terms",
                 "user_description": "Common business terminology",
@@ -535,7 +531,7 @@ def create_glossaries(glossaries) -> dict[str, Any]:
                 "user_description": "Technical terminology and definitions",
                 "certificate_status": "DRAFT"
             }
-        ])
+        ]
     """
 
     # Parse parameters to handle JSON strings using shared utility
@@ -548,19 +544,14 @@ def create_glossaries(glossaries) -> dict[str, Any]:
 
 
 @mcp.tool()
-def create_glossary_terms(terms) -> dict[str, Any]:
+def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     """
     Create one or multiple AtlasGlossaryTerm assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - When creating multiple terms, do it in a single call
-    - Under one glossary, a single term (with one GUID) can be associated with many categories
-    - However, two terms with the same name CANNOT exist under different categories within the same glossary
-    - A term can exist either directly under a glossary OR under a category/subcategory inside the glossary, but NOT both
-    - When user requests creating a single term under multiple categories, it should create one term associated with all the categories
-    - Use search tool before creating terms to check if the term/terms already exist
-    - If user does not provide a description, generate a short, apt description automatically
-    - If user gives ambiguous instructions, ask clarifying questions
+    - Within a glossary, a term (single GUID) can be associated with many categories
+    - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
+    - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
 
     Args:
         terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
@@ -571,25 +562,19 @@ def create_glossary_terms(terms) -> dict[str, Any]:
             - user_description (str, optional): Detailed description of the term
               proposed by the user
             - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED"). Defaults to "VERIFIED" if omitted.
-            - categories (List[str], optional): List of category GUIDs this term
-              belongs to. When user asks to create a term under multiple categories,
-              you MUST ask: "Do you want ONE term in multiple categories OR separate
-              terms for each category?" DO NOT PROCEED without clarification.
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - category_guids (List[str], optional): List of category GUIDs this term
+              belongs to.
 
     Returns:
-        Dict[str, Any]: Dictionary containing results list with details for each term
-            creation attempt:
-            - guid: The GUID of the created term (if successful)
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created term:
+            - guid: The GUID of the created term
             - name: The name of the term
-            - qualified_name: The qualified name of the created term (if successful)
-            - glossary_guid: The GUID of the parent glossary (if available)
-            - category_guids: List of category GUIDs this term belongs to (if any)
-            - success: Boolean indicating if creation was successful
+            - qualified_name: The qualified name of the created term
 
     Examples:
-        # Create terms
-        result = create_glossary_terms([
+        Multiple terms payload:
+        [
             {
                 "name": "Customer",
                 "glossary_guid": "glossary-guid-here",
@@ -601,9 +586,9 @@ def create_glossary_terms(terms) -> dict[str, Any]:
                 "glossary_guid": "glossary-guid-here",
                 "user_description": "The yearly value of recurring revenue from customers",
                 "certificate_status": "DRAFT",
-                "categories": ["category-guid-1"]
+                "category_guids": ["category-guid-1"]
             }
-        ])
+        ]
     """
     # Parse parameters to handle JSON strings using shared utility
     try:
@@ -615,12 +600,11 @@ def create_glossary_terms(terms) -> dict[str, Any]:
 
 
 @mcp.tool()
-def create_glossary_categories(categories) -> dict[str, Any]:
+def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     """
     Create one or multiple AtlasGlossaryCategory assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - When creating multiple categories, do it in a single call
     - There cannot be two categories with the same name under the same glossary (at the same level)
     - Under a parent category, there cannot be subcategories with the same name (at the same level)
     - Categories with the same name can exist under different glossaries (this is allowed)
@@ -628,7 +612,6 @@ def create_glossary_categories(categories) -> dict[str, Any]:
     - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
     - Always check for duplicate names at the same level and ask user to choose different names
     - Use search tool before creating categories to check if the category/categories already exist
-    - If user does not provide a description, generate a short, apt description automatically
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -640,23 +623,19 @@ def create_glossary_categories(categories) -> dict[str, Any]:
             - user_description (str, optional): Detailed description of the category
               proposed by the user
             - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED"). Defaults to "VERIFIED" if omitted.
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
             - parent_category_guid (str, optional): GUID of the parent category if this
               is a subcategory
 
     Returns:
-        Dict[str, Any]: Dictionary containing results list with details for each category
-            creation attempt:
-            - guid: The GUID of the created category (if successful)
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created category:
+            - guid: The GUID of the created category
             - name: The name of the category
-            - qualified_name: The qualified name of the created category (if successful)
-            - glossary_guid: The GUID of the parent glossary (if available)
-            - parent_category_guid: The GUID of the parent category (if subcategory)
-            - success: Boolean indicating if creation was successful
+            - qualified_name: The qualified name of the created category
 
     Examples:
-        # Create categories
-        result = create_glossary_categories([
+        Multiple categories payload (with parent category example):
+        [
             {
                 "name": "Customer Data",
                 "glossary_guid": "glossary-guid-here",
@@ -664,12 +643,13 @@ def create_glossary_categories(categories) -> dict[str, Any]:
                 "certificate_status": "VERIFIED"
             },
             {
-                "name": "Product Data",
+                "name": "PII",
                 "glossary_guid": "glossary-guid-here",
-                "user_description": "Terms related to product information and attributes",
+                "parent_category_guid": "parent-category-guid-here",
+                "user_description": "Subcategory for PII terms",
                 "certificate_status": "DRAFT"
             }
-        ])
+        ]
     """
     # Parse parameters to handle JSON strings using shared utility
     try:

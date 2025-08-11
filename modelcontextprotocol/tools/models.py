@@ -56,4 +56,4 @@ class GlossaryTerm(BaseModel):
     glossary_guid: str
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
-    categories: Optional[List[str]] = None
+    category_guids: Optional[List[str]] = None
