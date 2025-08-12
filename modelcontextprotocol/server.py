@@ -496,9 +496,8 @@ def create_glossaries(glossaries) -> List[Dict[str, Any]]:
     Create one or multiple AtlasGlossary assets in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - There cannot be two glossaries with the same name in the system
-    - Always check for duplicate names in the request and ask user to choose different names
-    - Use search tool before creating glossaries to check if the glossary/glossaries already exist
+    - Check for duplicate names within the same request and ask user to choose different names
+    - Do NOT use search tool before creating glossaries - Atlan will handle existence validation
     - If user gives ambiguous instructions, ask clarifying questions
 
     Args:
@@ -552,7 +551,7 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     - Within a glossary, a term (single GUID) can be associated with many categories
     - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
     - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
-    - Use search tool before creating terms under categories and glossaries to check if the glossary, categories and terms already exist or not . search for all the assets in one search call (skip if you already have the glossary and category guids)
+    - Use search tool before creating terms under categories and glossaries to check if the glossary, categories and terms with that name already exist or not . search for all the assets in one search call (skip if you already have the glossary and category guids)
     -Example call for searching glossary and categories before term creation:
         {
             "limit": 10,
@@ -620,7 +619,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
     - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
     - Always check for duplicate names at the same level and ask user to choose different names
-    - Use search tool before creating categories to check if the glossary and category already exists.(skip if you already have the glossary guids)
+    - Use search tool before creating categories to check if the glossary and category/ccategories already exists.(skip if you already have the glossary guids)
     - Example call for searching glossary and categories before category creation:
         {
             "limit": 10,
