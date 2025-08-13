@@ -46,7 +46,11 @@ def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
     logger.info(f"Save operation completed, processing {len(created_assets)} results")
 
     results = [
-        {"guid": created_asset.guid, "name": created_asset.name, "qualified_name": created_asset.qualified_name}
+        {
+            "guid": created_asset.guid,
+            "name": created_asset.name,
+            "qualified_name": created_asset.qualified_name,
+        }
         for created_asset in created_assets
     ]
 

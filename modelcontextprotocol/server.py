@@ -551,8 +551,9 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     - Within a glossary, a term (single GUID) can be associated with many categories
     - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
     - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
-    - Use search tool before creating terms under categories and glossaries to check if the glossary, categories and terms with that name already exist or not . search for all the assets in one search call (skip if you already have the glossary and category guids)
-    -Example call for searching glossary and categories before term creation:
+    - Use search tool before creating terms under categories and glossaries to check if the glossary, categories with those names already exist or not,
+      also search for the term with that name in the glossary. search for all the glossary, categories and terms in one search call (skip if you already have the glossary and category guids)
+    -Example call for searching glossary categories and terms before term creation:
         {
             "limit": 10,
             "conditions": {
