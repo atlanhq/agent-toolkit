@@ -551,9 +551,8 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     - Within a glossary, a term (single GUID) can be associated with many categories
     - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
     - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
-    - Use search tool before creating terms under categories and glossaries to check if the glossary, categories with those names already exist or not,
-      also search for the term with that name in the glossary. search for all the glossary, categories and terms in one search call (skip if you already have the glossary and category guids)
-    -Example call for searching glossary categories and terms before term creation:
+    - Before creating a term, perform a single search to check if the glossary, categories, or term with the same name already exist. Search for all relevant glossaries, categories, and terms in one call. Skip this step if you already have the required GUIDs.
+    - Example call for searching glossary categories and terms before term creation(Query - create a term fighterz under category Characters and Locations under Marvel Cinematic Universe (MCU) glossary):
         {
             "limit": 10,
             "conditions": {
@@ -620,8 +619,8 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
     - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
     - Always check for duplicate names at the same level and ask user to choose different names
-    - Use search tool before creating categories to check if the glossary and category/ccategories already exists.(skip if you already have the glossary guids)
-    - Example call for searching glossary and categories before category creation:
+    - Before creating a category, perform a single search to check if the glossary or categories with the same name already exist. Skip this step if you already have the required GUIDs.
+    - Example call for searching glossary and categories before category creation(Query - create categories Locations and Characters under Marvel Cinematic Universe (MCU) glossary):
         {
             "limit": 10,
             "conditions": {
