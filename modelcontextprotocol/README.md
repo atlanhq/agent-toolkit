@@ -147,6 +147,10 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
 
+## Deployment
+
+For information on running the server in different environments (stdio, SSE, or streamable HTTP), see the [deployment guide](../deployment/Readme.md).
+
 ## Production Deployment
 
 - Host the Atlan MCP container image on the cloud/platform of your choice
