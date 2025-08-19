@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-08-19
+
+### Added
+- Glossary management tools to streamline glossary creation and management:
+  - `create_glossaries`: Create top-level glossaries with metadata (name, `user_description`, optional `certificate_status`)
+  - `create_glossary_terms`: Add individual terms to an existing glossary; supports `user_description`, optional `certificate_status`, and `category_guids`
+  - `create_glossary_categories`: Add categories (and nested subcategories) anchored to a glossary or parent category; supports `user_description` and optional `certificate_status`
+- Bulk creation support across glossaries, terms, and categories to enable scalable glossary builds
+- Foundation for automated, structured glossary generation from unstructured content
+
+
 ## [0.2.5] - 2025-08-05
 
 ### Changed
