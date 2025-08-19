@@ -1,11 +1,15 @@
 import argparse
 import json
+from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
     search_assets,
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    create_glossary_category_assets,
+    create_glossary_assets,
+    create_glossary_term_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -486,6 +490,192 @@ def update_assets_tool(
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
         }
+
+
+@mcp.tool()
+def create_glossaries(glossaries) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple AtlasGlossary assets in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Check for duplicate names within the same request and ask user to choose different names
+    - Do NOT use search tool before creating glossaries - Atlan will handle existence validation
+    - If user gives ambiguous instructions, ask clarifying questions
+
+    Args:
+        glossaries (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single glossary
+            specification (dict) or a list of glossary specifications. Each specification
+            can be a dictionary containing:
+            - name (str): Name of the glossary (required)
+            - user_description (str, optional): Detailed description of the glossary
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created glossary:
+            - guid: The GUID of the created glossary
+            - name: The name of the glossary
+            - qualified_name: The qualified name of the created glossary
+
+
+    Examples:
+        Multiple glossaries creation:
+        [
+            {
+                "name": "Business Terms",
+                "user_description": "Common business terminology",
+                "certificate_status": "VERIFIED"
+            },
+            {
+                "name": "Technical Dictionary",
+                "user_description": "Technical terminology and definitions",
+                "certificate_status": "DRAFT"
+            }
+        ]
+    """
+
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        glossaries = parse_json_parameter(glossaries)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
+
+    return create_glossary_assets(glossaries)
+
+
+@mcp.tool()
+def create_glossary_terms(terms) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple AtlasGlossaryTerm assets in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Within a glossary, a term (single GUID) can be associated with many categories
+    - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
+    - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
+    - Before creating a term, perform a single search to check if the glossary, categories, or term with the same name already exist. Search for all relevant glossaries, categories, and terms in one call. Skip this step if you already have the required GUIDs.
+    - Example call for searching glossary categories and terms before term creation(Query - create a term fighterz under category Characters and Locations under Marvel Cinematic Universe (MCU) glossary):
+        {
+            "limit": 10,
+            "conditions": {
+                "type_name": ["AtlasGlossary", "AtlasGlossaryCategory","AtlasGlossaryTerm"],
+                "name": ["Marvel Cinematic Universe (MCU)", "Characters", "Locations","fighterz"]
+            }
+        }
+
+    Args:
+        terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
+            specification (dict) or a list of term specifications. Each specification
+            can be a dictionary containing:
+            - name (str): Name of the term (required)
+            - glossary_guid (str): GUID of the glossary this term belongs to (required)
+            - user_description (str, optional): Detailed description of the term
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - category_guids (List[str], optional): List of category GUIDs this term
+              belongs to.
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created term:
+            - guid: The GUID of the created term
+            - name: The name of the term
+            - qualified_name: The qualified name of the created term
+
+    Examples:
+        Multiple terms creation:
+        [
+            {
+                "name": "Customer",
+                "glossary_guid": "glossary-guid-here",
+                "user_description": "An individual or organization that purchases goods or services",
+                "certificate_status": "VERIFIED"
+            },
+            {
+                "name": "Annual Recurring Revenue",
+                "glossary_guid": "glossary-guid-here",
+                "user_description": "The yearly value of recurring revenue from customers",
+                "certificate_status": "DRAFT",
+                "category_guids": ["category-guid-1"]
+            }
+        ]
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        terms = parse_json_parameter(terms)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
+
+    return create_glossary_term_assets(terms)
+
+
+@mcp.tool()
+def create_glossary_categories(categories) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple AtlasGlossaryCategory assets in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - There cannot be two categories with the same name under the same glossary (at the same level)
+    - Under a parent category, there cannot be subcategories with the same name (at the same level)
+    - Categories with the same name can exist under different glossaries (this is allowed)
+    - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
+    - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
+    - Always check for duplicate names at the same level and ask user to choose different names
+    - Before creating a category, perform a single search to check if the glossary or categories with the same name already exist. Skip this step if you already have the required GUIDs.
+    - Example call for searching glossary and categories before category creation(Query - create categories Locations and Characters under Marvel Cinematic Universe (MCU) glossary):
+        {
+            "limit": 10,
+            "conditions": {
+                "type_name": ["AtlasGlossary", "AtlasGlossaryCategory"],
+                "name": ["Marvel Cinematic Universe (MCU)", "Characters", "Locations"]
+            }
+        }
+    - If user gives ambiguous instructions, ask clarifying questions
+
+    Args:
+        categories (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single category
+            specification (dict) or a list of category specifications. Each specification
+            can be a dictionary containing:
+            - name (str): Name of the category (required)
+            - glossary_guid (str): GUID of the glossary this category belongs to (required)
+            - user_description (str, optional): Detailed description of the category
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - parent_category_guid (str, optional): GUID of the parent category if this
+              is a subcategory
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created category:
+            - guid: The GUID of the created category
+            - name: The name of the category
+            - qualified_name: The qualified name of the created category
+
+    Examples:
+        Multiple categories creation:
+        [
+            {
+                "name": "Customer Data",
+                "glossary_guid": "glossary-guid-here",
+                "user_description": "Terms related to customer information and attributes",
+                "certificate_status": "VERIFIED"
+            },
+            {
+                "name": "PII",
+                "glossary_guid": "glossary-guid-here",
+                "parent_category_guid": "parent-category-guid-here",
+                "user_description": "Subcategory for PII terms",
+                "certificate_status": "DRAFT"
+            }
+        ]
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        categories = parse_json_parameter(categories)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
+
+    return create_glossary_category_assets(categories)
 
 
 def main():
