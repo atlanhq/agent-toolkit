@@ -1,6 +1,10 @@
 """Configuration settings for the application."""
+import requests
+from typing import Any, Dict, Optional
+from urllib.parse import urlencode
 
 from pydantic_settings import BaseSettings
+
 from version import __version__ as MCP_VERSION
 
 
