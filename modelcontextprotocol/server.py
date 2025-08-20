@@ -7,6 +7,7 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    get_custom_metadata_context,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -676,6 +677,60 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
+
+
+@mcp.tool()
+def custom_metadata_context() -> List[Dict[str, Any]]:
+    """
+    Get custom metadata context for business metadata definitions in Atlan.
+    
+    This tool provides comprehensive information about all business metadata definitions
+    available in the Atlan tenant, including their attributes, descriptions, and
+    enum values. This context is essential when users refer to custom metadata in
+    their queries, as it helps the LLM understand the structure and available options
+    for business metadata.
+    
+    Returns:
+        List[Dict[str, Any]]: List of business metadata definitions, each containing:
+            - prompt: Formatted string with metadata information for LLM context
+            - metadata: Detailed metadata structure including:
+                - name: Internal name of the business metadata
+                - display_name: Human-readable display name
+                - description: Description of the business metadata
+                - attributes: List of attribute definitions with:
+                    - name: Attribute internal name
+                    - display_name: Attribute display name
+                    - data_type: Data type of the attribute
+                    - description: Attribute description (enhanced with enum values if applicable)
+                    - enumEnrichment: Enum information if the attribute is an enum type
+            - id: GUID of the business metadata definition
+    
+    Examples:
+        # Get all custom metadata context
+        context = get_custom_metadata_context_tool()
+        
+        # The returned data helps understand available business metadata like:
+        # - Data Quality metadata with attributes like "Accuracy Score", "Completeness"
+        # - Data Classification with attributes like "Sensitivity Level", "Data Category"
+        # - Business Context with attributes like "Business Owner", "Data Steward"
+        
+        # Each attribute may have enum values, for example:
+        # Sensitivity Level: 'Public', 'Internal', 'Confidential', 'Restricted'
+        # Data Category: 'PII', 'Financial', 'Operational', 'Marketing'
+    
+    Use Cases:
+        - Understanding available business metadata when users ask about custom metadata
+        - Providing context for business metadata attributes and their possible values
+        - Helping users understand what business metadata can be applied to assets
+        - Supporting queries about data classification, quality metrics, and business context
+    """
+    try:
+        return get_custom_metadata_context()
+    except Exception as e:
+        return {
+            "error": f"Failed to fetch custom metadata context: {str(e)}",
+            "context": []
+        }
 
 
 def main():
