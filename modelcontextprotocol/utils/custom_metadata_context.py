@@ -44,7 +44,7 @@ def process_business_metadata(
     if attribute_defs:
         for attr_def_item in attribute_defs:
             base_description = attr_def_item.get("description", "")
-            
+
             # Check for enum enrichment and enhance description
             enum_enrichment = attr_def_item.get("enumEnrichment")
             enhanced_description = base_description
@@ -53,9 +53,11 @@ def process_business_metadata(
                 if enum_values:
                     # Create comma-separated quoted values
                     quoted_values = ", ".join([f"'{value}'" for value in enum_values])
-                    enum_suffix = f" This attribute can have enum values: {quoted_values}."
+                    enum_suffix = (
+                        f" This attribute can have enum values: {quoted_values}."
+                    )
                     enhanced_description = f"{base_description}{enum_suffix}".strip()
-            
+
             attribute_metadata = {
                 "name": attr_def_item.get("name"),
                 "display_name": attr_def_item.get("displayName"),
@@ -113,15 +115,21 @@ def get_custom_metadata_context() -> Dict[str, Any]:
                     }
 
         # Fetch business metadata definitions
-        business_metadata_endpoint: str = Settings.get_atlan_typedef_api_endpoint(param="BUSINESS_METADATA")
-        business_metadata_response: Optional[Dict[str, Any]] = Settings.make_request(business_metadata_endpoint)
+        business_metadata_endpoint: str = Settings.get_atlan_typedef_api_endpoint(
+            param="BUSINESS_METADATA"
+        )
+        business_metadata_response: Optional[Dict[str, Any]] = Settings.make_request(
+            business_metadata_endpoint
+        )
         if business_metadata_response is None:
             logger.error(
                 f"Service: Failed to make request to {business_metadata_endpoint} for {display_name}. No data returned."
             )
             return []
-        
-        business_metadata_defs: List[Dict[str, Any]] = business_metadata_response.get("businessMetadataDefs", [])
+
+        business_metadata_defs: List[Dict[str, Any]] = business_metadata_response.get(
+            "businessMetadataDefs", []
+        )
 
         # Enrich business metadata with enum information before processing
         for business_metadata_def in business_metadata_defs:
@@ -147,7 +155,9 @@ def get_custom_metadata_context() -> Dict[str, Any]:
                         }
 
             # Process the enriched business metadata
-            business_metadata_results.append(process_business_metadata(business_metadata_def))
+            business_metadata_results.append(
+                process_business_metadata(business_metadata_def)
+            )
 
     except Exception as e:
         logger.error(
@@ -155,11 +165,12 @@ def get_custom_metadata_context() -> Dict[str, Any]:
             exc_info=True,
         )
         return []
-    
+
     logger.info(
         f"Fetched {len(business_metadata_results)} {display_name} definitions with enum enrichment."
     )
     return business_metadata_results
+
 
 if __name__ == "__main__":
     print(get_custom_metadata_context())

@@ -1,4 +1,5 @@
 """Configuration settings for the application."""
+
 import requests
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
             "X-Atlan-Agent-Id": self.ATLAN_AGENT_ID,
             "X-Atlan-Client-Origin": self.ATLAN_AGENT,
         }
-    
+
     @staticmethod
     def build_api_url(path: str, query_params: Optional[Dict[str, Any]] = None) -> str:
         current_settings = Settings()
@@ -58,7 +59,7 @@ class Settings(BaseSettings):
                 query_string = urlencode(active_query_params)
                 return f"{full_path}?{query_string}"
         return full_path
-    
+
     @staticmethod
     def get_atlan_typedef_api_endpoint(param: str) -> str:
         current_settings = Settings()
@@ -68,9 +69,10 @@ class Settings(BaseSettings):
             )
 
         return Settings.build_api_url(
-            path=current_settings.ATLAN_TYPEDEF_API_ENDPOINT, query_params={"type": param}
+            path=current_settings.ATLAN_TYPEDEF_API_ENDPOINT,
+            query_params={"type": param},
         )
-    
+
     @staticmethod
     def make_request(url: str) -> Optional[Dict[str, Any]]:
         current_settings = Settings()
@@ -90,8 +92,6 @@ class Settings(BaseSettings):
             return response.json()
         except Exception as e:
             raise Exception(f"Failed to make request to {url}: {e}")
-    
-
 
     class Config:
         env_file = ".env"
