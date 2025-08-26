@@ -7,7 +7,7 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
-    get_custom_metadata_context,
+    detect_custom_metadata_trigger,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -680,56 +680,60 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def custom_metadata_context() -> List[Dict[str, Any]]:
+def detect_custom_metadata_from_query(query_text: str) -> Dict[str, Any]:
     """
-    Get custom metadata context for business metadata definitions in Atlan.
+    Detect custom metadata triggers from natural language queries.
     
-    This tool provides comprehensive information about all business metadata definitions
-    available in the Atlan tenant, including their attributes, descriptions, and
-    enum values. This context is essential when users refer to custom metadata in
-    their queries, as it helps the LLM understand the structure and available options
-    for business metadata.
+    This tool analyzes natural language text to identify when users are referencing 
+    custom metadata (business metadata) and automatically provides context about 
+    available custom metadata definitions. Use this tool when you receive natural
+    language queries that might involve custom metadata concepts.
     
+    Args:
+        query_text (str): Natural language query text to analyze for custom metadata references
+        
     Returns:
-        List[Dict[str, Any]]: List of business metadata definitions, each containing:
-            - prompt: Formatted string with metadata information for LLM context
-            - metadata: Detailed metadata structure including:
-                - name: Internal name of the business metadata
-                - display_name: Human-readable display name
-                - description: Description of the business metadata
-                - attributes: List of attribute definitions with:
-                    - name: Attribute internal name
-                    - display_name: Attribute display name
-                    - data_type: Data type of the attribute
-                    - description: Attribute description (enhanced with enum values if applicable)
-                    - enumEnrichment: Enum information if the attribute is an enum type
-            - id: GUID of the business metadata definition
-    
+        Dict[str, Any]: Dictionary containing:
+            - detected: Boolean indicating if custom metadata was detected
+            - context: Custom metadata context if detected (list of metadata definitions)
+            - detection_reasons: List of reasons why custom metadata was detected
+            - suggested_attributes: List of suggested custom metadata attributes
+            
+    Detection Triggers:
+        The tool detects custom metadata usage when the query contains:
+        - Business metadata keywords (e.g., "business metadata", "data classification")
+        - Data governance terms (e.g., "PII", "GDPR", "compliance", "data quality")
+        - Attribute patterns (e.g., "sensitivity level", "business owner", "data steward")
+        - Quality and classification terms (e.g., "quality score", "classification level")
+        
     Examples:
-        # Get all custom metadata context
-        context = get_custom_metadata_context_tool()
+        # Query mentioning data classification
+        result = detect_custom_metadata_from_query("Find all tables with sensitive data classification")
         
-        # The returned data helps understand available business metadata like:
-        # - Data Quality metadata with attributes like "Accuracy Score", "Completeness"
-        # - Data Classification with attributes like "Sensitivity Level", "Data Category"
-        # - Business Context with attributes like "Business Owner", "Data Steward"
+        # Query about data quality
+        result = detect_custom_metadata_from_query("Show me assets with poor data quality scores")
         
-        # Each attribute may have enum values, for example:
-        # Sensitivity Level: 'Public', 'Internal', 'Confidential', 'Restricted'
-        # Data Category: 'PII', 'Financial', 'Operational', 'Marketing'
-    
+        # Query about business ownership
+        result = detect_custom_metadata_from_query("Which datasets have John as the business owner?")
+        
+        # Query about compliance
+        result = detect_custom_metadata_from_query("Find all PII data that needs GDPR compliance review")
+        
     Use Cases:
-        - Understanding available business metadata when users ask about custom metadata
-        - Providing context for business metadata attributes and their possible values
-        - Helping users understand what business metadata can be applied to assets
-        - Supporting queries about data classification, quality metrics, and business context
+        - Analyze user queries before executing searches to provide custom metadata context
+        - Understand when users are asking about business metadata attributes
+        - Provide enriched context about available custom metadata definitions
+        - Help users discover relevant custom metadata attributes for their queries
     """
     try:
-        return get_custom_metadata_context()
+        return detect_custom_metadata_trigger(query_text)
     except Exception as e:
         return {
-            "error": f"Failed to fetch custom metadata context: {str(e)}",
-            "context": []
+            "detected": False,
+            "context": None,
+            "detection_reasons": [],
+            "suggested_attributes": [],
+            "error": f"Failed to detect custom metadata: {str(e)}"
         }
 
 
