@@ -2,7 +2,7 @@ from .search import search_assets
 from .dsl import get_assets_by_dsl
 from .lineage import traverse_lineage
 from .assets import update_assets
-from .custom_metadata_context import get_custom_metadata_context
+from .custom_metadata_detector import detect_custom_metadata_trigger
 from .glossary import (
     create_glossary_category_assets,
     create_glossary_assets,
@@ -22,7 +22,7 @@ __all__ = [
     "get_assets_by_dsl",
     "traverse_lineage",
     "update_assets",
-    "get_custom_metadata_context",
+    "detect_custom_metadata_trigger",
     "create_glossary_category_assets",
     "create_glossary_assets",
     "create_glossary_term_assets",
