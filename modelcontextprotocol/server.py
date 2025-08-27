@@ -472,14 +472,16 @@ def query_asset_tool(
     to execute SQL against connected data sources.
 
     Note:
-        Only SELECT queries are allowed
+        Use read-only queries to retrieve data. 
 
     Args:
-        sql (str): The SQL query to execute (SELECT queries only)
+        sql (str): The SQL query to execute (read-only queries allowed)
         connection_qualified_name (str): Connection qualified name to use for the query.
             This is the same parameter used in search_assets_tool.
-            You can find this value by searching for Connection assets using search_assets_tool
-            and looking at the 'qualifiedName' attribute.
+            You can find this value by searching for Table/View assets using search_assets_tool
+            and extracting the first part of the 'qualifiedName' attribute.
+            Example: from "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES" 
+            use "default/snowflake/1657275059"
         default_schema (str, optional): Default schema name to use for unqualified 
             objects in the SQL, in the form "DB.SCHEMA" 
             (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
@@ -492,18 +494,22 @@ def query_asset_tool(
             - query_info: Additional query execution information
 
     Examples:
-        # First, find available connections using search_assets_tool
-        connections = search_assets_tool(
-            asset_type="Connection",
+        # Find tables to query using search_assets_tool
+        tables = search_assets_tool(
+            asset_type="Table", 
+            conditions={"name": "PAGES"},
             limit=5
         )
-        # Look for the 'qualifiedName' attribute in the results
+        # Extract connection info from the table's qualifiedName
+        # Example qualifiedName: "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
+        # connection_qualified_name: "default/snowflake/1657275059"
+        # database.schema: "LANDING.FRONTEND_PROD"
         
-        # Query a specific table with schema
+        # Query the table using extracted connection info
         result = query_asset_tool(
-            sql='SELECT * FROM "CUSTOMERS" LIMIT 10',
-            connection_qualified_name="default/snowflake/1705755637",
-            default_schema="RAW.WIDEWORLDIMPORTERS_WAREHOUSE"
+            sql='SELECT * FROM PAGES LIMIT 10',
+            connection_qualified_name="default/snowflake/1657275059",
+            default_schema="LANDING.FRONTEND_PROD"
         )
 
         # Query without specifying default schema (fully qualified table names)

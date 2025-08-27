@@ -24,13 +24,13 @@ def query_asset(
     Execute a SQL query on a table/view asset.
 
     Note:
-        Only SELECT queries are allowed.
+        Use read-only queries to retrieve data.
         Please add reasonable LIMIT clauses to your SQL queries to avoid 
         overwhelming the client or causing timeouts. Large result sets can 
         cause performance issues or crash the client application.
 
     Args:
-        sql (str): The SQL query to execute (SELECT queries only)
+        sql (str): The SQL query to execute (read-only queries)
         connection_qualified_name (str): Connection qualified name to use for the query
             (e.g., "default/snowflake/1705755637")
         default_schema (str, optional): Default schema name to use for unqualified 
@@ -75,17 +75,6 @@ def query_asset(
                 "query_info": {}
             }
 
-        # Validate that only SELECT queries are allowed
-        sql_upper = sql.strip().upper()
-        if not sql_upper.startswith('SELECT'):
-            error_msg = "Only SELECT queries are allowed"
-            logger.error(error_msg)
-            return {
-                "success": False,
-                "data": None,
-                "error": error_msg,
-                "query_info": {}
-            }
 
         # Get Atlan client
         logger.debug("Getting Atlan client")
