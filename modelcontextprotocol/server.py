@@ -1,5 +1,6 @@
 import argparse
 import json
+from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -7,6 +8,9 @@ from tools import (
     traverse_lineage,
     update_assets,
     query_asset,
+    create_glossary_category_assets,
+    create_glossary_assets,
+    create_glossary_term_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -60,7 +64,7 @@ def search_assets_tool(
         offset (int, optional): Offset for pagination. Defaults to 0.
         sort_by (str, optional): Attribute to sort by. Defaults to None.
         sort_order (str, optional): Sort order, "ASC" or "DESC". Defaults to "ASC".
-        connection_qualified_name (str, optional): Connection qualified name to filter by.
+        connection_qualified_name (str, optional): Connection qualified name to filter by. ex: default/snowflake/123456/abc
         tags (List[str], optional): List of tags to filter by.
         directly_tagged (bool): Whether to filter for directly tagged assets only. Defaults to True.
         domain_guids (List[str], optional): List of domain GUIDs to filter by.
@@ -81,8 +85,9 @@ def search_assets_tool(
             conditions={"certificate_status": CertificateStatus.VERIFIED.value}
         )
 
-        # Search for assets missing descriptions
+        # Search for assets missing descriptions from the database/connection default/snowflake/123456/abc
         missing_desc = search_assets(
+            connection_qualified_name="default/snowflake/123456/abc",
             negative_conditions={
                 "description": "has_any_value",
                 "user_description": "has_any_value"
@@ -135,10 +140,11 @@ def search_assets_tool(
             }
         )
 
-        # Search for assets with multiple type names (OR logic)
+        # For multiple asset types queries. ex: Search for Table, Column, or View assets from the database/connection default/snowflake/123456/abc
         assets = search_assets(
+            connection_qualified_name="default/snowflake/123456/abc",
             conditions={
-                "type_name": ["Table", "Column", "View"]  # Uses .within() for OR logic
+                "type_name": ["Table", "Column", "View"],
             }
         )
 
@@ -203,6 +209,12 @@ def search_assets_tool(
             include_attributes=["categories"]
         )
 
+    Additional attributes you can include in the conditions to extract more metadata from an asset:
+        - columns
+        - column_count
+        - row_count
+        - readme
+        - owner_users
     """
     try:
         # Parse JSON string parameters if needed
@@ -317,9 +329,13 @@ def traverse_lineage_tool(
     depth=1000000,
     size=10,
     immediate_neighbors=True,
+    include_attributes=None,
 ):
     """
     Traverse asset lineage in specified direction.
+
+    By default, essential attributes are included in results. Additional attributes can be
+    specified via include_attributes parameter for richer lineage information.
 
     Args:
         guid (str): GUID of the starting asset
@@ -327,30 +343,28 @@ def traverse_lineage_tool(
         depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
         size (int, optional): Maximum number of results to return. Defaults to 10.
         immediate_neighbors (bool, optional): Only return immediate neighbors. Defaults to True.
+        include_attributes (List[str], optional): List of additional attribute names to include in results.
+            These will be added to the default set.
+
+    Default Attributes (always included):
+        - name, display_name, description, qualified_name, user_description
+        - certificate_status, owner_users, owner_groups
+        - connector_name, has_lineage, source_created_at, source_updated_at
+        - readme, asset_tags
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - assets: List of assets in the lineage
-            - references: List of dictionaries containing:
-                - source_guid: GUID of the source asset
-                - target_guid: GUID of the target asset
-                - direction: Direction of the reference (upstream/downstream)
+            - assets: List of assets in the lineage with processed attributes
+            - error: None if no error occurred, otherwise the error message
 
-    Example:
-        # Get lineage with specific depth and size
+    Examples:
+        # Get lineage with default attributes
         lineage = traverse_lineage_tool(
             guid="asset-guid-here",
             direction="DOWNSTREAM",
-            depth=1000000,
+            depth=1000,
             size=10
         )
-
-        # Access assets and their references
-        for asset in lineage["assets"]:
-            print(f"Asset: {asset.guid}")
-
-        for ref in lineage["references"]:
-            print(f"Reference: {ref['source_guid']} -> {ref['target_guid']}")
     """
     try:
         direction_enum = LineageDirection[direction.upper()]
@@ -359,12 +373,16 @@ def traverse_lineage_tool(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
 
+    # Parse include_attributes parameter if provided
+    parsed_include_attributes = parse_list_parameter(include_attributes)
+
     return traverse_lineage(
         guid=guid,
         direction=direction_enum,
-        depth=depth,
-        size=size,
-        immediate_neighbors=immediate_neighbors,
+        depth=int(depth),
+        size=int(size),
+        immediate_neighbors=bool(immediate_neighbors),
+        include_attributes=parsed_include_attributes,
     )
 
 
@@ -381,9 +399,10 @@ def update_assets_tool(
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Only "user_description" and "certificate_status" are supported.
+            Only "user_description", "certificate_status" and "readme" are supported.
         attribute_values (List[str]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
+            For readme, the value must be a valid Markdown string.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -425,6 +444,22 @@ def update_assets_tool(
             ]
         )
 
+        # Update readme for a single asset with Markdown
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            },
+            attribute_name="readme",
+            attribute_values=['''# Customer Data Table
+            Contains customer transaction records for analytics.
+            **Key Info:**
+            - Updated daily at 2 AM
+            - Contains PII data
+            - [Documentation](https://docs.example.com)''']
+        )
     """
     try:
         # Parse JSON parameters
@@ -540,6 +575,192 @@ def query_asset_tool(
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
+
+@mcp.tool()
+def create_glossaries(glossaries) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple AtlasGlossary assets in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Check for duplicate names within the same request and ask user to choose different names
+    - Do NOT use search tool before creating glossaries - Atlan will handle existence validation
+    - If user gives ambiguous instructions, ask clarifying questions
+
+    Args:
+        glossaries (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single glossary
+            specification (dict) or a list of glossary specifications. Each specification
+            can be a dictionary containing:
+            - name (str): Name of the glossary (required)
+            - user_description (str, optional): Detailed description of the glossary
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created glossary:
+            - guid: The GUID of the created glossary
+            - name: The name of the glossary
+            - qualified_name: The qualified name of the created glossary
+
+
+    Examples:
+        Multiple glossaries creation:
+        [
+            {
+                "name": "Business Terms",
+                "user_description": "Common business terminology",
+                "certificate_status": "VERIFIED"
+            },
+            {
+                "name": "Technical Dictionary",
+                "user_description": "Technical terminology and definitions",
+                "certificate_status": "DRAFT"
+            }
+        ]
+    """
+
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        glossaries = parse_json_parameter(glossaries)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
+
+    return create_glossary_assets(glossaries)
+
+
+@mcp.tool()
+def create_glossary_terms(terms) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple AtlasGlossaryTerm assets in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Within a glossary, a term (single GUID) can be associated with many categories
+    - Two terms with the same name CANNOT exist within the same glossary (regardless of categories)
+    - A term is always anchored to a glossary and may also be associated with one or more categories inside the same glossary
+    - Before creating a term, perform a single search to check if the glossary, categories, or term with the same name already exist. Search for all relevant glossaries, categories, and terms in one call. Skip this step if you already have the required GUIDs.
+    - Example call for searching glossary categories and terms before term creation(Query - create a term fighterz under category Characters and Locations under Marvel Cinematic Universe (MCU) glossary):
+        {
+            "limit": 10,
+            "conditions": {
+                "type_name": ["AtlasGlossary", "AtlasGlossaryCategory","AtlasGlossaryTerm"],
+                "name": ["Marvel Cinematic Universe (MCU)", "Characters", "Locations","fighterz"]
+            }
+        }
+
+    Args:
+        terms (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single term
+            specification (dict) or a list of term specifications. Each specification
+            can be a dictionary containing:
+            - name (str): Name of the term (required)
+            - glossary_guid (str): GUID of the glossary this term belongs to (required)
+            - user_description (str, optional): Detailed description of the term
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - category_guids (List[str], optional): List of category GUIDs this term
+              belongs to.
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created term:
+            - guid: The GUID of the created term
+            - name: The name of the term
+            - qualified_name: The qualified name of the created term
+
+    Examples:
+        Multiple terms creation:
+        [
+            {
+                "name": "Customer",
+                "glossary_guid": "glossary-guid-here",
+                "user_description": "An individual or organization that purchases goods or services",
+                "certificate_status": "VERIFIED"
+            },
+            {
+                "name": "Annual Recurring Revenue",
+                "glossary_guid": "glossary-guid-here",
+                "user_description": "The yearly value of recurring revenue from customers",
+                "certificate_status": "DRAFT",
+                "category_guids": ["category-guid-1"]
+            }
+        ]
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        terms = parse_json_parameter(terms)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
+
+    return create_glossary_term_assets(terms)
+
+
+@mcp.tool()
+def create_glossary_categories(categories) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple AtlasGlossaryCategory assets in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - There cannot be two categories with the same name under the same glossary (at the same level)
+    - Under a parent category, there cannot be subcategories with the same name (at the same level)
+    - Categories with the same name can exist under different glossaries (this is allowed)
+    - Cross-level naming is allowed: category "a" can have subcategory "b", and category "b" can have subcategory "a"
+    - Example allowed structure: Glossary "bui" → category "a" → subcategory "b" AND category "b" → subcategory "a"
+    - Always check for duplicate names at the same level and ask user to choose different names
+    - Before creating a category, perform a single search to check if the glossary or categories with the same name already exist. Skip this step if you already have the required GUIDs.
+    - Example call for searching glossary and categories before category creation(Query - create categories Locations and Characters under Marvel Cinematic Universe (MCU) glossary):
+        {
+            "limit": 10,
+            "conditions": {
+                "type_name": ["AtlasGlossary", "AtlasGlossaryCategory"],
+                "name": ["Marvel Cinematic Universe (MCU)", "Characters", "Locations"]
+            }
+        }
+    - If user gives ambiguous instructions, ask clarifying questions
+
+    Args:
+        categories (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single category
+            specification (dict) or a list of category specifications. Each specification
+            can be a dictionary containing:
+            - name (str): Name of the category (required)
+            - glossary_guid (str): GUID of the glossary this category belongs to (required)
+            - user_description (str, optional): Detailed description of the category
+              proposed by the user
+            - certificate_status (str, optional): Certification status
+              ("VERIFIED", "DRAFT", or "DEPRECATED")
+            - parent_category_guid (str, optional): GUID of the parent category if this
+              is a subcategory
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created category:
+            - guid: The GUID of the created category
+            - name: The name of the category
+            - qualified_name: The qualified name of the created category
+
+    Examples:
+        Multiple categories creation:
+        [
+            {
+                "name": "Customer Data",
+                "glossary_guid": "glossary-guid-here",
+                "user_description": "Terms related to customer information and attributes",
+                "certificate_status": "VERIFIED"
+            },
+            {
+                "name": "PII",
+                "glossary_guid": "glossary-guid-here",
+                "parent_category_guid": "parent-category-guid-here",
+                "user_description": "Subcategory for PII terms",
+                "certificate_status": "DRAFT"
+            }
+        ]
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        categories = parse_json_parameter(categories)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
+
+    return create_glossary_category_assets(categories)
+
 
 
 def main():
