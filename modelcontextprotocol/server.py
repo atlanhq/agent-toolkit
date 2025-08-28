@@ -462,7 +462,7 @@ def update_assets_tool(
 def query_asset_tool(
     sql: str,
     connection_qualified_name: str,
-    default_schema: str = None,
+    default_schema: str | None = None
 ):
     """
     Execute a SQL query on a table/view asset.
@@ -471,8 +471,12 @@ def query_asset_tool(
     what's available in the insights table. It uses the Atlan query capabilities
     to execute SQL against connected data sources.
 
+    CRITICAL: Use READ-ONLY queries to retrieve data. 
+
     Note:
-        Use read-only queries to retrieve data. 
+        Use read-only queries to retrieve data.
+        Write and modify queries are not supported by this tool.
+        
 
     Args:
         sql (str): The SQL query to execute (read-only queries allowed)
