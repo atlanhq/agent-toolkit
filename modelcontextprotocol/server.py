@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
@@ -19,8 +20,30 @@ from utils.parameters import (
     parse_json_parameter,
     parse_list_parameter,
 )
+from middleware import ToolRestrictionMiddleware
+
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
+
+# Add tool restriction middleware
+# Configure which tools should be restricted
+# Can be set via environment variable RESTRICTED_TOOLS (comma-separated)
+# or by modifying the list below
+
+# Get restricted tools from environment variable or use default
+restricted_tools_env = os.getenv("RESTRICTED_TOOLS", "")
+if restricted_tools_env:
+    restricted_tools = [
+        tool.strip() for tool in restricted_tools_env.split(",") if tool.strip()
+    ]
+else:
+    # Default configuration - modify this list to restrict specific tools
+    restricted_tools = []
+    # Example: restrict DSL tool
+    # restricted_tools = ["get_assets_by_dsl_tool"]
+
+tool_restriction = ToolRestrictionMiddleware(restricted_tools=restricted_tools)
+mcp.add_middleware(tool_restriction)
 
 
 @mcp.tool()
