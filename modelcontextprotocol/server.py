@@ -25,11 +25,6 @@ from middleware import ToolRestrictionMiddleware
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
 
-# Add tool restriction middleware
-# Configure which tools should be restricted
-# Can be set via environment variable RESTRICTED_TOOLS (comma-separated)
-# or by modifying the list below
-
 # Get restricted tools from environment variable or use default
 restricted_tools_env = os.getenv("RESTRICTED_TOOLS", "")
 if restricted_tools_env:
@@ -39,8 +34,6 @@ if restricted_tools_env:
 else:
     # Default configuration - modify this list to restrict specific tools
     restricted_tools = []
-    # Example: restrict DSL tool
-    # restricted_tools = ["get_assets_by_dsl_tool"]
 
 tool_restriction = ToolRestrictionMiddleware(restricted_tools=restricted_tools)
 mcp.add_middleware(tool_restriction)
