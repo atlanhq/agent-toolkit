@@ -8,10 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.7] - 2025-09-02
 
 ### Added
-- Configurable tool access control middleware for fine-grained permission management
-- `RESTRICTED_TOOLS` environment variable support for blocking specific tools
-- Tool restriction capability for any combination of available tools (search, DSL queries, updates, glossary operations)
-- Enhanced security controls for production deployments and multi-tenant environments
+- Configurable tool access control via `RESTRICTED_TOOLS` environment variable
+- Organizations can now restrict any combination of tools for MCP clients
 
 
 ## [0.2.6] - 2025-08-19
