@@ -173,4 +173,4 @@ def get_custom_metadata_context() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    print(get_custom_metadata_context())
+    get_custom_metadata_context()
