@@ -495,23 +495,21 @@ def update_assets_tool(
 
 @mcp.tool()
 def query_asset_tool(
-    sql: str,
-    connection_qualified_name: str,
-    default_schema: str | None = None
+    sql: str, connection_qualified_name: str, default_schema: str | None = None
 ):
     """
     Execute a SQL query on a table/view asset.
 
-    This tool enables querying table/view assets on the source similar to 
+    This tool enables querying table/view assets on the source similar to
     what's available in the insights table. It uses the Atlan query capabilities
     to execute SQL against connected data sources.
 
-    CRITICAL: Use READ-ONLY queries to retrieve data. 
+    CRITICAL: Use READ-ONLY queries to retrieve data.
 
     Note:
         Use read-only queries to retrieve data.
         Write and modify queries are not supported by this tool.
-        
+
 
     Args:
         sql (str): The SQL query to execute (read-only queries allowed)
@@ -519,10 +517,10 @@ def query_asset_tool(
             This is the same parameter used in search_assets_tool.
             You can find this value by searching for Table/View assets using search_assets_tool
             and extracting the first part of the 'qualifiedName' attribute.
-            Example: from "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES" 
+            Example: from "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
             use "default/snowflake/1657275059"
-        default_schema (str, optional): Default schema name to use for unqualified 
-            objects in the SQL, in the form "DB.SCHEMA" 
+        default_schema (str, optional): Default schema name to use for unqualified
+            objects in the SQL, in the form "DB.SCHEMA"
             (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
 
     Returns:
@@ -535,7 +533,7 @@ def query_asset_tool(
     Examples:
         # Find tables to query using search_assets_tool
         tables = search_assets_tool(
-            asset_type="Table", 
+            asset_type="Table",
             conditions={"name": "PAGES"},
             limit=5
         )
@@ -543,7 +541,7 @@ def query_asset_tool(
         # Example qualifiedName: "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
         # connection_qualified_name: "default/snowflake/1657275059"
         # database.schema: "LANDING.FRONTEND_PROD"
-        
+
         # Query the table using extracted connection info
         result = query_asset_tool(
             sql='SELECT * FROM PAGES LIMIT 10',
@@ -560,14 +558,14 @@ def query_asset_tool(
         # Complex analytical query
         result = query_asset_tool(
             sql='''
-            SELECT 
+            SELECT
                 category,
                 COUNT(*) AS product_count,
                 AVG(price) AS avg_price,
                 MAX(price) AS max_price
-            FROM products 
+            FROM products
             WHERE created_date >= '2024-01-01'
-            GROUP BY category 
+            GROUP BY category
             ORDER BY product_count DESC
             ''',
             connection_qualified_name="default/snowflake/analytics_db",
@@ -575,6 +573,7 @@ def query_asset_tool(
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
+
 
 @mcp.tool()
 def create_glossaries(glossaries) -> List[Dict[str, Any]]:
@@ -760,7 +759,6 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
-
 
 
 def main():

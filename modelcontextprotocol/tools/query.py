@@ -25,16 +25,16 @@ def query_asset(
 
     Note:
         Use read-only queries to retrieve data.
-        Please add reasonable LIMIT clauses to your SQL queries to avoid 
-        overwhelming the client or causing timeouts. Large result sets can 
+        Please add reasonable LIMIT clauses to your SQL queries to avoid
+        overwhelming the client or causing timeouts. Large result sets can
         cause performance issues or crash the client application.
 
     Args:
         sql (str): The SQL query to execute (read-only queries)
         connection_qualified_name (str): Connection qualified name to use for the query
             (e.g., "default/snowflake/1705755637")
-        default_schema (str, optional): Default schema name to use for unqualified 
-            objects in the SQL, in the form "DB.SCHEMA" 
+        default_schema (str, optional): Default schema name to use for unqualified
+            objects in the SQL, in the form "DB.SCHEMA"
             (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
 
     Returns:
@@ -62,7 +62,7 @@ def query_asset(
                 "success": False,
                 "data": None,
                 "error": error_msg,
-                "query_info": {}
+                "query_info": {},
             }
 
         if not connection_qualified_name or not connection_qualified_name.strip():
@@ -72,9 +72,8 @@ def query_asset(
                 "success": False,
                 "data": None,
                 "error": error_msg,
-                "query_info": {}
+                "query_info": {},
             }
-
 
         # Get Atlan client
         logger.debug("Getting Atlan client")
@@ -85,16 +84,14 @@ def query_asset(
         query_request = QueryRequest(
             sql=sql,
             data_source_name=connection_qualified_name,
-            default_schema=default_schema
+            default_schema=default_schema,
         )
 
         # Execute query
         logger.info("Executing SQL query")
         query_response = client.queries.stream(request=query_request)
 
-        logger.info(
-            f"Query executed successfully, returning response"
-        )
+        logger.info("Query executed successfully, returning response")
 
         return {
             "success": True,
@@ -103,15 +100,15 @@ def query_asset(
             "query_info": {
                 "data_source": connection_qualified_name,
                 "default_schema": default_schema,
-                "sql": sql
-            }
+                "sql": sql,
+            },
         }
 
     except Exception as e:
         error_msg = f"Error executing SQL query: {str(e)}"
         logger.error(error_msg)
         logger.exception("Exception details:")
-        
+
         return {
             "success": False,
             "data": None,
@@ -119,6 +116,6 @@ def query_asset(
             "query_info": {
                 "data_source": connection_qualified_name,
                 "default_schema": default_schema,
-                "sql": sql
-            }
-        } 
+                "sql": sql,
+            },
+        }

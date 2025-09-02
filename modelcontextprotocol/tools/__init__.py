@@ -10,9 +10,6 @@ from .glossary import (
     create_glossary_term_assets,
 )
 from .models import (
-    CertificateStatus,
-    UpdatableAttribute,
-    UpdatableAsset,
     Glossary,
     GlossaryCategory,
     GlossaryTerm,
