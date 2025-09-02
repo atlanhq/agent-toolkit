@@ -7,7 +7,6 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
-    detect_custom_metadata_trigger,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -691,64 +690,6 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
-
-
-@mcp.tool()
-def detect_custom_metadata_from_query(query_text: str) -> Dict[str, Any]:
-    """
-    Detect custom metadata triggers from natural language queries.
-
-    This tool analyzes natural language text to identify when users are referencing
-    custom metadata (business metadata) and automatically provides context about
-    available custom metadata definitions. Use this tool when you receive natural
-    language queries that might involve custom metadata concepts.
-
-    Args:
-        query_text (str): Natural language query text to analyze for custom metadata references
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - detected: Boolean indicating if custom metadata was detected
-            - context: Custom metadata context if detected (list of metadata definitions)
-            - detection_reasons: List of reasons why custom metadata was detected
-            - suggested_attributes: List of suggested custom metadata attributes
-
-    Detection Triggers:
-        The tool detects custom metadata usage when the query contains:
-        - Business metadata keywords (e.g., "business metadata", "data classification")
-        - Data governance terms (e.g., "PII", "GDPR", "compliance", "data quality")
-        - Attribute patterns (e.g., "sensitivity level", "business owner", "data steward")
-        - Quality and classification terms (e.g., "quality score", "classification level")
-
-    Examples:
-        # Query mentioning data classification
-        result = detect_custom_metadata_from_query("Find all tables with sensitive data classification")
-
-        # Query about data quality
-        result = detect_custom_metadata_from_query("Show me assets with poor data quality scores")
-
-        # Query about business ownership
-        result = detect_custom_metadata_from_query("Which datasets have John as the business owner?")
-
-        # Query about compliance
-        result = detect_custom_metadata_from_query("Find all PII data that needs GDPR compliance review")
-
-    Use Cases:
-        - Analyze user queries before executing searches to provide custom metadata context
-        - Understand when users are asking about business metadata attributes
-        - Provide enriched context about available custom metadata definitions
-        - Help users discover relevant custom metadata attributes for their queries
-    """
-    try:
-        return detect_custom_metadata_trigger(query_text)
-    except Exception as e:
-        return {
-            "detected": False,
-            "context": None,
-            "detection_reasons": [],
-            "suggested_attributes": [],
-            "error": f"Failed to detect custom metadata: {str(e)}",
-        }
 
 
 def main():
