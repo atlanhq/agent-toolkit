@@ -21,6 +21,8 @@ from utils.parameters import (
     parse_list_parameter,
 )
 from middleware import ToolRestrictionMiddleware
+from fastapi.responses import JSONResponse
+from fastapi import Request
 
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -37,6 +39,17 @@ else:
 
 tool_restriction = ToolRestrictionMiddleware(restricted_tools=restricted_tools)
 mcp.add_middleware(tool_restriction)
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health(_: Request) -> JSONResponse:
+    """
+    Health check endpoint for the MCP server.
+
+    Returns:
+        JSONResponse: A simple status message indicating the server is running.
+    """
+    return JSONResponse(content={"status": "ok"})
 
 
 @mcp.tool()
@@ -714,7 +727,7 @@ if __name__ == "__main__":
         "--port", type=int, default=8000, help="Port to run the server on"
     )
     parser.add_argument(
-        "--path", type=str, default="/", help="Path of the streamable HTTP server"
+        "--path", type=str, default="/mcp/", help="Path of the streamable HTTP server"
     )
     args = parser.parse_args()
 
