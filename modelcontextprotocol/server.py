@@ -21,8 +21,8 @@ from utils.parameters import (
     parse_list_parameter,
 )
 from middleware import ToolRestrictionMiddleware
-from fastapi.responses import JSONResponse
-from fastapi import Request
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -42,14 +42,8 @@ mcp.add_middleware(tool_restriction)
 
 
 @mcp.custom_route("/health", methods=["GET"])
-async def health(_: Request) -> JSONResponse:
-    """
-    Health check endpoint for the MCP server.
-
-    Returns:
-        JSONResponse: A simple status message indicating the server is running.
-    """
-    return JSONResponse(content={"status": "ok"})
+async def health_check(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("OK")
 
 
 @mcp.tool()

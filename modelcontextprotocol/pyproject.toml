@@ -16,7 +16,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastapi>=0.116.1",
     "fastmcp==2.11.0",
     "pyatlan>=6.0.1",
 ]
