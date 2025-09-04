@@ -4,12 +4,14 @@ import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
-    create_glossary_category_assets,
-    create_glossary_assets,
-    create_glossary_term_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
+)
+from tools.glossary import (
+    create_glossary_category_assets as create_glossary_category_assets_impl,
+    create_glossary_assets as create_glossary_assets_impl,
+    create_glossary_term_assets as create_glossary_term_assets_impl,
 )
 from tools.search import search_assets as search_assets_impl
 from tools.dsl import get_assets_by_dsl as get_assets_by_dsl_impl
@@ -557,7 +559,7 @@ def create_glossaries(glossaries) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
 
-    return create_glossary_assets(glossaries)
+    return create_glossary_assets_impl(glossaries)
 
 
 @mcp.tool()
@@ -622,7 +624,7 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
 
-    return create_glossary_term_assets(terms)
+    return create_glossary_term_assets_impl(terms)
 
 
 @mcp.tool()
@@ -691,7 +693,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
-    return create_glossary_category_assets(categories)
+    return create_glossary_category_assets_impl(categories)
 
 
 def main():

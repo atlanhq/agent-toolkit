@@ -32,12 +32,14 @@ The main entry point for the MCP server. Registers and exposes tools defined in 
 ```python
 from mcp.server.fastmcp import FastMCP
 from tools import (
-    create_glossary_category_assets,
-    create_glossary_assets,
-    create_glossary_term_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
+)
+from tools.glossary import (
+    create_glossary_category_assets as create_glossary_category_assets_impl,
+    create_glossary_assets as create_glossary_assets_impl,
+    create_glossary_term_assets as create_glossary_term_assets_impl,
 )
 from tools.search import search_assets as search_assets_impl
 from tools.dsl import get_assets_by_dsl as get_assets_by_dsl_impl
