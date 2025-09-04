@@ -243,11 +243,33 @@ When tools are restricted:
 
 If you don't set the `RESTRICTED_TOOLS` environment variable, all tools will be available by default.
 
+## Transport Modes
+
+The Atlan MCP Server supports three transport modes, each optimized for different deployment scenarios:
+
+### stdio (Default)
+- **Use case**: Local development, IDE integrations
+- **Benefits**: Simple, direct communication
+- **When to use**: Claude Desktop, Cursor IDE
+
+### SSE (Server-Sent Events)
+- **Use case**: Remote deployments, web browsers
+- **Benefits**: Real-time streaming, web-compatible
+- **When to use**: Cloud deployments, web clients
+
+### streamable-http
+- **Use case**: HTTP-based remote connections
+- **Benefits**: Standard HTTP, load balancer friendly
+- **When to use**: Kubernetes, containerized deployments
+
+For comprehensive deployment instructions, configuration examples, and production best practices, see our [Deployment Guide](./docs/DEPLOYMENT.md).
+
 ## Production Deployment
 
 - Host the Atlan MCP container image on the cloud/platform of your choice
 - Make sure you add all the required environment variables
-- Make sure you start the server in the SSE transport mode `-e MCP_TRANSPORT=sse`
+- Choose the appropriate transport mode for your deployment scenario
+- For detailed deployment scenarios and configurations, refer to the [Deployment Guide](./docs/DEPLOYMENT.md)
 
 ### Remote MCP Configuration
 
