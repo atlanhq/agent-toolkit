@@ -12,6 +12,12 @@ from typing import Any, List, Optional, Union
 logger = logging.getLogger(__name__)
 
 
+class ParameterParsingError(ValueError):
+    """Custom exception for parameter parsing errors."""
+
+    pass
+
+
 def parse_json_parameter(param: Any) -> Union[dict, list, None]:
     """
     Parse a parameter that might be a JSON string.
@@ -23,17 +29,22 @@ def parse_json_parameter(param: Any) -> Union[dict, list, None]:
         The parsed parameter value
 
     Raises:
-        json.JSONDecodeError: If the JSON string is invalid
+        ParameterParsingError: If the JSON string is invalid
     """
     if param is None:
         return None
 
     if isinstance(param, str):
+        if param.strip() == "":
+            return None
+
         try:
             return json.loads(param)
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON parameter: {param}")
-            raise e
+            logger.error(
+                f"Invalid JSON parameter: {param[:100]}..."
+            )  # Limit log length
+            raise ParameterParsingError(f"Invalid JSON format: {str(e)}") from e
 
     return param
 
@@ -49,17 +60,22 @@ def parse_list_parameter(param: Any) -> Optional[List[Any]]:
         The parsed list, None if param is None, or original value converted to list if needed
 
     Raises:
-        json.JSONDecodeError: If the JSON string is invalid
+        ParameterParsingError: If the JSON string is invalid
     """
     if param is None:
         return None
 
     if isinstance(param, str):
+        if param.strip() == "":
+            return None
+
         try:
             parsed = json.loads(param)
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON parameter: {param}")
-            raise e
+            logger.error(
+                f"Invalid JSON parameter: {param[:100]}..."
+            )  # Limit log length
+            raise ParameterParsingError(f"Invalid JSON format: {str(e)}") from e
 
         if isinstance(parsed, list):
             return parsed
