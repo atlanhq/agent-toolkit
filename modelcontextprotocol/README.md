@@ -268,7 +268,7 @@ For comprehensive deployment instructions, configuration examples, and productio
 
 - Host the Atlan MCP container image on the cloud/platform of your choice
 - Make sure you add all the required environment variables
-- Choose the appropriate transport mode for your deployment scenario
+- Choose the appropriate transport mode for your deployment scenario. SSE Transport is recommended for production (`-e MCP_TRANSPORT=sse`)
 - For detailed deployment scenarios and configurations, refer to the [Deployment Guide](./docs/DEPLOYMENT.md)
 
 ### Remote MCP Configuration
