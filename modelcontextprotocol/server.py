@@ -4,10 +4,6 @@ import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
-    search_assets,
-    get_assets_by_dsl,
-    traverse_lineage,
-    update_assets,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -15,6 +11,10 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
 )
+from tools.search import search_assets as search_assets_impl
+from tools.dsl import get_assets_by_dsl as get_assets_by_dsl_impl
+from tools.lineage import traverse_lineage as traverse_lineage_impl
+from tools.assets import update_assets as update_assets_impl
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
     parse_json_parameter,
@@ -40,7 +40,7 @@ mcp.add_middleware(tool_restriction)
 
 
 @mcp.tool()
-def search_assets_tool(
+def search_assets(
     conditions=None,
     negative_conditions=None,
     some_conditions=None,
@@ -242,7 +242,7 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
-        return search_assets(
+        return search_assets_impl(
             conditions,
             negative_conditions,
             some_conditions,
@@ -266,7 +266,7 @@ def search_assets_tool(
 
 
 @mcp.tool()
-def get_assets_by_dsl_tool(dsl_query):
+def get_assets_by_dsl(dsl_query):
     """
     Execute the search with the given query
     dsl_query : Union[str, Dict[str, Any]] (required):
@@ -334,11 +334,11 @@ def get_assets_by_dsl_tool(dsl_query):
     }'''
     response = get_assets_by_dsl(dsl_query)
     """
-    return get_assets_by_dsl(dsl_query)
+    return get_assets_by_dsl_impl(dsl_query)
 
 
 @mcp.tool()
-def traverse_lineage_tool(
+def traverse_lineage(
     guid,
     direction,
     depth=1000000,
@@ -374,7 +374,7 @@ def traverse_lineage_tool(
 
     Examples:
         # Get lineage with default attributes
-        lineage = traverse_lineage_tool(
+        lineage = traverse_lineage(
             guid="asset-guid-here",
             direction="DOWNSTREAM",
             depth=1000,
@@ -391,7 +391,7 @@ def traverse_lineage_tool(
     # Parse include_attributes parameter if provided
     parsed_include_attributes = parse_list_parameter(include_attributes)
 
-    return traverse_lineage(
+    return traverse_lineage_impl(
         guid=guid,
         direction=direction_enum,
         depth=int(depth),
@@ -402,7 +402,7 @@ def traverse_lineage_tool(
 
 
 @mcp.tool()
-def update_assets_tool(
+def update_assets(
     assets,
     attribute_name,
     attribute_values,
@@ -426,7 +426,7 @@ def update_assets_tool(
 
     Examples:
         # Update certificate status for a single asset
-        result = update_assets_tool(
+        result = update_assets(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -438,7 +438,7 @@ def update_assets_tool(
         )
 
         # Update user description for multiple assets
-        result = update_assets_tool(
+        result = update_assets(
             assets=[
                 {
                     "guid": "asset-guid-1",
@@ -460,7 +460,7 @@ def update_assets_tool(
         )
 
         # Update readme for a single asset with Markdown
-        result = update_assets_tool(
+        result = update_assets(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -496,7 +496,7 @@ def update_assets_tool(
         else:
             updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
 
-        return update_assets(
+        return update_assets_impl(
             updatable_assets=updatable_assets,
             attribute_name=attr_enum,
             attribute_values=parsed_attribute_values,
