@@ -19,9 +19,9 @@ class Settings(BaseSettings):
     @classmethod
     def validate_base_url(cls, v: str) -> str:
         """Validate base URL format."""
-        if not v.startswith(("http://", "https://")):
-            raise ValueError("ATLAN_BASE_URL must start with http:// or https://")
-        return v.rstrip("/")  # Remove trailing slashShoulder strain.
+        if not v.startswith("https://"):
+            raise ValueError("ATLAN_BASE_URL must start with https://")
+        return v.rstrip("/")  # Remove trailing slash
 
     @field_validator("ATLAN_API_KEY")
     @classmethod
