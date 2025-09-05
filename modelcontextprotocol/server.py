@@ -8,6 +8,7 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    query_asset,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -506,6 +507,88 @@ def update_assets_tool(
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
         }
+
+
+@mcp.tool()
+def query_asset_tool(
+    sql: str, connection_qualified_name: str, default_schema: str | None = None
+):
+    """
+    Execute a SQL query on a table/view asset.
+
+    This tool enables querying table/view assets on the source similar to
+    what's available in the insights table. It uses the Atlan query capabilities
+    to execute SQL against connected data sources.
+
+    CRITICAL: Use READ-ONLY queries to retrieve data.
+
+    Note:
+        Use read-only queries to retrieve data.
+        Write and modify queries are not supported by this tool.
+
+
+    Args:
+        sql (str): The SQL query to execute (read-only queries allowed)
+        connection_qualified_name (str): Connection qualified name to use for the query.
+            This is the same parameter used in search_assets_tool.
+            You can find this value by searching for Table/View assets using search_assets_tool
+            and extracting the first part of the 'qualifiedName' attribute.
+            Example: from "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
+            use "default/snowflake/1657275059"
+        default_schema (str, optional): Default schema name to use for unqualified
+            objects in the SQL, in the form "DB.SCHEMA"
+            (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - success: Boolean indicating if the query was successful
+            - data: Query result data (rows, columns) if successful
+            - error: Error message if query failed
+            - query_info: Additional query execution information
+
+    Examples:
+        # Find tables to query using search_assets_tool
+        tables = search_assets_tool(
+            asset_type="Table",
+            conditions={"name": "PAGES"},
+            limit=5
+        )
+        # Extract connection info from the table's qualifiedName
+        # Example qualifiedName: "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
+        # connection_qualified_name: "default/snowflake/1657275059"
+        # database.schema: "LANDING.FRONTEND_PROD"
+
+        # Query the table using extracted connection info
+        result = query_asset_tool(
+            sql='SELECT * FROM PAGES LIMIT 10',
+            connection_qualified_name="default/snowflake/1657275059",
+            default_schema="LANDING.FRONTEND_PROD"
+        )
+
+        # Query without specifying default schema (fully qualified table names)
+        result = query_asset_tool(
+            sql='SELECT COUNT(*) FROM "RAW"."WIDEWORLDIMPORTERS_WAREHOUSE"."ORDERS"',
+            connection_qualified_name="default/postgres/connection123"
+        )
+
+        # Complex analytical query
+        result = query_asset_tool(
+            sql='''
+            SELECT
+                category,
+                COUNT(*) AS product_count,
+                AVG(price) AS avg_price,
+                MAX(price) AS max_price
+            FROM products
+            WHERE created_date >= '2024-01-01'
+            GROUP BY category
+            ORDER BY product_count DESC
+            ''',
+            connection_qualified_name="default/snowflake/analytics_db",
+            default_schema="ANALYTICS.PRODUCTS"
+        )
+    """
+    return query_asset(sql, connection_qualified_name, default_schema)
 
 
 @mcp.tool()
