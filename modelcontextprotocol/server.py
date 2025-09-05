@@ -4,7 +4,7 @@ import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
-    search_assets,
+    search_assets as search,
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
@@ -47,7 +47,7 @@ async def health_check(request: Request) -> PlainTextResponse:
 
 
 @mcp.tool()
-def search_assets_tool(
+def search_assets(
     conditions=None,
     negative_conditions=None,
     some_conditions=None,
@@ -102,13 +102,13 @@ def search_assets_tool(
 
     Examples:
         # Search for verified tables
-        tables = search_assets(
+        tables = search(
             asset_type="Table",
             conditions={"certificate_status": CertificateStatus.VERIFIED.value}
         )
 
         # Search for assets missing descriptions from the database/connection default/snowflake/123456/abc
-        missing_desc = search_assets(
+        missing_desc = search(
             connection_qualified_name="default/snowflake/123456/abc",
             negative_conditions={
                 "description": "has_any_value",
@@ -118,7 +118,7 @@ def search_assets_tool(
         )
 
         # Search for columns with specific certificate status
-        columns = search_assets(
+        columns = search(
             asset_type="Column",
             some_conditions={
                 "certificate_status": [CertificateStatus.DRAFT.value, CertificateStatus.VERIFIED.value]
@@ -128,7 +128,7 @@ def search_assets_tool(
             date_range={"create_time": {"gte": 1641034800000, "lte": 1672570800000}}
         )
         # Search for assets with a specific search text
-        assets = search_assets(
+        assets = search(
             conditions = {
                 "name": {
                     "operator": "match",
@@ -143,7 +143,7 @@ def search_assets_tool(
 
 
         # Search for assets using advanced operators
-        assets = search_assets(
+        assets = search(
             conditions={
                 "name": {
                     "operator": "startswith",
@@ -163,7 +163,7 @@ def search_assets_tool(
         )
 
         # For multiple asset types queries. ex: Search for Table, Column, or View assets from the database/connection default/snowflake/123456/abc
-        assets = search_assets(
+        assets = search(
             connection_qualified_name="default/snowflake/123456/abc",
             conditions={
                 "type_name": ["Table", "Column", "View"],
@@ -171,7 +171,7 @@ def search_assets_tool(
         )
 
         # Search for assets with compliant business policy
-        assets = search_assets(
+        assets = search(
             conditions={
                 "asset_policy_guids": "business_policy_guid"
             },
@@ -179,7 +179,7 @@ def search_assets_tool(
         )
 
         # Search for assets with non compliant business policy
-        assets = search_assets(
+        assets = search(
             conditions={
                 "non_compliant_asset_policy_guids": "business_policy_guid"
             },
@@ -187,7 +187,7 @@ def search_assets_tool(
         )
 
         # get non compliant business policies for an asset
-         assets = search_assets(
+         assets = search(
             conditions={
                 "name": "has_any_value",
                 "displayName": "has_any_value",
@@ -197,7 +197,7 @@ def search_assets_tool(
         )
 
         # get compliant business policies for an asset
-         assets = search_assets(
+         assets = search(
             conditions={
                 "name": "has_any_value",
                 "displayName": "has_any_value",
@@ -207,7 +207,7 @@ def search_assets_tool(
         )
 
         # get incident for a business policy
-         assets = search_assets(
+         assets = search(
             conditions={
                 "asset_type": "BusinessPolicyIncident",
                 "business_policy_incident_related_policy_guids": "business_policy_guid"
@@ -218,7 +218,7 @@ def search_assets_tool(
         )
 
         # Search for glossary terms by name and status
-        glossary_terms = search_assets(
+        glossary_terms = search(
             asset_type="AtlasGlossaryTerm",
             conditions={
                 "certificate_status": CertificateStatus.VERIFIED.value,
@@ -249,7 +249,7 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
-        return search_assets(
+        return search(
             conditions,
             negative_conditions,
             some_conditions,
@@ -273,7 +273,7 @@ def search_assets_tool(
 
 
 @mcp.tool()
-def get_assets_by_dsl_tool(dsl_query):
+def get_assets_dsl(dsl_query):
     """
     Execute the search with the given query
     dsl_query : Union[str, Dict[str, Any]] (required):
@@ -345,7 +345,7 @@ def get_assets_by_dsl_tool(dsl_query):
 
 
 @mcp.tool()
-def traverse_lineage_tool(
+def get_lineage(
     guid,
     direction,
     depth=1000000,
@@ -381,7 +381,7 @@ def traverse_lineage_tool(
 
     Examples:
         # Get lineage with default attributes
-        lineage = traverse_lineage_tool(
+        lineage = traverse_lineage(
             guid="asset-guid-here",
             direction="DOWNSTREAM",
             depth=1000,
@@ -409,7 +409,7 @@ def traverse_lineage_tool(
 
 
 @mcp.tool()
-def update_assets_tool(
+def update_assets(
     assets,
     attribute_name,
     attribute_values,
@@ -433,7 +433,7 @@ def update_assets_tool(
 
     Examples:
         # Update certificate status for a single asset
-        result = update_assets_tool(
+        result = update_assets(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -445,7 +445,7 @@ def update_assets_tool(
         )
 
         # Update user description for multiple assets
-        result = update_assets_tool(
+        result = update_assets(
             assets=[
                 {
                     "guid": "asset-guid-1",
@@ -467,7 +467,7 @@ def update_assets_tool(
         )
 
         # Update readme for a single asset with Markdown
-        result = update_assets_tool(
+            result = update_assets(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
