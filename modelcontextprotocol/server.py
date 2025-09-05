@@ -7,7 +7,7 @@ from tools import (
     search_assets as search,
     get_assets_by_dsl,
     traverse_lineage,
-    update_assets,
+    update_assets as update,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -433,7 +433,7 @@ def update_assets(
 
     Examples:
         # Update certificate status for a single asset
-        result = update_assets(
+        result = update(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -445,7 +445,7 @@ def update_assets(
         )
 
         # Update user description for multiple assets
-        result = update_assets(
+        result = update(
             assets=[
                 {
                     "guid": "asset-guid-1",
@@ -467,7 +467,7 @@ def update_assets(
         )
 
         # Update readme for a single asset with Markdown
-            result = update_assets(
+            result = update(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -503,7 +503,7 @@ def update_assets(
         else:
             updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
 
-        return update_assets(
+        return update(
             updatable_assets=updatable_assets,
             attribute_name=attr_enum,
             attribute_values=parsed_attribute_values,
