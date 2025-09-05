@@ -1,9 +1,8 @@
 ---
-description:
+description: This guide outlines the core coding patterns for implementing tools in the Atlan MCP server.
 globs:
 alwaysApply: true
 ---
-This guide outlines the core coding patterns for implementing tools in the Atlan MCP server.
 
 ## Tool Implementation Pattern
 
