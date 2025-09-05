@@ -42,6 +42,7 @@ mcp.add_middleware(tool_restriction)
 @mcp.tool()
 def search_assets_tool(
     conditions=None,
+    custom_metadata_conditions=None,
     negative_conditions=None,
     some_conditions=None,
     min_somes=1,
@@ -65,6 +66,8 @@ def search_assets_tool(
     Args:
         conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
+        custom_metadata_conditions (List[Dict[str, Any]], optional): List of custom metadata conditions to match.
+            Format: [{"custom_metadata": value}] or [{"custom_metadata": {"operator": operator, "value": value}}]
         negative_conditions (Dict[str, Any], optional): Dictionary of attribute conditions to exclude.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
         some_conditions (Dict[str, Any], optional): Conditions for where_some() queries that require min_somes of them to match.
@@ -108,6 +111,15 @@ def search_assets_tool(
                 "user_description": "has_any_value"
             },
             include_attributes=["owner_users", "owner_groups"]
+        )
+
+        # Search for assets with custom metadata
+        asset_list_1 = search_assets(
+            custom_metadata_conditions=[{"custom_metadata_filter": {"display_name": "test-mcp", "property_filters": [{"property_name": "mcp_allow_status", "property_value": "yes"}]}}]
+        )
+
+        asset_list_2 = search_assets(
+            custom_metadata_conditions=[{"custom_metadata_filter": {"display_name": "test-mcp", "property_filters": [{"property_name": "mcp_allow_status", "property_value": "yes", "operator": "eq"}]}}]
         )
 
         # Search for columns with specific certificate status
@@ -234,6 +246,7 @@ def search_assets_tool(
     try:
         # Parse JSON string parameters if needed
         conditions = parse_json_parameter(conditions)
+        custom_metadata_conditions = parse_json_parameter(custom_metadata_conditions)
         negative_conditions = parse_json_parameter(negative_conditions)
         some_conditions = parse_json_parameter(some_conditions)
         date_range = parse_json_parameter(date_range)
@@ -244,6 +257,7 @@ def search_assets_tool(
 
         return search_assets(
             conditions,
+            custom_metadata_conditions,
             negative_conditions,
             some_conditions,
             min_somes,

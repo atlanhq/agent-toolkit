@@ -1,6 +1,8 @@
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 from pyatlan.model.assets import Asset
+from pyatlan.model.fields.atlan_fields import CustomMetadataField
+from pyatlan.model.fluent_search import FluentSearch
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +172,73 @@ class SearchUtils:
             )
             search = search_method(attr.eq(condition))
             return search
+
+    @staticmethod
+    def _process_custom_metadata_condition(
+        search: FluentSearch, condition: Dict[str, Any], search_method_name: str
+    ):
+        """
+        Process a single custom metadata condition and apply it to the search using the specified method.
+
+        Args:
+            search: The FluentSearch object
+            condition: Dictionary containing display_name, property_name, property_value, and optional operator
+            search_method_name: The search method to use ('where', 'where_not', 'where_some')
+
+        Returns:
+            FluentSearch: The updated search object
+        """
+        if not isinstance(condition, dict):
+            logger.warning("Custom metadata condition must be a dictionary")
+            return search
+
+        # Validate required fields
+        required_fields = ["display_name", "property_filters"]
+        if not all(field in condition for field in required_fields):
+            logger.warning(
+                f"Custom metadata condition missing required fields: {required_fields}"
+            )
+            return search
+
+        search_method = getattr(search, search_method_name)
+
+        # Get operator, default to "eq"
+        for property_filter in condition["property_filters"]:
+            operator = property_filter.get("operator", "eq")
+            property_name = property_filter.get("property_name")
+            property_value = property_filter.get("property_value")
+
+            try:
+                # Create the custom metadata field
+                custom_metadata_field = CustomMetadataField(
+                    set_name=condition["display_name"], attribute_name=property_name
+                )
+
+                # Apply the appropriate operator
+                if property_value == "any":
+                    # For "any" value, use has_any_value() method
+                    query_condition = custom_metadata_field.has_any_value()
+                else:
+                    # Get the operator method dynamically
+                    if hasattr(custom_metadata_field, operator):
+                        operator_method = getattr(custom_metadata_field, operator)
+                        query_condition = operator_method(property_value)
+                    else:
+                        # Fallback to eq if operator not found
+                        logger.warning(
+                            f"Operator '{operator}' not found, falling back to 'eq'"
+                        )
+                        query_condition = custom_metadata_field.eq(property_value)
+
+                # Apply the condition to the search
+                search = search_method(query_condition)
+                logger.info(search)
+                logger.debug(
+                    f"Applied custom metadata condition: {condition['display_name']}.{condition['property_name']} {operator} {condition['property_value']}"
+                )
+
+            except Exception as e:
+                logger.error(f"Error processing custom metadata condition: {e}")
+                logger.exception("Exception details:")
+
+        return search
