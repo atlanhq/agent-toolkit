@@ -32,19 +32,17 @@ The main entry point for the MCP server. Registers and exposes tools defined in 
 ```python
 from mcp.server.fastmcp import FastMCP
 from tools import (
+    search_assets as search_assets_impl,
+    get_assets_by_dsl as get_assets_by_dsl_impl,
+    traverse_lineage as traverse_lineage_impl,
+    update_assets as update_assets_impl,
+    create_glossary_category_assets as create_glossary_category_assets_impl,
+    create_glossary_assets as create_glossary_assets_impl,
+    create_glossary_term_assets as create_glossary_term_assets_impl,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
 )
-from tools.glossary import (
-    create_glossary_category_assets as create_glossary_category_assets_impl,
-    create_glossary_assets as create_glossary_assets_impl,
-    create_glossary_term_assets as create_glossary_term_assets_impl,
-)
-from tools.search import search_assets as search_assets_impl
-from tools.dsl import get_assets_by_dsl as get_assets_by_dsl_impl
-from tools.lineage import traverse_lineage as traverse_lineage_impl
-from tools.assets import update_assets as update_assets_impl
 from pyatlan.model.fields.atlan_fields import AtlanField
 from typing import Optional, Dict, Any, List, Union, Type
 from pyatlan.model.assets import Asset

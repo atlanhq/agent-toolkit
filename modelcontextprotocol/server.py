@@ -4,19 +4,17 @@ import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
+    search_assets as search_assets_impl,
+    get_assets_by_dsl as get_assets_by_dsl_impl,
+    traverse_lineage as traverse_lineage_impl,
+    update_assets as update_assets_impl,
+    create_glossary_category_assets as create_glossary_category_assets_impl,
+    create_glossary_assets as create_glossary_assets_impl,
+    create_glossary_term_assets as create_glossary_term_assets_impl,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
 )
-from tools.glossary import (
-    create_glossary_category_assets as create_glossary_category_assets_impl,
-    create_glossary_assets as create_glossary_assets_impl,
-    create_glossary_term_assets as create_glossary_term_assets_impl,
-)
-from tools.search import search_assets as search_assets_impl
-from tools.dsl import get_assets_by_dsl as get_assets_by_dsl_impl
-from tools.lineage import traverse_lineage as traverse_lineage_impl
-from tools.assets import update_assets as update_assets_impl
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
     parse_json_parameter,
