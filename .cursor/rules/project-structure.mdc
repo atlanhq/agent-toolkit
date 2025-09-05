@@ -1,0 +1,144 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Atlan MCP Server Project Structure
+
+This document outlines the recommended project structure for the Atlan MCP server.
+
+## Directory Structure
+
+```
+modelcontextprotocol/
+├── .cursor/                  # Cursor IDE specific files
+├── .gitignore                # Git ignore file (Assumed)
+├── .python-version           # Python version specification
+├── client.py                 # Atlan client factory
+├── pyproject.toml            # Project metadata and dependencies
+├── README.md                 # Project documentation
+├── server.py                 # MCP server entry point
+├── settings.py               # Application settings
+├── tools.py                  # Main tool registration/definition file
+├── uv.lock                   # uv lock file
+└── tools/                    # Directory for tool implementations/modules
+```
+
+## Key Components
+
+### server.py
+The main entry point for the MCP server. Registers and exposes tools defined in the `tools/` directory to interact with Atlan.
+
+```python
+from mcp.server.fastmcp import FastMCP
+from tools import (
+    search_assets,
+    get_assets_by_dsl,
+    traverse_lineage,
+    update_assets,
+    UpdatableAttribute,
+    CertificateStatus,
+    UpdatableAsset,
+)
+from pyatlan.model.fields.atlan_fields import AtlanField
+from typing import Optional, Dict, Any, List, Union, Type
+from pyatlan.model.assets import Asset
+from pyatlan.model.lineage import LineageDirection
+
+mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
+
+# Note: Docstrings and full parameter lists omitted for brevity.
+# Refer to the actual server.py and tools implementations for details.
+
+@mcp.tool()
+def search_assets_tool(
+    conditions: Optional[Union[Dict[str, Any], str]] = None,
+    # ... many other parameters ...
+):
+    """Advanced asset search using FluentSearch with flexible conditions."""
+    return search_assets(conditions=conditions, ...)
+
+@mcp.tool()
+def get_assets_by_dsl_tool(dsl_query: Union[str, Dict[str, Any]]):
+    """Execute the search with the given DSL query."""
+    return get_assets_by_dsl(dsl_query)
+
+@mcp.tool()
+def traverse_lineage_tool(
+    guid: str,
+    direction: str, # UPSTREAM or DOWNSTREAM
+    # ... other parameters ...
+):
+    """Traverse asset lineage in specified direction."""
+    return traverse_lineage(guid=guid, direction=direction, ...)
+
+@mcp.tool()
+def update_assets_tool(
+    assets: Union[UpdatableAsset, List[UpdatableAsset]],
+    attribute_name: UpdatableAttribute,
+    attribute_values: List[Union[CertificateStatus, str]],
+):
+    """Update one or multiple assets with different values for the same attribute."""
+    return update_assets(assets=assets, attribute_name=attribute_name, attribute_values=attribute_values)
+```
+
+### settings.py
+Configuration settings using Pydantic, loaded from environment variables or a `.env` file.
+
+```python
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables or .env file."""
+    ATLAN_BASE_URL: str
+    ATLAN_API_KEY: str
+    ATLAN_AGENT_ID: str
+    ATLAN_AGENT: str = "atlan-mcp"
+
+    @property
+    def headers(self) -> dict:
+        """Get the headers for API requests."""
+        return {
+            "x-atlan-agent": self.ATLAN_AGENT,
+            "x-atlan-agent-id": self.ATLAN_AGENT_ID,
+            "x-atlan-client-origin": self.ATLAN_AGENT,
+        }
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "allow"
+        case_sensitive = False
+```
+
+### client.py
+Factory for creating and configuring the Atlan client using application settings.
+
+```python
+import logging
+from pyatlan.client.atlan import AtlanClient
+from settings import Settings
+
+logger = logging.getLogger(__name__)
+
+def get_atlan_client() -> AtlanClient:
+    """Create an Atlan client instance using settings loaded from environment."""
+    settings = Settings()
+    try:
+        client = AtlanClient(
+            base_url=settings.ATLAN_BASE_URL, api_key=settings.ATLAN_API_KEY
+        )
+        client.update_headers(settings.headers)
+        logger.info("Atlan client created successfully")
+        return client
+    except Exception as e:
+        logger.error(f"Error creating Atlan client: {e}")
+        raise Exception(f"Error creating Atlan client: {e}")
+```
+
+### tools/ Directory
+Contains the implementation of the different tools exposed by the server.
+- `assets.py`: Implements asset-related tools like search and update.
+- `dsl.py`: Implements the DSL query tool.
+- `lineage.py`: (Potentially) Implements lineage traversal tools.
+- `__init__.py`: Makes the directory a package and exports the tool functions.
