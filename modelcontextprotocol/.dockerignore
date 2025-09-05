@@ -1,14 +1,43 @@
+# Environment files
 .env
+.env.*
+
+# Python virtual environments
 .venv
-__pycache__
-.cursor
-.git
-.gitignore
-.vscode
+venv/
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE and editor files
+.cursor/
+.vscode/
 .vscodeignore
-.idea
+.idea/
 .DS_Store
-.pytest_cache
-.ruff_cache
-.mypy_cache
-.ruff_cache
+
+# Git
+.git/
+.gitignore
+
+# Python development and testing
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.tox/
+.nox/
+
+# Python build artifacts
+*.egg-info/
+dist/
+build/
+
+
+# Development configuration
+.pre-commit-config.yaml
