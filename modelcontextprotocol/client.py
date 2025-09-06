@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from pyatlan.client.atlan import AtlanClient
-from settings import get_settings
+from settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def get_atlan_client() -> AtlanClient:
     global _client_instance
 
     if _client_instance is None:
-        settings = get_settings()
+        settings = Settings()
         try:
             _client_instance = AtlanClient(
                 base_url=settings.ATLAN_BASE_URL, api_key=settings.ATLAN_API_KEY
