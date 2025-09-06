@@ -8,6 +8,7 @@ parameters that are commonly used across different MCP tools.
 import json
 import logging
 from typing import Any, List, Optional, Union
+import orjson
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +26,14 @@ def parse_json_parameter(param: Any) -> Union[dict, list, None]:
     Raises:
         json.JSONDecodeError: If the JSON string is invalid
     """
-    if param is None:
-        return None
+    if param is None or not isinstance(param, str):
+        return param
 
-    if isinstance(param, str):
-        try:
-            return json.loads(param)
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON parameter: {param}")
-            raise e
-
-    return param
+    try:
+        return orjson.loads(param)
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON parameter: {param}")
+        raise e
 
 
 def parse_list_parameter(param: Any) -> Optional[List[Any]]:
@@ -54,9 +52,12 @@ def parse_list_parameter(param: Any) -> Optional[List[Any]]:
     if param is None:
         return None
 
+    if isinstance(param, list):
+        return param
+
     if isinstance(param, str):
         try:
-            parsed = json.loads(param)
+            parsed = orjson.loads(param)
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON parameter: {param}")
             raise e
@@ -64,8 +65,5 @@ def parse_list_parameter(param: Any) -> Optional[List[Any]]:
         if isinstance(parsed, list):
             return parsed
         return [parsed]
-
-    if isinstance(param, list):
-        return param
 
     return [param]
