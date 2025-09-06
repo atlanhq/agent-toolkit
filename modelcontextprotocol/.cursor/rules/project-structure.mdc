@@ -117,13 +117,13 @@ Factory for creating and configuring the Atlan client using application settings
 ```python
 import logging
 from pyatlan.client.atlan import AtlanClient
-from settings import Settings
+from settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 def get_atlan_client() -> AtlanClient:
     """Create an Atlan client instance using settings loaded from environment."""
-    settings = Settings()
+    settings = get_settings()
     try:
         client = AtlanClient(
             base_url=settings.ATLAN_BASE_URL, api_key=settings.ATLAN_API_KEY
@@ -134,6 +134,22 @@ def get_atlan_client() -> AtlanClient:
     except Exception as e:
         logger.error(f"Error creating Atlan client: {e}")
         raise Exception(f"Error creating Atlan client: {e}")
+
+_settings: Optional[Settings] = None
+
+
+def get_settings() -> Settings:
+    """
+    Get the singleton Settings instance.
+    Loads settings once from environment/file and reuses the instance.
+
+    Returns:
+        Settings: The singleton settings instance
+    """
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
 ```
 
 ### tools/ Directory
