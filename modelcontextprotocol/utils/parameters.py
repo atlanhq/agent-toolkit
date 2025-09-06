@@ -5,7 +5,6 @@ This module provides reusable functions for parsing and validating
 parameters that are commonly used across different MCP tools.
 """
 
-import json
 import logging
 from typing import Any, List, Optional, Union
 import orjson
@@ -24,14 +23,14 @@ def parse_json_parameter(param: Any) -> Union[dict, list, None]:
         The parsed parameter value
 
     Raises:
-        json.JSONDecodeError: If the JSON string is invalid
+        orjson.JSONDecodeError: If the JSON string is invalid
     """
     if param is None or not isinstance(param, str):
         return param
 
     try:
         return orjson.loads(param)
-    except json.JSONDecodeError as e:
+    except orjson.JSONDecodeError as e:
         logger.error(f"Invalid JSON parameter: {param}")
         raise e
 
@@ -47,7 +46,7 @@ def parse_list_parameter(param: Any) -> Optional[List[Any]]:
         The parsed list, None if param is None, or original value converted to list if needed
 
     Raises:
-        json.JSONDecodeError: If the JSON string is invalid
+        orjson.JSONDecodeError: If the JSON string is invalid
     """
     if param is None:
         return None
@@ -58,7 +57,7 @@ def parse_list_parameter(param: Any) -> Optional[List[Any]]:
     if isinstance(param, str):
         try:
             parsed = orjson.loads(param)
-        except json.JSONDecodeError as e:
+        except orjson.JSONDecodeError as e:
             logger.error(f"Invalid JSON parameter: {param}")
             raise e
 

@@ -1,5 +1,5 @@
 import logging
-import json
+import orjson
 from typing import Dict, Any, Union
 
 from client import get_atlan_client
@@ -24,8 +24,8 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         if isinstance(dsl_query, str):
             logger.debug("Converting DSL string to JSON")
             try:
-                dsl_dict = json.loads(dsl_query)
-            except json.JSONDecodeError as e:
+                dsl_dict = orjson.loads(dsl_query)
+            except orjson.JSONDecodeError as e:
                 logger.error(f"Invalid JSON in DSL query: {e}")
                 return {
                     "results": [],

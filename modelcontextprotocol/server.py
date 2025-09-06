@@ -1,5 +1,5 @@
 import argparse
-import json
+import orjson
 import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
@@ -261,7 +261,7 @@ def search_assets_tool(
             date_range,
             guids,
         )
-    except (json.JSONDecodeError, ValueError) as e:
+    except (orjson.JSONDecodeError, ValueError) as e:
         return {"error": f"Parameter parsing error: {str(e)}"}
 
 
@@ -501,7 +501,7 @@ def update_assets_tool(
             attribute_name=attr_enum,
             attribute_values=parsed_attribute_values,
         )
-    except (json.JSONDecodeError, ValueError, TypeError) as e:
+    except (orjson.JSONDecodeError, ValueError, TypeError) as e:
         return {
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
@@ -554,7 +554,7 @@ def create_glossaries(glossaries) -> List[Dict[str, Any]]:
     # Parse parameters to handle JSON strings using shared utility
     try:
         glossaries = parse_json_parameter(glossaries)
-    except json.JSONDecodeError as e:
+    except orjson.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
 
     return create_glossary_assets(glossaries)
@@ -619,7 +619,7 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     # Parse parameters to handle JSON strings using shared utility
     try:
         terms = parse_json_parameter(terms)
-    except json.JSONDecodeError as e:
+    except orjson.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
 
     return create_glossary_term_assets(terms)
@@ -688,7 +688,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     # Parse parameters to handle JSON strings using shared utility
     try:
         categories = parse_json_parameter(categories)
-    except json.JSONDecodeError as e:
+    except orjson.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
