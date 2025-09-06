@@ -18,10 +18,10 @@ class SearchUtils:
         "match": lambda attr, v: attr.match(v),
         "has_any_value": lambda attr: attr.has_any_value(),
     }
-    
+
     CASE_INSENSITIVE_OPS = {"lt", "lte", "gt", "gte", "match"}
     NO_VALUE_OPS = {"has_any_value"}
-    
+
     @staticmethod
     def process_results(results: Any) -> Dict[str, Any]:
         """
@@ -176,5 +176,6 @@ class SearchUtils:
             logger.debug(
                 f"Applying {search_method_name} equality condition {attr_name}={condition}"
             )
+
             search = search_method(attr.eq(condition))
             return search
