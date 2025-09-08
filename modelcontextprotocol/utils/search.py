@@ -230,7 +230,7 @@ class SearchUtils:
 
                 # Create the custom metadata field for this specific property
                 custom_metadata_field = CustomMetadataField(
-                    set_name=condition["display_name"], attribute_name=property_name
+                    client=client, set_name=condition["display_name"], attribute_name=property_name
                 )
 
                 # Custom handling for between and within operators
