@@ -147,11 +147,120 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
 
+## Tool Access Control
+
+The Atlan MCP Server includes a configurable tool restriction middleware that allows you to control which tools are available to users. This is useful for implementing role-based access control or restricting certain operations in specific environments.
+
+### Restricting Tools
+
+You can restrict access to specific tools using the `RESTRICTED_TOOLS` environment variable. Provide a comma-separated list of tool names that should be blocked:
+
+#### Docker Configuration
+
+```json
+{
+  "mcpServers": {
+    "atlan": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "ATLAN_API_KEY=<YOUR_API_KEY>",
+        "-e",
+        "ATLAN_BASE_URL=https://<YOUR_INSTANCE>.atlan.com",
+        "-e",
+        "ATLAN_AGENT_ID=<YOUR_AGENT_ID>",
+        "-e",
+        "RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool",
+        "ghcr.io/atlanhq/atlan-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+#### uv Configuration
+
+```json
+{
+  "mcpServers": {
+    "atlan": {
+      "command": "uvx",
+      "args": ["atlan-mcp-server"],
+      "env": {
+        "ATLAN_API_KEY": "<YOUR_API_KEY>",
+        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>",
+        "RESTRICTED_TOOLS": "get_assets_by_dsl_tool,update_assets_tool"
+      }
+    }
+  }
+}
+```
+
+### Available Tool Names for Restriction
+
+You can restrict any of the following tools:
+
+- `search_assets_tool` - Asset search functionality
+- `get_assets_by_dsl_tool` - DSL query execution
+- `traverse_lineage_tool` - Lineage traversal
+- `update_assets_tool` - Asset updates (descriptions, certificates)
+- `create_glossaries` - Glossary creation
+- `create_glossary_categories` - Category creation
+- `create_glossary_terms` - Term creation
+
+### Common Use Cases
+
+#### Read-Only Access
+Restrict all write operations:
+```
+RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms
+```
+
+#### Disable DSL Queries
+For security or performance reasons:
+```
+RESTRICTED_TOOLS=get_assets_by_dsl_tool
+```
+
+#### Minimal Access
+Allow only basic search:
+```
+RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms
+```
+
+### How It Works
+
+When tools are restricted:
+1. **Hidden from listings**: Restricted tools won't appear when clients request available tools
+2. **Execution blocked**: If someone tries to execute a restricted tool, they'll receive a clear error message
+3. **Logged**: All access decisions are logged for monitoring and debugging
+
+### No Restrictions (Default)
+
+If you don't set the `RESTRICTED_TOOLS` environment variable, all tools will be available by default.
+
+## Transport Modes
+
+The Atlan MCP Server supports three transport modes, each optimized for different deployment scenarios. For more details about MCP transport modes, see the [official MCP documentation](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports).
+
+| Transport Mode | Use Case | Benefits | When to Use |
+|---|---|---|---|
+| **stdio** (Default) | Local development, IDE integrations | Simple, direct communication | Claude Desktop, Cursor IDE |
+| **SSE** (Server-Sent Events) | Remote deployments, web browsers | Real-time streaming, web-compatible | Cloud deployments, web clients |
+| **streamable-http** | HTTP-based remote connections | Standard HTTP, load balancer friendly | Kubernetes, containerized deployments |
+
+For comprehensive deployment instructions, configuration examples, and production best practices, see our [Deployment Guide](./docs/Deployment.md).
+
 ## Production Deployment
 
 - Host the Atlan MCP container image on the cloud/platform of your choice
 - Make sure you add all the required environment variables
-- Make sure you start the server in the SSE transport mode `-e MCP_TRANSPORT=sse`
+- Choose the appropriate transport mode for your deployment scenario. SSE Transport is recommended for production (`-e MCP_TRANSPORT=sse`)
+- For detailed deployment scenarios and configurations, refer to the [Deployment Guide](./docs/Deployment.md)
 
 ### Remote MCP Configuration
 
