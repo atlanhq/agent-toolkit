@@ -716,7 +716,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def get_custom_metadata_context_tool() -> Dict[str, Any]:
+def get_custom_metadata_context_tool() -> List[Dict[str, Any]]:
     """
     Fetch the custom metadata context for all business metadata definitions in the Atlan instance.
 
@@ -727,6 +727,8 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
 
     Eventually, this tool helps to prepare the payload for search_assets tool, when users
     want to search for assets with filters on custom metadata.
+
+    This tool can only be called once in a chat conversation.
 
     Returns:
         List[Dict[str, Any]]: List of business metadata definitions, each containing:
