@@ -68,7 +68,7 @@ def search_assets_tool(
         conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
         custom_metadata_conditions (List[Dict[str, Any]], optional): List of custom metadata conditions to match.
-            Format: [{"custom_metadata": value}] or [{"custom_metadata": {"operator": operator, "value": value}}]
+            Format: [{"custom_metadata_filter": {"display_name": "Business Metadata Name", "property_filters": [{"property_name": "property", "property_value": "value", "operator": "eq"}]}}]
         negative_conditions (Dict[str, Any], optional): Dictionary of attribute conditions to exclude.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
         some_conditions (Dict[str, Any], optional): Conditions for where_some() queries that require min_somes of them to match.
