@@ -114,7 +114,7 @@ def search_assets_tool(
             include_attributes=["owner_users", "owner_groups"]
         )
 
-        # Search for assets with custom metadata
+        # Search for assets with custom metadata having a specific property filter (eq)
         assets = search_assets(
             custom_metadata_conditions=[{
                 "custom_metadata_filter": {
@@ -128,6 +128,71 @@ def search_assets_tool(
             }],
             include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
         )
+
+        # Search for assets with custom metadata having a specific property filter (gt)
+        assets = search_assets(
+            custom_metadata_conditions=[{
+                "custom_metadata_filter": {
+                    "display_name": "Data Quality",
+                    "property_filters": [{
+                        "property_name": "quality_score",
+                        "property_value": 80,
+                        "operator": "gt"
+                    }]
+                }
+            }],
+            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
+        )
+
+        # Search for assets with custom metadata having multiple property filters (eq and gte)
+        assets = search_assets(
+            custom_metadata_conditions=[{
+                "custom_metadata_filter": {
+                    "display_name": "Data Governance",
+                    "property_filters": [
+                        {
+                            "property_name": "data_owner",
+                            "property_value": "John Smith",
+                            "operator": "eq"
+                        },
+                        {
+                            "property_name": "retention_period",
+                            "property_value": 365,
+                            "operator": "gte"
+                        }
+                    ]
+                }
+            }],
+            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
+        )
+
+        # Search for assets with custom metadata having multiple business metadata filters (eq and gte)
+        assets = search_assets(
+            custom_metadata_conditions=[
+                {
+                    "custom_metadata_filter": {
+                        "display_name": "Data Classification",
+                        "property_filters": [{
+                            "property_name": "sensitivity_level",
+                            "property_value": "sensitive",
+                            "operator": "eq"
+                        }]
+                    }
+                },
+                {
+                    "custom_metadata_filter": {
+                        "display_name": "Data Quality",
+                        "property_filters": [{
+                            "property_name": "quality_score",
+                            "property_value": 80,
+                            "operator": "gte"
+                        }]
+                    }
+                }
+            ],
+            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
+        )
+
 
         # Search for columns with specific certificate status
         columns = search_assets(
@@ -782,22 +847,7 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
             include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
         )
 
-        # Example 3: Starts with operator (startswith) - prefix matching
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Business Ownership",
-                    "property_filters": [{
-                        "property_name": "business_owner",
-                        "property_value": "John",
-                        "operator": "startswith"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 4: Starts with operator with case insensitive matching
+        # Example 3: Starts with operator with case insensitive matching
         assets = search_assets_tool(
             custom_metadata_conditions=[{
                 "custom_metadata_filter": {
@@ -813,82 +863,7 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
             include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
         )
 
-        # Example 5: Less than operator (lt) - numeric/date comparison
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Quality",
-                    "property_filters": [{
-                        "property_name": "quality_score",
-                        "property_value": 50,
-                        "operator": "lt"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 6: Less than or equal operator (lte)
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Quality",
-                    "property_filters": [{
-                        "property_name": "quality_score",
-                        "property_value": 75,
-                        "operator": "lte"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 7: Greater than operator (gt)
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Quality",
-                    "property_filters": [{
-                        "property_name": "quality_score",
-                        "property_value": 80,
-                        "operator": "gt"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 8: Greater than or equal operator (gte)
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Quality",
-                    "property_filters": [{
-                        "property_name": "quality_score",
-                        "property_value": 90,
-                        "operator": "gte"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 9: Match operator (match) - full-text search
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Business Context",
-                    "property_filters": [{
-                        "property_name": "description",
-                        "property_value": "customer data analytics",
-                        "operator": "match"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 10: Has any value operator (has_any_value) - check if field is populated
+        # Example 4: Has any value operator (has_any_value) - check if field is populated
         assets = search_assets_tool(
             custom_metadata_conditions=[{
                 "custom_metadata_filter": {
@@ -899,85 +874,6 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
                     }]
                 }
             }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 11: Between operator (between) - range queries
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Quality",
-                    "property_filters": [{
-                        "property_name": "quality_score",
-                        "property_value": [50, 90], # [start, end] range
-                        "operator": "between"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 12: Within operator (within) - multiple value matching
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Classification",
-                    "property_filters": [{
-                        "property_name": "sensitivity_level",
-                        "property_value": ["sensitive", "confidential", "restricted"], # list of values
-                        "operator": "within"
-                    }]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 13: Multiple property filters in same business metadata
-        assets = search_assets_tool(
-            custom_metadata_conditions=[{
-                "custom_metadata_filter": {
-                    "display_name": "Data Governance",
-                    "property_filters": [
-                        {
-                            "property_name": "data_owner",
-                            "property_value": "John Smith",
-                            "operator": "eq"
-                        },
-                        {
-                            "property_name": "retention_period",
-                            "property_value": 365,
-                            "operator": "gte"
-                        }
-                    ]
-                }
-            }],
-            include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
-        )
-
-        # Example 14: Multiple business metadata filters
-        assets = search_assets_tool(
-            custom_metadata_conditions=[
-                {
-                    "custom_metadata_filter": {
-                        "display_name": "Data Classification",
-                        "property_filters": [{
-                            "property_name": "sensitivity_level",
-                            "property_value": "sensitive",
-                            "operator": "eq"
-                        }]
-                    }
-                },
-                {
-                    "custom_metadata_filter": {
-                        "display_name": "Data Quality",
-                        "property_filters": [{
-                            "property_name": "quality_score",
-                            "property_value": 80,
-                            "operator": "gte"
-                        }]
-                    }
-                }
-            ],
             include_attributes=["name", "qualified_name", "type_name", "description", "certificate_status"]
         )
     """
