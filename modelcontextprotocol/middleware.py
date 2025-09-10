@@ -10,7 +10,6 @@ from typing import List, Set, Optional
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.exceptions import ToolError
 import logging
-from client import get_atlan_client
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +73,8 @@ class ToolRestrictionMiddleware(Middleware):
         """
         Hook called when a tool is being executed.
 
-        Checks if the tool is restricted, sets the x-atlan-package-name header,
-        and either allows execution or raises an error.
+        Checks if the tool is restricted, sets the current tool name in context
+        for header tracking, and either allows execution or raises an error.
 
         Args:
             context: The middleware context containing request information.
@@ -102,23 +101,16 @@ class ToolRestrictionMiddleware(Middleware):
 
                 raise ToolError(error_message)
 
-            # Tool is allowed, set package header and proceed with execution
+            # Tool is allowed, set tool name in context and proceed with execution
             logger.debug(f"Tool access granted: {tool_name}", tool=tool_name)
             
-            # Set x-atlan-package-name header with the current tool name
-            try:
-                logger.debug(f"Setting x-atlan-package-name header to: {tool_name}")
-                client = get_atlan_client()
-                package_headers = {"x-atlan-package-name": tool_name}
-                client.update_headers(package_headers)
-                logger.debug(f"Successfully set x-atlan-package-name header for tool: {tool_name}")
-            except Exception as header_error:
-                logger.warning(
-                    f"Failed to set package header for tool {tool_name}: {str(header_error)}",
-                    exc_info=True,
-                )
-                # Continue with execution even if header update fails
-
+            # Import here to avoid circular imports
+            from client import current_tool_name
+            
+            # Set the current tool name in context variable for header tracking
+            current_tool_name.set(tool_name)
+            logger.debug(f"Set current tool name in context: {tool_name}")
+            
             return await call_next(context)
 
         except ToolError:
