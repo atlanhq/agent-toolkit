@@ -87,7 +87,7 @@ This is a business metadata used in the data catalog to add more information to 
     return {"prompt": prompt, "metadata": metadata, "id": guid}
 
 
-def get_custom_metadata_context() -> List[Dict[str, Any]]:
+def get_custom_metadata_context() -> Dict[str, Any]:
     display_name: str = "Business Metadata"
     business_metadata_results: List[Dict[str, Any]] = []
 

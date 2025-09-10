@@ -716,7 +716,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def get_custom_metadata_context_tool() -> List[Dict[str, Any]]:
+def get_custom_metadata_context_tool() -> Dict[str, Any]:
     """
     Fetch the custom metadata context for all business metadata definitions in the Atlan instance.
 
