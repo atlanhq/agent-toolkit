@@ -21,7 +21,6 @@ from utils.parameters import (
     parse_list_parameter,
 )
 from middleware import ToolRestrictionMiddleware
-from package_header_middleware import PackageHeaderMiddleware
 
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -37,9 +36,7 @@ else:
     restricted_tools = []
 
 tool_restriction = ToolRestrictionMiddleware(restricted_tools=restricted_tools)
-package_header = PackageHeaderMiddleware()
 mcp.add_middleware(tool_restriction)
-mcp.add_middleware(package_header)
 
 
 @mcp.tool()

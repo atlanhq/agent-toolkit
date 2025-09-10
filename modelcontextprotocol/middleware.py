@@ -1,7 +1,8 @@
 """
-Tool restriction middleware for FastMCP to control tool access.
+Tool restriction and package header middleware for FastMCP.
 
-This middleware restricts access to specified tools based on configuration.
+This middleware restricts access to specified tools based on configuration and
+sets the x-atlan-package-name header with the current tool name for API requests.
 Tools can be restricted globally by providing a list during initialization.
 """
 
@@ -9,15 +10,17 @@ from typing import List, Set, Optional
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.exceptions import ToolError
 import logging
+from client import get_atlan_client
 
 logger = logging.getLogger(__name__)
 
 
 class ToolRestrictionMiddleware(Middleware):
     """
-    Middleware to restrict tool access based on configuration.
+    Middleware to restrict tool access and set package headers.
 
-    Allows specifying which tools should be restricted during initialization.
+    Allows specifying which tools should be restricted during initialization and
+    automatically sets the x-atlan-package-name header with the current tool name.
     Restricted tools will be hidden from the tools list and blocked from execution.
     """
 
@@ -71,7 +74,8 @@ class ToolRestrictionMiddleware(Middleware):
         """
         Hook called when a tool is being executed.
 
-        Checks if the tool is restricted and either allows execution or raises an error.
+        Checks if the tool is restricted, sets the x-atlan-package-name header,
+        and either allows execution or raises an error.
 
         Args:
             context: The middleware context containing request information.
@@ -98,8 +102,22 @@ class ToolRestrictionMiddleware(Middleware):
 
                 raise ToolError(error_message)
 
-            # Tool is allowed, proceed with execution
+            # Tool is allowed, set package header and proceed with execution
             logger.debug(f"Tool access granted: {tool_name}", tool=tool_name)
+            
+            # Set x-atlan-package-name header with the current tool name
+            try:
+                logger.debug(f"Setting x-atlan-package-name header to: {tool_name}")
+                client = get_atlan_client()
+                package_headers = {"x-atlan-package-name": tool_name}
+                client.update_headers(package_headers)
+                logger.debug(f"Successfully set x-atlan-package-name header for tool: {tool_name}")
+            except Exception as header_error:
+                logger.warning(
+                    f"Failed to set package header for tool {tool_name}: {str(header_error)}",
+                    exc_info=True,
+                )
+                # Continue with execution even if header update fails
 
             return await call_next(context)
 
