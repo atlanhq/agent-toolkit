@@ -80,9 +80,7 @@ def process_business_metadata(
         "attributes": parsed_attributes_for_metadata,
     }
 
-    prompt = f"""{bm_def_display_name}|{description_for_prompt}|{attributes_str_for_prompt}
-
-This is a business metadata used in the data catalog to add more information to an asset"""
+    prompt = f"""{bm_def_display_name}|{description_for_prompt}|{attributes_str_for_prompt}"""
 
     return {"prompt": prompt, "metadata": metadata, "id": guid}
 
@@ -169,4 +167,7 @@ def get_custom_metadata_context() -> Dict[str, Any]:
     logger.info(
         f"Fetched {len(business_metadata_results)} {display_name} definitions with enum enrichment."
     )
-    return business_metadata_results
+    return {
+        "context": "This is the list of business metadata definitions used in the data catalog to add more information to an asset",
+        "business_metadata_results": business_metadata_results,
+    }
