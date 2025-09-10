@@ -170,7 +170,3 @@ def get_custom_metadata_context() -> List[Dict[str, Any]]:
         f"Fetched {len(business_metadata_results)} {display_name} definitions with enum enrichment."
     )
     return business_metadata_results
-
-
-if __name__ == "__main__":
-    get_custom_metadata_context()
