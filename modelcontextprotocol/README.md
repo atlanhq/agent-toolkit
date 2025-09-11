@@ -146,6 +146,7 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossaries` | Create glossaries                                                 |
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
+| `query_asset`       | Execute SQL queries on table/view assets                          |
 
 ## Production Deployment
 

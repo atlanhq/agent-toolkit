@@ -504,11 +504,7 @@ def query_asset_tool(
     what's available in the insights table. It uses the Atlan query capabilities
     to execute SQL against connected data sources.
 
-    CRITICAL: Use READ-ONLY queries to retrieve data.
-
-    Note:
-        Use read-only queries to retrieve data.
-        Write and modify queries are not supported by this tool.
+    CRITICAL: Use READ-ONLY queries to retrieve data. Write and modify queries are not supported by this tool.
 
 
     Args:
@@ -523,14 +519,8 @@ def query_asset_tool(
             objects in the SQL, in the form "DB.SCHEMA"
             (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
 
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - success: Boolean indicating if the query was successful
-            - data: Query result data (rows, columns) if successful
-            - error: Error message if query failed
-            - query_info: Additional query execution information
-
     Examples:
+        # Use case: How to query the PAGES table and retrieve the first 10 rows
         # Find tables to query using search_assets_tool
         tables = search_assets_tool(
             asset_type="Table",
@@ -551,25 +541,25 @@ def query_asset_tool(
 
         # Query without specifying default schema (fully qualified table names)
         result = query_asset_tool(
-            sql='SELECT COUNT(*) FROM "RAW"."WIDEWORLDIMPORTERS_WAREHOUSE"."ORDERS"',
-            connection_qualified_name="default/postgres/connection123"
+            sql='SELECT COUNT(*) FROM "LANDING"."FRONTEND_PROD"."PAGES"',
+            connection_qualified_name="default/snowflake/1657275059"
         )
 
-        # Complex analytical query
+        # Complex analytical query on PAGES table
         result = query_asset_tool(
             sql='''
             SELECT
-                category,
-                COUNT(*) AS product_count,
-                AVG(price) AS avg_price,
-                MAX(price) AS max_price
-            FROM products
+                page_type,
+                COUNT(*) AS page_count,
+                AVG(load_time) AS avg_load_time,
+                MAX(views) AS max_views
+            FROM PAGES
             WHERE created_date >= '2024-01-01'
-            GROUP BY category
-            ORDER BY product_count DESC
+            GROUP BY page_type
+            ORDER BY page_count DESC
             ''',
-            connection_qualified_name="default/snowflake/analytics_db",
-            default_schema="ANALYTICS.PRODUCTS"
+            connection_qualified_name="default/snowflake/1657275059",
+            default_schema="LANDING.FRONTEND_PROD"
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
