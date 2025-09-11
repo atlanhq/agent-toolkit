@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     ATLAN_BASE_URL: str
     ATLAN_API_KEY: str
-    ATLAN_AGENT_ID: str = "NA"
+    ATLAN_AGENT_ID: str = "ext-atlan-mcp"
     ATLAN_AGENT: str = "ext-atlan-mcp"
     ATLAN_MCP_USER_AGENT: str = f"Atlan MCP Server {MCP_VERSION}"
 
@@ -19,8 +19,8 @@ class Settings(BaseSettings):
         return {
             "user-agent": self.ATLAN_MCP_USER_AGENT,
             "x-atlan-agent": self.ATLAN_AGENT,
-            "x-atlan-agent-id": "ext-atlan-mcp",
-            "x-atlan-client-origin": "ext-atlan-mcp",
+            "x-atlan-agent-id": self.ATLAN_AGENT_ID,
+            "x-atlan-client-origin": self.ATLAN_AGENT,
         }
 
     class Config:

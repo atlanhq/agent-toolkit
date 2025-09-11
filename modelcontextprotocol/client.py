@@ -38,12 +38,18 @@ def get_atlan_client() -> AtlanClient:
             raise
 
     # Always update headers with current tool name if available
-    settings = Settings()
-    headers = settings.headers.copy()
-    tool_name = current_tool_name.get()
-    if tool_name:
-        headers["x-atlan-package-name"] = tool_name
-        logger.debug(f"Added x-atlan-package-name header: {tool_name}")
-        _client_instance.update_headers(headers)
+    try:
+        settings = Settings()
+        headers = settings.headers.copy()
+        tool_name = current_tool_name.get()
+        if tool_name:
+            headers["x-atlan-package-name"] = tool_name
+            logger.debug(f"Added x-atlan-package-name header: {tool_name}")
+            _client_instance.update_headers(headers)
+    except Exception as e:
+        logger.warning(
+            f"Failed to update headers with tool name: {str(e)}",
+            exc_info=True,
+        )
 
     return _client_instance
