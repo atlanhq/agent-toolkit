@@ -103,14 +103,14 @@ class ToolRestrictionMiddleware(Middleware):
 
             # Tool is allowed, set tool name in context and proceed with execution
             logger.debug(f"Tool access granted: {tool_name}", tool=tool_name)
-            
+
             # Import here to avoid circular imports
             from client import current_tool_name
-            
+
             # Set the current tool name in context variable for header tracking
             current_tool_name.set(tool_name)
             logger.debug(f"Set current tool name in context: {tool_name}")
-            
+
             return await call_next(context)
 
         except ToolError:
