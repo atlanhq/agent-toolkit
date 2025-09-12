@@ -137,6 +137,8 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 
 ## Available Tools
 
+### Atlan Asset Management Tools
+
 | Tool                | Description                                                       |
 | ------------------- | ----------------------------------------------------------------- |
 | `search_assets`     | Search for assets based on conditions                             |
@@ -146,6 +148,17 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossaries` | Create glossaries                                                 |
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
+
+### Documentation Tools
+
+| Tool                | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `list_doc_sources`  | List available documentation sources (Atlan docs, etc.)          |
+| `fetch_llms_txt`    | Fetch and parse llms.txt content from documentation sources      |
+| `fetch_docs`        | Fetch specific documentation content from URLs with domain security |
+| `add_doc_source`    | Add new documentation sources for fetching                       |
+
+> **📖 Documentation Tools Usage**: These tools enable AI agents to access and retrieve Atlan product documentation to answer user questions about features, APIs, integrations, and usage instructions. The tools automatically handle domain security and content parsing.
 
 ## Tool Access Control
 
@@ -204,6 +217,7 @@ You can restrict access to specific tools using the `RESTRICTED_TOOLS` environme
 
 You can restrict any of the following tools:
 
+#### Asset Management Tools
 - `search_assets_tool` - Asset search functionality
 - `get_assets_by_dsl_tool` - DSL query execution
 - `traverse_lineage_tool` - Lineage traversal
@@ -211,6 +225,12 @@ You can restrict any of the following tools:
 - `create_glossaries` - Glossary creation
 - `create_glossary_categories` - Category creation
 - `create_glossary_terms` - Term creation
+
+#### Documentation Tools
+- `list_doc_sources_tool` - List available documentation sources
+- `fetch_llms_txt_tool` - Fetch llms.txt content from sources
+- `fetch_docs_tool` - Fetch documentation content from URLs
+- `add_doc_source_tool` - Add new documentation sources
 
 ### Common Use Cases
 
