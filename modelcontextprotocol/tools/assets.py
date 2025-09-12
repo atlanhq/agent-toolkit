@@ -1,8 +1,14 @@
 import logging
 from typing import List, Union, Dict, Any
 from client import get_atlan_client
-from .models import UpdatableAsset, UpdatableAttribute, CertificateStatus
-from pyatlan.model.assets import Readme
+from .models import (
+    UpdatableAsset,
+    UpdatableAttribute,
+    CertificateStatus,
+    TermOperation,
+    TermOperations,
+)
+from pyatlan.model.assets import Readme, AtlasGlossaryTerm
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 
 # Initialize logging
@@ -12,27 +18,29 @@ logger = logging.getLogger(__name__)
 def update_assets(
     updatable_assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: UpdatableAttribute,
-    attribute_values: List[Union[str, CertificateStatus]],
+    attribute_values: List[Union[str, CertificateStatus, TermOperations]],
 ) -> Dict[str, Any]:
     """
-    Update one or multiple assets with different values for the same attribute.
+    Update one or multiple assets with different values for attributes or term operations.
 
     Args:
         updatable_assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAssets.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Only userDescription,certificateStatus and readme are allowed.
-        attribute_values (List[Union[str, CertificateStatus]]): List of values to set for the attribute.
+            Supports userDescription, certificateStatus, readme, and term.
+        attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
+            For term, the value must be a TermOperations object with operation and term_guids.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
+            - operation: The operation that was performed (for term operations)
     """
     try:
-        # Convert single GUID to list for consistent handling
+        # Convert single asset to list for consistent handling
         if not isinstance(updatable_assets, list):
             updatable_assets = [updatable_assets]
 
@@ -100,6 +108,53 @@ def update_assets(
                     assets.append(updated_readme)
                     # Add the parent/actual asset to the list of assets that were updated with readme.
                     readme_update_parent_assets.append(asset)
+            elif attribute_name == UpdatableAttribute.TERM:
+                # Special handling for term operations
+                term_value = attribute_values[index]
+                if not isinstance(term_value, TermOperations):
+                    error_msg = f"Term value must be a TermOperations object for asset {updatable_asset.qualified_name}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+                term_operation = TermOperation(term_value.operation.lower())
+                term_guids = term_value.term_guids
+
+                # Create term references
+                term_refs = [
+                    AtlasGlossaryTerm.ref_by_guid(guid=guid) for guid in term_guids
+                ]
+
+                try:
+                    # Perform the appropriate term operation
+                    if term_operation == TermOperation.APPEND:
+                        client.asset.append_terms(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            terms=term_refs,
+                        )
+                    elif term_operation == TermOperation.REPLACE:
+                        client.asset.replace_terms(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            terms=term_refs,
+                        )
+                    elif term_operation == TermOperation.REMOVE:
+                        client.asset.remove_terms(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            terms=term_refs,
+                        )
+
+                    result["updated_count"] += 1
+                    logger.info(
+                        f"Successfully {term_operation.value}d terms on asset: {updatable_asset.qualified_name}"
+                    )
+
+                except Exception as e:
+                    error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
             else:
                 # Regular attribute update flow
                 setattr(asset, attribute_name.value, attribute_values[index])
@@ -118,8 +173,9 @@ def update_assets(
             )
 
         # Proces response
-        response = client.asset.save(assets)
-        result["updated_count"] = len(response.guid_assignments)
+        if len(assets) > 0:
+            response = client.asset.save(assets)
+            result["updated_count"] = len(response.guid_assignments)
         logger.info(f"Successfully updated {result['updated_count']} assets")
 
         return result
