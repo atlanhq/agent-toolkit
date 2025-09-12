@@ -786,9 +786,7 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
     Fetch the custom metadata context for all business metadata definitions in the Atlan instance.
 
     This tool is used to get the custom metadata context for all business metadata definitions
-    present in the Atlan instance. Whenever a user gives a query to search for assets with
-    filters on custom metadata, this tool will be used to get the custom metadata context
-    for the business metadata definitions present in the Atlan instance.
+    present in the Atlan instance.
 
     Eventually, this tool helps to prepare the payload for search_assets tool, when users
     want to search for assets with filters on custom metadata.
