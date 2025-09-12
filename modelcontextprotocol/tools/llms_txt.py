@@ -24,8 +24,8 @@ class LLMSTxtManager:
 
     def __init__(self):
         self.sources: Dict[str, DocSource] = {}
-        self.timeout = 10.0
-        self.follow_redirects = False
+        self.timeout = 30.0  # Increased timeout for documentation fetching
+        self.follow_redirects = True  # Allow redirects for documentation URLs
         self._initialize_default_sources()
 
     def _initialize_default_sources(self):
@@ -83,17 +83,20 @@ class LLMSTxtManager:
         """Fetch content from URL with proper error handling."""
         try:
             async with httpx.AsyncClient(
-                timeout=self.timeout, follow_redirects=self.follow_redirects
+                timeout=httpx.Timeout(self.timeout, read=self.timeout),
+                follow_redirects=self.follow_redirects,
             ) as client:
                 response = await client.get(url)
                 response.raise_for_status()
                 return response.text
         except httpx.TimeoutException:
-            raise Exception(f"Timeout fetching {url}")
-        except httpx.HTTPError as e:
-            raise Exception(f"HTTP error fetching {url}: {e}")
+            raise Exception(f"Timeout fetching {url} after {self.timeout}s")
+        except httpx.RequestError as e:
+            raise Exception(f"Request error fetching {url}: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP {e.response.status_code} error fetching {url}: {e}")
         except Exception as e:
-            raise Exception(f"Error fetching {url}: {e}")
+            raise Exception(f"Unexpected error fetching {url}: {e}")
 
     async def fetch_llms_txt(self, source_name: str) -> Dict[str, Any]:
         """Fetch and parse llms.txt content from a source."""

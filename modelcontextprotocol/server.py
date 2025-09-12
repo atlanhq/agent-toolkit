@@ -27,7 +27,7 @@ from utils.parameters import (
 from middleware import ToolRestrictionMiddleware
 
 
-mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
+mcp = FastMCP("Atlan MCP Server")
 
 # Get restricted tools from environment variable or use default
 restricted_tools_env = os.getenv("RESTRICTED_TOOLS", "")
