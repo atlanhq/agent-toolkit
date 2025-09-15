@@ -224,57 +224,42 @@ def search_assets_tool(
             include_attributes=["categories"]
         )
 
-        # Find popular assets
-        search_assets(
-            conditions={"popularityScore": {"operator": "gte", "value": 0.8}},
-            sort_by="popularityScore",
-            sort_order="DESC"
-        )
-
-        # Find expensive but unused assets
+        # Find popular but expensive assets (cost optimization)
         search_assets(
             conditions={
-                "sourceReadQueryCost": {"operator": "gte", "value": 1000},
-                "sourceReadCount": {"operator": "lte", "value": 10}
-            }
-        )
-
-        # Show me expensive queries in our Snowflake instance
-        search_assets(
-            connection_qualified_name="default/snowflake/123456",
-            conditions={"sourceReadQueryCost": {"operator": "gte", "value": 1000}},
+                "popularityScore": {"operator": "gte", "value": 0.8},
+                "sourceReadQueryCost": {"operator": "gte", "value": 1000}
+            },
             include_attributes=["sourceReadExpensiveQueryRecordList", "sourceCostUnit"]
         )
 
-        # Find unused popular assets (optimization candidates)
+        # Find unused assets accessed before 2024
         search_assets(
-            conditions={
-                "popularityScore": {"operator": "gte", "value": 0.6},
-                "sourceLastReadAt": {"operator": "lt", "value": 1704067200000}  # Before 2024
-            },
+            conditions={"sourceLastReadAt": {"operator": "lt", "value": 1704067200000}}, # Unix epoch in milliseconds
             include_attributes=["sourceReadCount", "sourceLastReadAt"]
         )
 
-        # Who are the top users of our customer_transactions table?
+        # Get top users for a specific table
         # Note: Can't directly filter by user, but can retrieve the list
         search_assets(
             conditions={"name": "customer_transactions"},
-            include_attributes=["sourceReadTopUserList", "sourceReadTopUserRecordList"]
+            include_attributes=["sourceReadTopUserList", "sourceReadUserCount"]
         )
 
-        # What changed recently but hasn't been accessed?
+        # Find frequently accessed uncertified assets (governance gap)
         search_assets(
             conditions={
-                "lastRowChangedAt": {"operator": "gte", "value": 1704067200000},
-                "sourceLastReadAt": {"operator": "lt", "value": 1704067200000}
-            },
-            include_attributes=["lastRowChangedQuery"]
+                "sourceReadUserCount": {"operator": "gte", "value": 10},
+                "certificate_status": {"operator": "ne", "value": "VERIFIED"}
+            }
         )
 
-        # What are the most expensive assets?
+        # Query assets in specific connection with cost filters
         search_assets(
-            asset_type="Table",
+            connection_qualified_name="default/snowflake/123456",
             conditions={"sourceTotalCost": {"operator": "gte", "value": 500}},
+            sort_by="sourceTotalCost",
+            sort_order="DESC",
             include_attributes=[
                 "sourceReadQueryComputeCostRecordList",  # Shows breakdown by warehouse
                 "sourceQueryComputeCostList",  # List of warehouses used
@@ -282,70 +267,24 @@ def search_assets_tool(
             ]
         )
 
-        # Find frequently accessed but uncertified assets (governance gap)
-        search_assets(
-            conditions={
-                "sourceReadUserCount": {"operator": "gte", "value": 10},
-                "certificate_status": {"operator": "ne", "value": "VERIFIED"}
-            },
-            include_attributes=["popularityScore", "sourceReadTopUserList"]
-        )
+    The search supports various analytics attributes following similar patterns:
+    - Usage Metrics:
+        - `sourceReadCount`, `sourceReadUserCount` - Filter by read frequency or user diversity
+        - `sourceLastReadAt`, `lastRowChangedAt` - Time-based filtering (Unix timestamp in ms)
+        - `popularityScore` - Float value 0-1 indicating asset popularity
 
-        # Show popular queries for analytics tables
-        search_assets(
-            asset_type="Table",
-            conditions={
-                "name": {"operator": "contains", "value": "analytics"},
-                "sourceReadCount": {"operator": "gte", "value": 50}
-            },
-            include_attributes=["sourceReadPopularQueryRecordList"]
-        )
+    - Cost Metrics:
+        - `sourceReadQueryCost`, `sourceTotalCost` - Filter by cost thresholds
+        - Include `sourceCostUnit` in attributes to get cost units
+        - Include `sourceReadExpensiveQueryRecordList` for detailed breakdowns
 
-        # Which assets have the most diverse usage? (many unique users)
-        search_assets(
-            conditions={"sourceReadUserCount": {"operator": "gte", "value": 20}},
-            sort_by="sourceReadUserCount",
-            sort_order="DESC",
-            include_attributes=["sourceReadRecentUserList", "sourceQueryTopTagList"]
-        )
+    - User Analytics:
+        - `sourceReadTopUserList`, `sourceReadRecentUserList` - Get user lists
+        - `sourceReadTopUserRecordList`, `sourceReadRecentUserRecordList` - Get detailed records
 
-        # Find high-cost low-value assets (cost optimization targets)
-        search_assets(
-            conditions={
-                "sourceReadQueryCost": {"operator": "gte", "value": 1000},
-                "popularityScore": {"operator": "lte", "value": 0.3},
-                "sourceReadUserCount": {"operator": "lte", "value": 5}
-            },
-            include_attributes=[
-                "sourceTotalCost",
-                "sourceReadCount",
-                "sourceLastReadAt",
-                "sourceReadExpensiveQueryRecordList"
-            ]
-        )
-
-        # Show recently accessed high-value assets
-        search_assets(
-            conditions={
-                "sourceLastReadAt": {"operator": "gte", "value": 1735689600000},  # After Jan 2025
-                "popularityScore": {"operator": "gte", "value": 0.8}
-            },
-            include_attributes=[
-                "sourceReadRecentUserList",
-                "sourceReadRecentUserRecordList",
-                "sourceReadCount"
-            ]
-        )
-
-        # Find tables with high compute costs
-        search_assets(
-            asset_type="Table",
-            conditions={"sourceReadQueryCost": {"operator": "gte", "value": 5000}},
-            include_attributes=[
-                "sourceQueryComputeCostList",  # Which warehouses were used
-                "sourceQueryComputeCostRecordList"  # Detailed cost breakdown
-            ]
-        )
+    - Query Analytics:
+        - `sourceReadPopularQueryRecordList` - Popular queries for the asset
+        - `lastRowChangedQuery` - Query that last modified the asset
 
     Additional attributes you can include in the conditions to extract more metadata from an asset:
         - columns
