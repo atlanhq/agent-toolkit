@@ -14,7 +14,6 @@ from tools import (
     list_doc_sources,
     fetch_llms_txt_content,
     fetch_documentation,
-    add_doc_source,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -700,48 +699,38 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 async def documentation_tool(
-    action: str,
-    source_name: str = None,
-    url: str = None,
-    llms_txt_url: str = None,
-    allowed_domains: str = None,
-    source_names: str = None,
+    action: str, source_name: str = None, url: str = None, source_names: str = None
 ) -> Dict[str, Any]:
     """
-    📚 UNIFIED DOCUMENTATION TOOL - Your one-stop solution for all Atlan documentation needs!
+    UNIFIED DOCUMENTATION TOOL - Your one-stop solution for all Atlan documentation needs!
 
-    🔍 WHEN TO USE: Call this tool whenever users ask questions about Atlan products, features,
+    WHEN TO USE: Call this tool whenever users ask questions about Atlan products, features,
     APIs, integrations, or need any documentation-related assistance.
 
-    This powerful unified tool handles all documentation operations through different actions:
-    - list_sources: Discover available documentation sources
-    - fetch_index: Explore topics available in a documentation source
-    - fetch_content: Retrieve specific documentation content to answer questions
-    - add_source: Add new documentation sources for extended coverage
+    This powerful unified tool handles all Atlan documentation operations through different actions:
+    - list_sources: Discover available Atlan documentation sources
+    - fetch_index: Explore topics available in Atlan documentation
+    - fetch_content: Retrieve specific Atlan documentation content to answer questions
 
     Args:
         action (str): The operation to perform. Must be one of:
-            - "list_sources": List all available documentation sources
-            - "fetch_index": Fetch and parse llms.txt content from a source
-            - "fetch_content": Fetch documentation content from a specific URL
-            - "add_source": Add a new documentation source
+            - "list_sources": List all available Atlan documentation sources
+            - "fetch_index": Fetch and parse llms.txt content from an Atlan source
+            - "fetch_content": Fetch Atlan documentation content from a specific URL
 
         source_name (str, optional): Name of documentation source (for fetch_index)
         url (str, optional): Documentation URL to fetch content from (for fetch_content)
-        llms_txt_url (str, optional): URL to llms.txt file (for add_source)
-        allowed_domains (str, optional): Comma-separated domains (for add_source)
         source_names (str, optional): Comma-separated source names for domain checking (for fetch_content)
 
     Returns:
         Dict[str, Any]: Response varies by action:
 
-        list_sources: List of available sources with names, URLs, and allowed domains
+        list_sources: List of available Atlan sources with names, URLs, and allowed domains
         fetch_index: Source info with parsed URLs from llms.txt
         fetch_content: Documentation content, success status, and metadata
-        add_source: Success/error message for source addition
 
     Examples:
-        # 1. Start by discovering available documentation sources
+        # 1. Start by discovering available Atlan documentation sources
         await documentation_tool(action="list_sources")
 
         # 2. Explore what topics are available in Atlan docs
@@ -753,17 +742,9 @@ async def documentation_tool(
             url="https://docs.atlan.com/setup/lineage"
         )
 
-        # 4. Add new documentation source if needed
-        await documentation_tool(
-            action="add_source",
-            source_name="Partner Docs",
-            llms_txt_url="https://partner.example.com/llms.txt",
-            allowed_domains="partner.example.com"
-        )
-
     Security Features:
     - Domain validation prevents access to unauthorized websites
-    - Source management ensures only trusted documentation sources
+    - Source management ensures only trusted Atlan documentation sources
     - Comprehensive error handling for network and parsing issues
     """
 
@@ -796,31 +777,10 @@ async def documentation_tool(
         result["action"] = "fetch_content"
         return result
 
-    elif action == "add_source":
-        if not source_name or not llms_txt_url:
-            return {
-                "error": "source_name and llms_txt_url are required for add_source action",
-                "action": "add_source",
-            }
-
-        # Parse allowed_domains if provided
-        parsed_domains = None
-        if allowed_domains:
-            parsed_domains = [domain.strip() for domain in allowed_domains.split(",")]
-
-        result = add_doc_source(source_name, llms_txt_url, parsed_domains)
-        result["action"] = "add_source"
-        return result
-
     else:
         return {
-            "error": f"Invalid action '{action}'. Must be one of: list_sources, fetch_index, fetch_content, add_source",
-            "available_actions": [
-                "list_sources",
-                "fetch_index",
-                "fetch_content",
-                "add_source",
-            ],
+            "error": f"Invalid action '{action}'. Must be one of: list_sources, fetch_index, fetch_content",
+            "available_actions": ["list_sources", "fetch_index", "fetch_content"],
         }
 
 
