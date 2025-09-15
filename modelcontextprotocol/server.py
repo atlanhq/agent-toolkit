@@ -224,6 +224,68 @@ def search_assets_tool(
             include_attributes=["categories"]
         )
 
+        # Find popular but expensive assets (cost optimization)
+        search_assets(
+            conditions={
+                "popularityScore": {"operator": "gte", "value": 0.8},
+                "sourceReadQueryCost": {"operator": "gte", "value": 1000}
+            },
+            include_attributes=["sourceReadExpensiveQueryRecordList", "sourceCostUnit"]
+        )
+
+        # Find unused assets accessed before 2024
+        search_assets(
+            conditions={"sourceLastReadAt": {"operator": "lt", "value": 1704067200000}}, # Unix epoch in milliseconds
+            include_attributes=["sourceReadCount", "sourceLastReadAt"]
+        )
+
+        # Get top users for a specific table
+        # Note: Can't directly filter by user, but can retrieve the list
+        search_assets(
+            conditions={"name": "customer_transactions"},
+            include_attributes=["sourceReadTopUserList", "sourceReadUserCount"]
+        )
+
+        # Find frequently accessed uncertified assets (governance gap)
+        search_assets(
+            conditions={
+                "sourceReadUserCount": {"operator": "gte", "value": 10},
+                "certificate_status": {"operator": "ne", "value": "VERIFIED"}
+            }
+        )
+
+        # Query assets in specific connection with cost filters
+        search_assets(
+            connection_qualified_name="default/snowflake/123456",
+            conditions={"sourceTotalCost": {"operator": "gte", "value": 500}},
+            sort_by="sourceTotalCost",
+            sort_order="DESC",
+            include_attributes=[
+                "sourceReadQueryComputeCostRecordList",  # Shows breakdown by warehouse
+                "sourceQueryComputeCostList",  # List of warehouses used
+                "sourceCostUnit"
+            ]
+        )
+
+    The search supports various analytics attributes following similar patterns:
+    - Usage Metrics:
+        - `sourceReadCount`, `sourceReadUserCount` - Filter by read frequency or user diversity
+        - `sourceLastReadAt`, `lastRowChangedAt` - Time-based filtering (Unix timestamp in ms)
+        - `popularityScore` - Float value 0-1 indicating asset popularity
+
+    - Cost Metrics:
+        - `sourceReadQueryCost`, `sourceTotalCost` - Filter by cost thresholds
+        - Include `sourceCostUnit` in attributes to get cost units
+        - Include `sourceReadExpensiveQueryRecordList` for detailed breakdowns
+
+    - User Analytics:
+        - `sourceReadTopUserList`, `sourceReadRecentUserList` - Get user lists
+        - `sourceReadTopUserRecordList`, `sourceReadRecentUserRecordList` - Get detailed records
+
+    - Query Analytics:
+        - `sourceReadPopularQueryRecordList` - Popular queries for the asset
+        - `lastRowChangedQuery` - Query that last modified the asset
+
     Additional attributes you can include in the conditions to extract more metadata from an asset:
         - columns
         - column_count
