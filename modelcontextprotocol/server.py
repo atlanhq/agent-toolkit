@@ -699,186 +699,129 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def list_doc_sources_tool() -> List[Dict[str, Any]]:
+async def documentation_tool(
+    action: str,
+    source_name: str = None,
+    url: str = None,
+    llms_txt_url: str = None,
+    allowed_domains: str = None,
+    source_names: str = None,
+) -> Dict[str, Any]:
     """
-    🔍 WHEN TO USE: Call this tool when users ask questions about Atlan products, features, or documentation.
+    📚 UNIFIED DOCUMENTATION TOOL - Your one-stop solution for all Atlan documentation needs!
 
-    List all available llms.txt documentation sources configured in the server.
-    Use this as the first step when users have product-related questions to see what
-    documentation sources are available for answering their queries.
+    🔍 WHEN TO USE: Call this tool whenever users ask questions about Atlan products, features,
+    APIs, integrations, or need any documentation-related assistance.
 
-    This tool shows all documentation sources that can be used with fetch_docs_tool.
-    Each source includes the llms.txt URL and allowed domains for security.
+    This powerful unified tool handles all documentation operations through different actions:
+    - list_sources: Discover available documentation sources
+    - fetch_index: Explore topics available in a documentation source
+    - fetch_content: Retrieve specific documentation content to answer questions
+    - add_source: Add new documentation sources for extended coverage
+
+    Args:
+        action (str): The operation to perform. Must be one of:
+            - "list_sources": List all available documentation sources
+            - "fetch_index": Fetch and parse llms.txt content from a source
+            - "fetch_content": Fetch documentation content from a specific URL
+            - "add_source": Add a new documentation source
+
+        source_name (str, optional): Name of documentation source (for fetch_index)
+        url (str, optional): Documentation URL to fetch content from (for fetch_content)
+        llms_txt_url (str, optional): URL to llms.txt file (for add_source)
+        allowed_domains (str, optional): Comma-separated domains (for add_source)
+        source_names (str, optional): Comma-separated source names for domain checking (for fetch_content)
 
     Returns:
-        List[Dict[str, Any]]: List of documentation sources with:
-            - name: Source name/identifier
-            - llms_txt_url: URL to the llms.txt file
-            - allowed_domains: List of domains allowed for fetching docs
+        Dict[str, Any]: Response varies by action:
+
+        list_sources: List of available sources with names, URLs, and allowed domains
+        fetch_index: Source info with parsed URLs from llms.txt
+        fetch_content: Documentation content, success status, and metadata
+        add_source: Success/error message for source addition
 
     Examples:
-        # When user asks "How do I use Atlan's data catalog?" - start here
-        sources = list_doc_sources_tool()
+        # 1. Start by discovering available documentation sources
+        await documentation_tool(action="list_sources")
 
-        # Example response:
-        [
-            {
-                "name": "Atlan Docs",
-                "llms_txt_url": "https://docs.atlan.com/llms.txt",
-                "allowed_domains": ["docs.atlan.com"]
+        # 2. Explore what topics are available in Atlan docs
+        await documentation_tool(action="fetch_index", source_name="Atlan Docs")
+
+        # 3. Fetch specific content to answer user questions
+        await documentation_tool(
+            action="fetch_content",
+            url="https://docs.atlan.com/setup/lineage"
+        )
+
+        # 4. Add new documentation source if needed
+        await documentation_tool(
+            action="add_source",
+            source_name="Partner Docs",
+            llms_txt_url="https://partner.example.com/llms.txt",
+            allowed_domains="partner.example.com"
+        )
+
+    Security Features:
+    - Domain validation prevents access to unauthorized websites
+    - Source management ensures only trusted documentation sources
+    - Comprehensive error handling for network and parsing issues
+    """
+
+    if action == "list_sources":
+        return {"sources": list_doc_sources(), "action": "list_sources"}
+
+    elif action == "fetch_index":
+        if not source_name:
+            return {
+                "error": "source_name is required for fetch_index action",
+                "action": "fetch_index",
             }
-        ]
-    """
-    return list_doc_sources()
+        result = await fetch_llms_txt_content(source_name)
+        result["action"] = "fetch_index"
+        return result
 
+    elif action == "fetch_content":
+        if not url:
+            return {
+                "error": "url is required for fetch_content action",
+                "action": "fetch_content",
+            }
 
-@mcp.tool()
-async def fetch_llms_txt_tool(source_name: str) -> Dict[str, Any]:
-    """
-    📋 WHEN TO USE: Call this after list_doc_sources_tool when you need to see what specific
-    documentation topics are available for a source before answering user product questions.
+        # Parse source_names if provided
+        parsed_source_names = None
+        if source_names:
+            parsed_source_names = [name.strip() for name in source_names.split(",")]
 
-    Fetch and parse llms.txt content from a specific documentation source.
+        result = await fetch_documentation(url, parsed_source_names)
+        result["action"] = "fetch_content"
+        return result
 
-    This tool retrieves the llms.txt file from a configured source and parses
-    it to extract available documentation URLs that you can then fetch with fetch_docs_tool.
+    elif action == "add_source":
+        if not source_name or not llms_txt_url:
+            return {
+                "error": "source_name and llms_txt_url are required for add_source action",
+                "action": "add_source",
+            }
 
-    Args:
-        source_name (str): Name of the documentation source to fetch from.
-            Use list_doc_sources_tool to see available sources.
+        # Parse allowed_domains if provided
+        parsed_domains = None
+        if allowed_domains:
+            parsed_domains = [domain.strip() for domain in allowed_domains.split(",")]
 
-    Returns:
-        Dict[str, Any]: Contains:
-            - source: Source name
-            - llms_txt_url: URL of the llms.txt file
-            - content: Raw llms.txt content
-            - parsed_urls: List of documentation URLs found
-            - allowed_domains: Domains allowed for this source
-            - error: Error message if fetch failed
+        result = add_doc_source(source_name, llms_txt_url, parsed_domains)
+        result["action"] = "add_source"
+        return result
 
-    Examples:
-        # When user asks "How do I set up lineage in Atlan?" - check what docs are available
-        result = await fetch_llms_txt_tool("Atlan Docs")
-
-        # Check available URLs to find lineage-related documentation
-        if "parsed_urls" in result:
-            for url in result["parsed_urls"]:
-                if "lineage" in url.lower():
-                    # Found relevant doc, now fetch it with fetch_docs_tool
-                    pass
-    """
-    return await fetch_llms_txt_content(source_name)
-
-
-@mcp.tool()
-async def fetch_docs_tool(url: str, source_names: str = None) -> Dict[str, Any]:
-    """
-    📖 WHEN TO USE: This is the KEY tool for answering Atlan product questions!
-    Call this to fetch specific Atlan documentation content that directly answers user questions.
-
-    Fetch documentation content from a URL with domain security checks.
-
-    This tool fetches documentation from URLs found in llms.txt files and returns the full
-    content that you can use to provide comprehensive, accurate answers about Atlan products,
-    features, APIs, integrations, and usage instructions.
-
-    Args:
-        url (str): The documentation URL to fetch content from (from fetch_llms_txt_tool results).
-        source_names (str, optional): Comma-separated list of source names to restrict
-            domain checking. If not provided, checks against all configured sources.
-
-    Returns:
-        Dict[str, Any]: Contains:
-            - url: The requested URL
-            - content: Fetched documentation content (if successful) - USE THIS TO ANSWER QUESTIONS
-            - content_length: Length of the content
-            - matching_sources: Sources that allow this domain
-            - success: Boolean indicating if fetch was successful
-            - error: Error message if fetch failed
-            - available_sources: List of available sources (on error)
-            - allowed_domains: List of allowed domains (on error)
-
-    Security:
-        - Only domains explicitly allowed by configured sources can be accessed
-        - Prevents unauthorized access to random websites
-        - Domain matching includes both exact matches and subdomain matches
-
-    Examples:
-        # When user asks "How do I configure Atlan's data lineage?"
-        result = await fetch_docs_tool("https://docs.atlan.com/setup/lineage")
-        if result["success"]:
-            # Use result["content"] to provide detailed answer about lineage setup
-
-        # When user asks "What are Atlan's asset types?"
-        result = await fetch_docs_tool("https://docs.atlan.com/concepts/assets")
-        if result["success"]:
-            # Use result["content"] to explain asset types comprehensively
-    """
-    # Parse source_names if provided
-    parsed_source_names = None
-    if source_names:
-        parsed_source_names = [name.strip() for name in source_names.split(",")]
-
-    return await fetch_documentation(url, parsed_source_names)
-
-
-@mcp.tool()
-def add_doc_source_tool(
-    name: str, llms_txt_url: str, allowed_domains: str = None
-) -> Dict[str, str]:
-    """
-    ➕ WHEN TO USE: Call this when users need access to additional product documentation
-    sources beyond the default Atlan docs (e.g., partner integrations, custom tools).
-
-    Add a new documentation source to the server configuration.
-
-    This tool allows adding custom llms.txt sources with their allowed domains
-    for documentation fetching. Use when users need documentation from sources
-    not currently configured in the server.
-
-    Args:
-        name (str): Unique name/identifier for the documentation source.
-        llms_txt_url (str): URL to the llms.txt file for this source.
-        allowed_domains (str, optional): Comma-separated list of allowed domains.
-            If not provided, the domain is auto-extracted from llms_txt_url.
-
-    Returns:
-        Dict[str, str]: Success or error message:
-            - success: Success message if source was added
-            - error: Error message if addition failed
-
-    Security Note:
-        - Allowed domains control which URLs can be fetched with fetch_docs_tool
-        - Use '*' as a domain to allow all domains (not recommended for security)
-        - Domains support both exact matches and subdomain matching
-
-    Examples:
-        # When user asks about Snowflake integration with Atlan
-        result = add_doc_source_tool(
-            name="Snowflake Docs",
-            llms_txt_url="https://docs.snowflake.com/llms.txt"
-        )
-
-        # When user needs access to partner documentation
-        result = add_doc_source_tool(
-            name="Partner Integration Docs",
-            llms_txt_url="https://partner-docs.example.com/llms.txt",
-            allowed_domains="partner-docs.example.com,help.example.com"
-        )
-
-        # Check result
-        if "success" in result:
-            # Source added successfully, can now use with other tools
-            pass
-        else:
-            print(f"Error: {result['error']}")
-    """
-    # Parse allowed_domains if provided
-    parsed_domains = None
-    if allowed_domains:
-        parsed_domains = [domain.strip() for domain in allowed_domains.split(",")]
-
-    return add_doc_source(name, llms_txt_url, parsed_domains)
+    else:
+        return {
+            "error": f"Invalid action '{action}'. Must be one of: list_sources, fetch_index, fetch_content, add_source",
+            "available_actions": [
+                "list_sources",
+                "fetch_index",
+                "fetch_content",
+                "add_source",
+            ],
+        }
 
 
 def main():
