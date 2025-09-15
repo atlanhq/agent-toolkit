@@ -14,6 +14,7 @@ from tools import (
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
+    TermOperations,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -470,21 +471,23 @@ def update_assets_tool(
     attribute_values,
 ):
     """
-    Update one or multiple assets with different values for the same attribute.
+    Update one or multiple assets with different values for attributes or term operations.
 
     Args:
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Only "user_description", "certificate_status" and "readme" are supported.
-        attribute_values (List[str]): List of values to set for the attribute.
+            Supports "user_description", "certificate_status", "readme", and "term".
+        attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
+            For term, the value must be a dict with "operation" and "term_guids" keys.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
+            - operation: The operation that was performed (for term operations)
 
     Examples:
         # Update certificate status for a single asset
@@ -537,6 +540,65 @@ def update_assets_tool(
             - Contains PII data
             - [Documentation](https://docs.example.com)''']
         )
+
+        # Append terms to a single asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Name Column",
+                "type_name": "Column",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_NAME"
+            },
+            attribute_name="term",
+            attribute_values=[{
+                "operation": "append",
+                "term_guids": ["term-guid-1", "term-guid-2"]
+            }]
+        )
+
+        # Replace all terms on multiple assets
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "asset-guid-1",
+                    "name": "Table 1",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_1"
+                },
+                {
+                    "guid": "asset-guid-2",
+                    "name": "Table 2",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_2"
+                }
+            ],
+            attribute_name="term",
+            attribute_values=[
+                {
+                    "operation": "replace",
+                    "term_guids": ["new-term-for-table-1-guid-1", "new-term-for-table-1-guid-2"]
+                },
+                {
+                    "operation": "replace",
+                    "term_guids": ["new-term-for-table-2-guid-1", "new-term-for-table-2-guid-2"]
+                }
+            ]
+        )
+
+        # Remove specific terms from an asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Data Table",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_DATA"
+            },
+            attribute_name="term",
+            attribute_values=[{
+                "operation": "remove",
+                "term_guids": ["term-guid-to-remove"]
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -546,8 +608,20 @@ def update_assets_tool(
         # Convert string attribute name to enum
         attr_enum = UpdatableAttribute(attribute_name)
 
+        # Handle term operations - convert dict to TermOperations object
+        if attr_enum == UpdatableAttribute.TERM:
+            term_operations = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    term_operations.append(TermOperations(**value))
+                else:
+                    return {
+                        "error": "Term attribute values must be dictionaries with 'operation' and 'term_guids' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = term_operations
         # For certificate status, convert values to enum
-        if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
+        elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [
                 CertificateStatus(val) for val in parsed_attribute_values
             ]
