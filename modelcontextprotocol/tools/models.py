@@ -19,6 +19,8 @@ class UpdatableAttribute(str, Enum):
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
     TERM = "term"
+    CLASSIFICATIONS ="classifications"
+
 
 
 class TermOperation(str, Enum):
@@ -45,6 +47,7 @@ class UpdatableAsset(BaseModel):
     type_name: str
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
+    classifications: Optional[List[str]] = None
 
 
 class Glossary(BaseModel):

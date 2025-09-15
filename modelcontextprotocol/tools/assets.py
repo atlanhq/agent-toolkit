@@ -27,7 +27,7 @@ def update_assets(
         updatable_assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAssets.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Supports userDescription, certificateStatus, readme, and term.
+            Supports userDescription, certificateStatus, readme, classifications and term.
         attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
@@ -155,6 +155,21 @@ def update_assets(
                     error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
+            elif attribute_name == UpdatableAttribute.CLASSIFICATIONS:
+                tag_names = attribute_values[index] if isinstance(attribute_values[index], list) else [
+                    attribute_values[index]]
+
+                try:
+                    client.asset.add_atlan_tags(
+                        asset_type=asset_cls,
+                        qualified_name=asset.qualified_name,
+                        atlan_tag_names=tag_names,
+                    )
+                    result["updated_count"] += 1
+                except Exception as e:
+                    error_msg = f"Error updating tags on asset {updatable_asset.qualified_name}: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
             else:
                 # Regular attribute update flow
                 setattr(asset, attribute_name.value, attribute_values[index])
@@ -172,7 +187,6 @@ def update_assets(
                 f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}"
             )
 
-        # Proces response
         if len(assets) > 0:
             response = client.asset.save(assets)
             result["updated_count"] = len(response.guid_assignments)

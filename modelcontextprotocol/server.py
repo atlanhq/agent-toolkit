@@ -478,11 +478,13 @@ def update_assets_tool(
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "classifications" and "term".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a dict with "operation" and "term_guids" keys.
+            For classifications, the value must already exist in Atlan.
+
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -501,6 +503,17 @@ def update_assets_tool(
             },
             attribute_name="certificate_status",
             attribute_values=["VERIFIED"]
+        )
+         # Update classification for a single asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Asset Name",
+                "type_name": "Asset Type Name",
+                "qualified_name": "Asset Qualified Name"
+            },
+            attribute_name="classifications",
+            attribute_values=["P0"]
         )
 
         # Update user description for multiple assets
@@ -602,6 +615,7 @@ def update_assets_tool(
         )
     """
     try:
+
         # Parse JSON parameters
         parsed_assets = parse_json_parameter(assets)
         parsed_attribute_values = parse_list_parameter(attribute_values)
