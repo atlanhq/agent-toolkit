@@ -695,26 +695,23 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 def main():
-    mcp.run()
-
-
-if __name__ == "__main__":
+    """Main entry point for the Atlan MCP Server."""
     parser = argparse.ArgumentParser(description="Atlan MCP Server")
     parser.add_argument(
         "--transport",
         type=str,
-        default="stdio",
+        default=os.getenv("MCP_TRANSPORT", "stdio"),
         choices=["stdio", "sse", "streamable-http"],
         help="Transport protocol (stdio/sse/streamable-http)",
     )
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0", help="Host to run the server on"
+        "--host", type=str, default=os.getenv("MCP_HOST", "0.0.0.0"), help="Host to run the server on"
     )
     parser.add_argument(
-        "--port", type=int, default=8000, help="Port to run the server on"
+        "--port", type=int, default=int(os.getenv("MCP_PORT", "8000")), help="Port to run the server on"
     )
     parser.add_argument(
-        "--path", type=str, default="/", help="Path of the streamable HTTP server"
+        "--path", type=str, default=os.getenv("MCP_PATH", "/"), help="Path of the streamable HTTP server"
     )
     args = parser.parse_args()
 
@@ -728,3 +725,7 @@ if __name__ == "__main__":
         }
     # Run the server with the specified transport and host/port/path
     mcp.run(**kwargs)
+
+
+if __name__ == "__main__":
+    main()
