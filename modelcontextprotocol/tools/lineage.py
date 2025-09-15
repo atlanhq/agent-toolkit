@@ -112,3 +112,81 @@ def traverse_lineage(
     except Exception as e:
         logger.error(f"Error traversing lineage: {str(e)}")
         return {"assets": [], "error": str(e)}
+
+def get_asset_source_or_destination(
+    guid: str,
+    direction: LineageDirection,
+    depth: int = 1000000,
+    size: int = 100,
+    ignore_types: Optional[List[str]] = ['process', 'aimodel']
+) -> Dict[str, Any]:
+    """
+    Get the source or destination assets for a given asset by traversing lineage.
+
+    This function identifies terminal assets in the lineage graph - either source assets
+    (those with no upstream dependencies) or destination assets (those with no downstream
+    dependencies). Asset types can be filtered out using the ignore_types parameter.
+
+    Args:
+        guid (str): GUID of the starting asset
+        direction (LineageDirection): Direction to traverse (UPSTREAM for sources, DOWNSTREAM for destinations)
+        depth (int, optional): Maximum depth to traverse. Defaults to 1000000.
+        size (int, optional): Maximum number of results to return. Defaults to 100.
+        ignore_types (Optional[List[str]], optional): List of asset type keywords to ignore
+            (case-insensitive matching). Defaults to ['process', 'aimodel'].
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - assets: List of terminal assets (sources or destinations) with processed attributes
+            - error: None if no error occurred, otherwise the error message
+
+    Raises:
+        ValueError: If direction is not UPSTREAM or DOWNSTREAM
+        Exception: If there's an error executing the lineage request
+    """
+    
+    logger.info(f"Starting lineage source check for {guid}, depth={depth}, size={size}")
+    logger.info(f"Ignore types: {ignore_types}")
+
+    try:
+        client = get_atlan_client()
+        request = (
+            FluentLineage(starting_guid=guid)
+            .direction(direction)
+            .immediate_neighbors(True)
+            .depth(depth)
+            .size(size)
+            .request
+        )
+        response = client.asset.get_lineage_list(request)
+        assets = []
+        for asset in response:
+            if direction == LineageDirection.UPSTREAM: # This is a source check
+                # Check if the asset has the 'immediate_upstream' attribute and if it's not empty
+                if not hasattr(asset, 'immediate_upstream') or not asset.immediate_upstream:
+                    # Skip assets that contain any of the exclude keywords in their type_name
+                    if hasattr(asset, 'type_name'):
+                        asset_type = asset.type_name.lower()
+                        if any(keyword in asset_type for keyword in ignore_types):
+                            continue  # Skip assets with excluded keywords
+                    assets.append(asset.dict(by_alias=True, exclude_unset=True))
+                logger.info(f"Total assets with no immediate {direction} lineage: {len(assets)}")
+            elif direction == LineageDirection.DOWNSTREAM: # This is a destination check
+                # Check to make sure it's not the same asset
+                if asset.guid == guid:
+                    continue
+                # Check if the asset has the 'immediate_downstream' attribute and if it's not empty
+                if not hasattr(asset, 'immediate_downstream') or not asset.immediate_downstream:
+                    # Skip assets that contain any of the exclude keywords in their type_name
+                    if hasattr(asset, 'type_name'):
+                        asset_type = asset.type_name.lower()
+                        if any(keyword in asset_type for keyword in ignore_types):
+                            continue  # Skip assets with excluded keywords
+                    assets.append(asset.dict(by_alias=True, exclude_unset=True))
+                logger.info(f"Total assets with no immediate {direction} lineage: {len(assets)}")
+            else:
+                raise ValueError(f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'")
+        return {"assets": assets, "error": None}
+    except Exception as e:
+        logger.error(f"Error traversing lineage source or destination: {str(e)}")
+        return {"assets": [], "error": str(e)}

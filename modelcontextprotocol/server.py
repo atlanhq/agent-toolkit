@@ -14,6 +14,7 @@ from tools import (
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
+    get_asset_source_or_destination,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -336,6 +337,68 @@ def get_assets_by_dsl_tool(dsl_query):
     """
     return get_assets_by_dsl(dsl_query)
 
+@mcp.tool()
+def get_asset_source_or_destination_tool(
+    guid,
+    direction,
+    depth=1000000,
+    size=100,
+    ignore_types: List[str] = ['process', 'aimodel'],
+):
+    """
+    Get the root source or final destination assets for a given asset by traversing lineage.
+
+    This is not for getting the full lineage of an asset, but rather for getting the root source or final destination asset.
+    This function identifies root source or final destination assets in the lineage graph
+    either root source assets (those with no upstream dependencies) or final destination assets (those with no downstream
+    dependencies). Asset types can be filtered out using the ignore_types parameter.
+    
+
+    Args:
+        guid (str): GUID of the starting asset
+        direction (str): Direction to traverse ("UPSTREAM" for sources, "DOWNSTREAM" for destinations)
+        depth (int, optional): Maximum depth to traverse. Should default to 1000000.
+        size (int, optional): Maximum number of results to return. Should default to 100.
+        ignore_types (List[str], optional): List of asset type keywords to ignore
+            (case-insensitive matching). Defaults to ['process', 'aimodel'].
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - assets: List of terminal assets (sources or destinations) with processed attributes
+            - error: None if no error occurred, otherwise the error message
+
+    Examples:
+        # Find source assets (no upstream dependencies) for a table
+        sources = get_asset_source_or_destination_tool(
+            guid="table-guid-here",
+            direction="UPSTREAM",
+            depth=1000,
+            size=20
+        )
+
+        # Find destination assets (no downstream dependencies) for a dataset
+        destinations = get_asset_source_or_destination_tool(
+            guid="dataset-guid-here", 
+            direction="DOWNSTREAM",
+            depth=500,
+            size=15,
+            ignore_types=["process", "aimodel", "aimodelversion"]
+        )
+    """
+    try:
+        direction_enum = LineageDirection[direction.upper()]
+    except KeyError:
+        raise ValueError(
+            f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
+        )
+
+    return get_asset_source_or_destination(
+        guid=guid,
+        direction=direction_enum,
+        depth=int(depth),
+        size=int(size),
+        ignore_types=ignore_types,
+    )
 
 @mcp.tool()
 def traverse_lineage_tool(

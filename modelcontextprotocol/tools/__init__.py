@@ -1,6 +1,6 @@
 from .search import search_assets
 from .dsl import get_assets_by_dsl
-from .lineage import traverse_lineage
+from .lineage import traverse_lineage, get_asset_source_or_destination
 from .assets import update_assets
 from .glossary import (
     create_glossary_category_assets,
@@ -20,6 +20,7 @@ __all__ = [
     "search_assets",
     "get_assets_by_dsl",
     "traverse_lineage",
+    "get_asset_source_or_destination",
     "update_assets",
     "create_glossary_category_assets",
     "create_glossary_assets",
