@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 def search_assets(
     conditions: Optional[Union[Dict[str, Any], str]] = None,
+    custom_metadata_conditions: Optional[List[Dict[str, Any]]] = None,
     negative_conditions: Optional[Dict[str, Any]] = None,
     some_conditions: Optional[Dict[str, Any]] = None,
     min_somes: int = 1,
@@ -40,6 +41,8 @@ def search_assets(
     Args:
         conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
+        custom_metadata_conditions (List[Dict[str, Any]], optional): List of custom metadata conditions to match.
+            Format: [{"custom_metadata": value}] or [{"custom_metadata": {"operator": operator, "value": value}}]
         negative_conditions (Dict[str, Any], optional): Dictionary of attribute conditions to exclude.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
         some_conditions (Dict[str, Any], optional): Conditions for where_some() queries that require min_somes of them to match.
@@ -186,6 +189,19 @@ def search_assets(
                     search, attr, condition, attr_name, "where_some"
                 )
             search = search.min_somes(min_somes)
+
+        if custom_metadata_conditions:
+            logger.debug(
+                f"Applying custom metadata conditions: {custom_metadata_conditions}"
+            )
+            for custom_metadata_filter_object in custom_metadata_conditions:
+                if isinstance(custom_metadata_filter_object, dict):
+                    _, condition = next(iter(custom_metadata_filter_object.items()))
+                else:
+                    condition = custom_metadata_filter_object
+                search = SearchUtils._process_custom_metadata_condition(
+                    search, condition, "where"
+                )
 
         # Apply date range filters
         if date_range:
