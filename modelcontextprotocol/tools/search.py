@@ -194,11 +194,11 @@ def search_assets(
             logger.debug(
                 f"Applying custom metadata conditions: {custom_metadata_conditions}"
             )
-            for custom_metadata_filter_onject in custom_metadata_conditions:
-                if isinstance(custom_metadata_filter_onject, dict):
-                    _, condition = next(iter(custom_metadata_filter_onject.items()))
+            for custom_metadata_filter_object in custom_metadata_conditions:
+                if isinstance(custom_metadata_filter_object, dict):
+                    _, condition = next(iter(custom_metadata_filter_object.items()))
                 else:
-                    condition = custom_metadata_filter_onject
+                    condition = custom_metadata_filter_object
                 search = SearchUtils._process_custom_metadata_condition(
                     search, condition, "where"
                 )
