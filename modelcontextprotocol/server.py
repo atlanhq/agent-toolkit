@@ -4,13 +4,13 @@ import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
-    search_assets,
-    get_assets_by_dsl,
-    traverse_lineage,
-    update_assets,
-    create_glossary_category_assets,
-    create_glossary_assets,
-    create_glossary_term_assets,
+    search_assets as search_assets_impl,
+    get_assets_by_dsl as get_assets_by_dsl_impl,
+    traverse_lineage as traverse_lineage_impl,
+    update_assets as update_assets_impl,
+    create_glossary_category_assets as create_glossary_category_assets_impl,
+    create_glossary_assets as create_glossary_assets_impl,
+    create_glossary_term_assets as create_glossary_term_assets_impl,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -41,7 +41,7 @@ mcp.add_middleware(tool_restriction)
 
 
 @mcp.tool()
-def search_assets_tool(
+def search_assets(
     conditions=None,
     negative_conditions=None,
     some_conditions=None,
@@ -305,7 +305,7 @@ def search_assets_tool(
         domain_guids = parse_list_parameter(domain_guids)
         guids = parse_list_parameter(guids)
 
-        return search_assets(
+        return search_assets_impl(
             conditions,
             negative_conditions,
             some_conditions,
@@ -329,7 +329,7 @@ def search_assets_tool(
 
 
 @mcp.tool()
-def get_assets_by_dsl_tool(dsl_query):
+def get_assets_by_dsl(dsl_query):
     """
     Execute the search with the given query
     dsl_query : Union[str, Dict[str, Any]] (required):
@@ -397,11 +397,11 @@ def get_assets_by_dsl_tool(dsl_query):
     }'''
     response = get_assets_by_dsl(dsl_query)
     """
-    return get_assets_by_dsl(dsl_query)
+    return get_assets_by_dsl_impl(dsl_query)
 
 
 @mcp.tool()
-def traverse_lineage_tool(
+def traverse_lineage(
     guid,
     direction,
     depth=1000000,
@@ -437,7 +437,7 @@ def traverse_lineage_tool(
 
     Examples:
         # Get lineage with default attributes
-        lineage = traverse_lineage_tool(
+        lineage = traverse_lineage(
             guid="asset-guid-here",
             direction="DOWNSTREAM",
             depth=1000,
@@ -454,7 +454,7 @@ def traverse_lineage_tool(
     # Parse include_attributes parameter if provided
     parsed_include_attributes = parse_list_parameter(include_attributes)
 
-    return traverse_lineage(
+    return traverse_lineage_impl(
         guid=guid,
         direction=direction_enum,
         depth=int(depth),
@@ -465,7 +465,7 @@ def traverse_lineage_tool(
 
 
 @mcp.tool()
-def update_assets_tool(
+def update_assets(
     assets,
     attribute_name,
     attribute_values,
@@ -491,7 +491,7 @@ def update_assets_tool(
 
     Examples:
         # Update certificate status for a single asset
-        result = update_assets_tool(
+        result = update_assets(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -503,7 +503,7 @@ def update_assets_tool(
         )
 
         # Update user description for multiple assets
-        result = update_assets_tool(
+        result = update_assets(
             assets=[
                 {
                     "guid": "asset-guid-1",
@@ -525,7 +525,7 @@ def update_assets_tool(
         )
 
         # Update readme for a single asset with Markdown
-        result = update_assets_tool(
+        result = update_assets(
             assets={
                 "guid": "asset-guid-here",
                 "name": "Asset Name",
@@ -632,7 +632,7 @@ def update_assets_tool(
         else:
             updatable_assets = [UpdatableAsset(**asset) for asset in parsed_assets]
 
-        return update_assets(
+        return update_assets_impl(
             updatable_assets=updatable_assets,
             attribute_name=attr_enum,
             attribute_values=parsed_attribute_values,
@@ -693,7 +693,7 @@ def create_glossaries(glossaries) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
 
-    return create_glossary_assets(glossaries)
+    return create_glossary_assets_impl(glossaries)
 
 
 @mcp.tool()
@@ -758,7 +758,7 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
 
-    return create_glossary_term_assets(terms)
+    return create_glossary_term_assets_impl(terms)
 
 
 @mcp.tool()
@@ -827,7 +827,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
-    return create_glossary_category_assets(categories)
+    return create_glossary_category_assets_impl(categories)
 
 
 def main():

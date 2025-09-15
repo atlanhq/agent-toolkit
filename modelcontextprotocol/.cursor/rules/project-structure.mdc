@@ -32,10 +32,13 @@ The main entry point for the MCP server. Registers and exposes tools defined in 
 ```python
 from mcp.server.fastmcp import FastMCP
 from tools import (
-    search_assets,
-    get_assets_by_dsl,
-    traverse_lineage,
-    update_assets,
+    search_assets as search_assets_impl,
+    get_assets_by_dsl as get_assets_by_dsl_impl,
+    traverse_lineage as traverse_lineage_impl,
+    update_assets as update_assets_impl,
+    create_glossary_category_assets as create_glossary_category_assets_impl,
+    create_glossary_assets as create_glossary_assets_impl,
+    create_glossary_term_assets as create_glossary_term_assets_impl,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -51,35 +54,35 @@ mcp = FastMCP("Atlan MCP", dependencies=["pyatlan"])
 # Refer to the actual server.py and tools implementations for details.
 
 @mcp.tool()
-def search_assets_tool(
+def search_assets(
     conditions: Optional[Union[Dict[str, Any], str]] = None,
     # ... many other parameters ...
 ):
     """Advanced asset search using FluentSearch with flexible conditions."""
-    return search_assets(conditions=conditions, ...)
+    return search_assets_impl(conditions=conditions, ...)
 
 @mcp.tool()
-def get_assets_by_dsl_tool(dsl_query: Union[str, Dict[str, Any]]):
+def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]):
     """Execute the search with the given DSL query."""
-    return get_assets_by_dsl(dsl_query)
+    return get_assets_by_dsl_impl(dsl_query)
 
 @mcp.tool()
-def traverse_lineage_tool(
+def traverse_lineage(
     guid: str,
     direction: str, # UPSTREAM or DOWNSTREAM
     # ... other parameters ...
 ):
     """Traverse asset lineage in specified direction."""
-    return traverse_lineage(guid=guid, direction=direction, ...)
+    return traverse_lineage_impl(guid=guid, direction=direction, ...)
 
 @mcp.tool()
-def update_assets_tool(
+def update_assets(
     assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: UpdatableAttribute,
     attribute_values: List[Union[CertificateStatus, str]],
 ):
     """Update one or multiple assets with different values for the same attribute."""
-    return update_assets(assets=assets, attribute_name=attribute_name, attribute_values=attribute_values)
+    return update_assets_impl(assets=assets, attribute_name=attribute_name, attribute_values=attribute_values)
 ```
 
 ### settings.py
