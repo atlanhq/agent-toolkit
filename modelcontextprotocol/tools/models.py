@@ -19,8 +19,7 @@ class UpdatableAttribute(str, Enum):
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
     TERM = "term"
-    CLASSIFICATIONS ="classifications"
-
+    CLASSIFICATIONS = "classifications"
 
 
 class TermOperation(str, Enum):

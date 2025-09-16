@@ -156,8 +156,11 @@ def update_assets(
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
             elif attribute_name == UpdatableAttribute.CLASSIFICATIONS:
-                tag_names = attribute_values[index] if isinstance(attribute_values[index], list) else [
-                    attribute_values[index]]
+                tag_names = (
+                    attribute_values[index]
+                    if isinstance(attribute_values[index], list)
+                    else [attribute_values[index]]
+                )
 
                 try:
                     client.asset.add_atlan_tags(

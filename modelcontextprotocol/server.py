@@ -615,7 +615,6 @@ def update_assets_tool(
         )
     """
     try:
-
         # Parse JSON parameters
         parsed_assets = parse_json_parameter(assets)
         parsed_attribute_values = parse_list_parameter(attribute_values)
