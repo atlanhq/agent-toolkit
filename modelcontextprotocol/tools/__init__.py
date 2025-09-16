@@ -16,6 +16,8 @@ from .models import (
     Glossary,
     GlossaryCategory,
     GlossaryTerm,
+    Announcement,
+    AnnouncementType,
 )
 
 __all__ = [
@@ -34,4 +36,6 @@ __all__ = [
     "Glossary",
     "GlossaryCategory",
     "GlossaryTerm",
+    "AnnouncementType",
+    "Announcement",
 ]

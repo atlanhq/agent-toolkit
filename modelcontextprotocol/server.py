@@ -600,6 +600,30 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Add warning announcement to an asset
+        update_assets_tool(
+            assets={
+                "guid": "abc-123",
+                "name": "sales_data",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/db/schema/sales_data"
+            },
+            attribute_name="announcement",
+            attribute_values=[{
+                "announcement_type": "WARNING",
+                "announcement_title": "Data Quality Issue",
+                "announcement_message": "Missing records for Q4 2024. ETL team investigating."
+            }]
+        )
+
+        # Remove announcement
+        update_assets_tool(
+            assets={"guid": "abc-123", ...},
+            attribute_name="announcement",
+            attribute_values=[None]  # or [{}]
+        )
+
     """
     try:
         # Parse JSON parameters
@@ -626,6 +650,21 @@ def update_assets_tool(
             parsed_attribute_values = [
                 CertificateStatus(val) for val in parsed_attribute_values
             ]
+
+        elif attr_enum == UpdatableAttribute.ANNOUNCEMENT:
+            # Validate announcement structure
+            for val in parsed_attribute_values:
+                if val and not isinstance(val, dict):
+                    raise ValueError(f"Announcement must be a dict, got {type(val)}")
+                if val and not all(
+                    k in val
+                    for k in [
+                        "announcement_type",
+                        "announcement_title",
+                        "announcement_message",
+                    ]
+                ):
+                    raise ValueError("Announcement must have type, title, and message")
 
         # Convert assets to UpdatableAsset objects
         if isinstance(parsed_assets, dict):

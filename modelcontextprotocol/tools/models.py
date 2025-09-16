@@ -19,6 +19,7 @@ class UpdatableAttribute(str, Enum):
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
     TERM = "term"
+    ANNOUNCEMENT = "announcement"
 
 
 class TermOperation(str, Enum):
@@ -73,3 +74,19 @@ class GlossaryTerm(BaseModel):
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     category_guids: Optional[List[str]] = None
+
+
+class AnnouncementType(str, Enum):
+    """Enum for announcement types."""
+
+    INFORMATION = "INFORMATION"
+    WARNING = "WARNING"
+    ISSUE = "ISSUE"
+
+
+class Announcement(BaseModel):
+    """Class representing an announcement."""
+
+    announcement_type: AnnouncementType
+    announcement_title: str
+    announcement_message: str
