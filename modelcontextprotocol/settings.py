@@ -1,5 +1,6 @@
 """Configuration settings for the application."""
 
+from typing import Optional
 from pydantic_settings import BaseSettings
 from version import __version__ as MCP_VERSION
 
@@ -29,3 +30,20 @@ class Settings(BaseSettings):
         extra = "allow"
         # Allow case-insensitive environment variables
         case_sensitive = False
+
+
+_settings: Optional[Settings] = None
+
+
+def get_settings() -> Settings:
+    """
+    Get the singleton Settings instance.
+    Loads settings once from environment/file and reuses the instance.
+
+    Returns:
+        Settings: The singleton settings instance
+    """
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
