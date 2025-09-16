@@ -833,8 +833,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 def retrieve_domain_tool(
-    guid: str = None,
-    qualified_name: str = None
+    guid: str = None, qualified_name: str = None
 ) -> Dict[str, Any]:
     """
     Retrieve a specific data domain by GUID or qualified name with comprehensive details.
@@ -847,7 +846,7 @@ def retrieve_domain_tool(
         guid (str, optional): GUID of the data domain to retrieve.
         qualified_name (str, optional): Qualified name of the data domain to retrieve.
             Format typically: "default/domain/{domain-name}"
-        
+
     Note:
         Exactly one of guid or qualified_name must be provided.
 
@@ -857,7 +856,7 @@ def retrieve_domain_tool(
                 - Basic attributes: guid, qualified_name, name, display_name, description, etc.
                 - Metadata: created_by, updated_by, create_time, update_time, status, certificate_status
                 - Domain hierarchy: parent_domain (object), sub_domains (list of objects)
-                - Relationships: stakeholders (list of objects) 
+                - Relationships: stakeholders (list of objects)
                 - Domain-specific: parent_domain_qualified_name, super_domain_qualified_name
                 - Asset metadata: readme, asset_tags
             - error: None if successful, error message otherwise
@@ -869,23 +868,23 @@ def retrieve_domain_tool(
     Examples:
         # Retrieve a parent domain by qualified name
         retrieve_domain_tool(qualified_name="default/domain/marketing")
-        
+
         # Retrieve a subdomain to see parent relationship
         retrieve_domain_tool(qualified_name="default/domain/marketing/campaigns")
-        
+
         # Retrieve by GUID for direct access
         retrieve_domain_tool(guid="12345678-1234-1234-1234-123456789abc")
-        
+
         # Use with search results to get detailed domain information
         domains = search_assets_tool(asset_type="DataDomain", limit=5)
         if domains["assets"]:
             # Get full domain details including relationships
             domain_details = retrieve_domain_tool(guid=domains["assets"][0]["guid"])
-            
+
             # Access subdomain information
             sub_domains = domain_details["domain"]["sub_domains"]
             print(f"Found {len(sub_domains)} subdomains with full details")
-            
+
             # Access parent domain information (if subdomain)
             parent = domain_details["domain"]["parent_domain"]
             if parent:
