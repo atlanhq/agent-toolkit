@@ -46,9 +46,9 @@ uv run .venv/bin/atlan-mcp-server
 uv run mcp dev server.py
 ```
 7. Integrate local MCP changes with Claude Desktop(For E2E testing):
-```bash
 When claude is integrated with Atlan MCP, it runs its own MCP server 
 Update config in claude desktop config as below to use your local code changes for testing end to end:
+```bash
 {
   "mcpServers": {
     "atlan-local": {
