@@ -16,6 +16,7 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    get_asset_history,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -716,6 +717,64 @@ def query_asset_tool(
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
+
+@mcp.tool()
+def get_asset_history_tool(
+    guid=None,
+    qualified_name=None,
+    type_name=None,
+    size=10,
+    sort_order="DESC",
+    include_attributes=None,
+):
+    """
+    Get the audit history of an asset by GUID or qualified name.
+
+    Args:
+        guid (str, optional): GUID of the asset to get history for.
+            Either guid or qualified_name must be provided.
+        qualified_name (str, optional): Qualified name of the asset to get history for.
+            Either guid or qualified_name must be provided.
+        type_name (str, optional): Type name of the asset (required when using qualified_name).
+            Examples: "Table", "Column", "DbtModel", "AtlasGlossary"
+        size (int): Number of history entries to return. Defaults to 10.
+        sort_order (str): Sort order for results. "ASC" for oldest first, "DESC" for newest first.
+            Defaults to "DESC".
+        include_attributes (List[Union[str, AtlanField]], optional): List of additional attributes to include in results.
+            Can be string attribute names or AtlanField objects. These will be added to the default set.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - entityAudits: List of audit entries with details about each change
+            - count: Number of audit entries returned
+            - totalCount: Total number of audit entries available
+            - errors: List of any errors encountered
+
+    Examples:
+        # Get history by GUID
+        history = get_asset_history_tool(
+            guid="6fc01478-1263-42ae-b8ca-c4a57da51392",
+            size=20,
+            sort_order="DESC",
+            include_attributes=["owner_users", "description"]
+        )
+
+        # Get history by qualified name
+        history = get_asset_history_tool(
+            qualified_name="default/dbt/1755018137/account/258239/project/376530/model.simple_column_lineage.order_maths",
+            type_name="DbtModel",
+            size=15,
+            sort_order="ASC"
+        )
+    """
+    return get_asset_history(
+        guid=guid,
+        qualified_name=qualified_name,
+        type_name=type_name,
+        size=size,
+        sort_order=sort_order,
+        include_attributes=include_attributes,
+    )
 
 
 @mcp.tool()
