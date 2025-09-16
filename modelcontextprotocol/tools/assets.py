@@ -9,6 +9,8 @@ from .models import (
     TermOperations,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm
+from pyatlan.model.core import Announcement as AtlanAnnouncement
+from pyatlan.model.enums import AnnouncementType as AtlanAnnouncementType
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 
 # Initialize logging
@@ -32,6 +34,10 @@ def update_assets(
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a TermOperations object with operation and term_guids.
+            For announcement, each value should be a dict with:
+                - announcement_type: "INFORMATION", "WARNING", or "ISSUE"
+                - announcement_title: Title of the announcement
+                - announcement_message: Message content
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -155,6 +161,87 @@ def update_assets(
                     error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
+            elif attribute_name == UpdatableAttribute.ANNOUNCEMENT:
+                announcement_results = []
+
+                for index, updatable_asset in enumerate(updatable_assets):
+                    try:
+                        announcement_data = attribute_values[index]
+
+                        # Handle announcement removal (None or empty dict)
+                        if not announcement_data:
+                            # Remove announcement
+                            asset_cls = getattr(
+                                __import__(
+                                    "pyatlan.model.assets",
+                                    fromlist=[updatable_asset.type_name],
+                                ),
+                                updatable_asset.type_name,
+                            )
+
+                            updated_asset = client.asset.remove_announcement(
+                                asset_type=asset_cls,
+                                qualified_name=updatable_asset.qualified_name,
+                                name=updatable_asset.name,
+                            )
+
+                            if updated_asset:
+                                announcement_results.append(
+                                    {
+                                        "asset": updatable_asset.qualified_name,
+                                        "action": "removed",
+                                    }
+                                )
+                            continue
+
+                        # Create or update announcement
+                        announcement = AtlanAnnouncement(
+                            announcement_type=AtlanAnnouncementType[
+                                announcement_data["announcement_type"]
+                            ],
+                            announcement_title=announcement_data["announcement_title"],
+                            announcement_message=announcement_data[
+                                "announcement_message"
+                            ],
+                        )
+
+                        # Get the asset class
+                        asset_cls = getattr(
+                            __import__(
+                                "pyatlan.model.assets",
+                                fromlist=[updatable_asset.type_name],
+                            ),
+                            updatable_asset.type_name,
+                        )
+
+                        # Update announcement
+                        updated_asset = client.asset.update_announcement(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            name=updatable_asset.name,
+                            announcement=announcement,
+                        )
+
+                        if updated_asset:
+                            announcement_results.append(
+                                {
+                                    "asset": updatable_asset.qualified_name,
+                                    "type": announcement_data["announcement_type"],
+                                    "title": announcement_data["announcement_title"],
+                                }
+                            )
+
+                    except Exception as e:
+                        logger.error(
+                            f"Error updating announcement for {updatable_asset.qualified_name}: {e}"
+                        )
+                        result["errors"].append(
+                            f"Failed to update {updatable_asset.qualified_name}: {str(e)}"
+                        )
+
+                result["updated_count"] = len(announcement_results)
+                result["announcements"] = announcement_results
+
             else:
                 # Regular attribute update flow
                 setattr(asset, attribute_name.value, attribute_values[index])
