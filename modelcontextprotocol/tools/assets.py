@@ -1,9 +1,17 @@
 import logging
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Optional
 from client import get_atlan_client
 from .models import UpdatableAsset, UpdatableAttribute, CertificateStatus
 from pyatlan.model.assets import Readme
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+from pyatlan.model.fields.atlan_fields import AtlanField
+from utils.asset_history import (
+    validate_asset_history_params,
+    create_audit_search_request,
+    process_audit_result,
+    create_sort_item,
+    convert_attributes_to_camel_case,
+)
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -128,3 +136,96 @@ def update_assets(
         error_msg = f"Error updating assets: {str(e)}"
         logger.error(error_msg)
         return {"updated_count": 0, "errors": [error_msg]}
+
+
+def get_asset_history(
+    guid: Optional[str] = None,
+    qualified_name: Optional[str] = None,
+    type_name: Optional[str] = None,
+    size: int = 10,
+    sort_order: str = "DESC",
+    include_attributes: Optional[List[Union[str, AtlanField]]] = None,
+) -> Dict[str, Any]:
+    """
+    Get the audit history of an asset by GUID or qualified name.
+
+    Args:
+        guid (Optional[str]): GUID of the asset to get history for.
+            Either guid or qualified_name must be provided.
+        qualified_name (Optional[str]): Qualified name of the asset to get history for.
+            Either guid or qualified_name must be provided.
+        type_name (Optional[str]): Type name of the asset (required when using qualified_name).
+            Examples: "Table", "Column", "DbtModel", "AtlasGlossary"
+        size (int): Number of history entries to return. Defaults to 10.
+        sort_order (str): Sort order for results. "ASC" for oldest first, "DESC" for newest first.
+            Defaults to "DESC".
+        include_attributes (List[Union[str, AtlanField]], optional): List of additional attributes to include in results.
+            Can be string attribute names or AtlanField objects. These will be added to the default set.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - entityAudits: List of audit entries
+            - count: Number of audit entries returned
+            - totalCount: Total number of audit entries available
+            - errors: List of any errors encountered
+
+    Raises:
+        Exception: If there's an error retrieving the asset history
+    """
+    try:
+        # Validate input parameters
+        validation_error = validate_asset_history_params(
+            guid, qualified_name, type_name, sort_order
+        )
+        if validation_error:
+            logger.error(validation_error)
+            return {
+                "errors": [validation_error],
+                "entityAudits": [],
+                "count": 0,
+                "totalCount": 0,
+            }
+
+        logger.info(
+            f"Retrieving asset history with parameters: guid={guid}, qualified_name={qualified_name}, size={size}"
+        )
+
+        # Get Atlan client
+        client = get_atlan_client()
+
+        # Create sort item
+        sort_item = create_sort_item(sort_order)
+
+        # Convert include_attributes from snake_case to camelCase if needed
+        if include_attributes:
+            include_attributes = convert_attributes_to_camel_case(include_attributes)
+
+        # Create and execute audit search request
+        request = create_audit_search_request(
+            guid, qualified_name, type_name, size, sort_item, include_attributes
+        )
+        response = client.audit.search(criteria=request, bulk=False)
+
+        # Process audit results - use current_page() to respect size parameter
+        entity_audits = [
+            process_audit_result(result, include_attributes)
+            for result in response.current_page()
+        ]
+
+        result_data = {
+            "entityAudits": entity_audits,
+            "count": len(entity_audits),
+            "totalCount": response.total_count,
+            "errors": [],
+        }
+
+        logger.info(
+            f"Successfully retrieved {len(entity_audits)} audit entries for asset"
+        )
+        return result_data
+
+    except Exception as e:
+        error_msg = f"Error retrieving asset history: {str(e)}"
+        logger.error(error_msg)
+        logger.exception("Exception details:")
+        return {"errors": [error_msg], "entityAudits": [], "count": 0, "totalCount": 0}
