@@ -1,5 +1,6 @@
 """Configuration settings for the application."""
 
+from typing import Optional
 from pydantic_settings import BaseSettings
 from version import __version__ as MCP_VERSION
 
@@ -9,18 +10,18 @@ class Settings(BaseSettings):
 
     ATLAN_BASE_URL: str
     ATLAN_API_KEY: str
-    ATLAN_AGENT_ID: str = "ext-atlan-mcp"
-    ATLAN_AGENT: str = "ext-atlan-mcp"
+    ATLAN_AGENT_ID: str = "NA"
+    ATLAN_AGENT: str = "atlan-mcp"
     ATLAN_MCP_USER_AGENT: str = f"Atlan MCP Server {MCP_VERSION}"
 
     @property
     def headers(self) -> dict:
         """Get the headers for API requests."""
         return {
-            "user-agent": self.ATLAN_MCP_USER_AGENT,
-            "x-atlan-agent": self.ATLAN_AGENT,
-            "x-atlan-agent-id": self.ATLAN_AGENT_ID,
-            "x-atlan-client-origin": self.ATLAN_AGENT,
+            "User-Agent": self.ATLAN_MCP_USER_AGENT,
+            "X-Atlan-Agent": self.ATLAN_AGENT,
+            "X-Atlan-Agent-Id": self.ATLAN_AGENT_ID,
+            "X-Atlan-Client-Origin": self.ATLAN_AGENT,
         }
 
     class Config:
@@ -29,3 +30,20 @@ class Settings(BaseSettings):
         extra = "allow"
         # Allow case-insensitive environment variables
         case_sensitive = False
+
+
+_settings: Optional[Settings] = None
+
+
+def get_settings() -> Settings:
+    """
+    Get the singleton Settings instance.
+    Loads settings once from environment/file and reuses the instance.
+
+    Returns:
+        Settings: The singleton settings instance
+    """
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
