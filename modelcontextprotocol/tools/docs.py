@@ -41,19 +41,6 @@ class LLMSTxtManager:
         for source in default_sources:
             self.sources[source.name] = source
 
-    def add_source(
-        self, name: str, llms_txt_url: str, allowed_domains: Optional[List[str]] = None
-    ):
-        """Add a new documentation source."""
-        if allowed_domains is None:
-            # Auto-extract domain from URL
-            parsed = urlparse(llms_txt_url)
-            allowed_domains = [parsed.netloc] if parsed.netloc else []
-
-        self.sources[name] = DocSource(
-            name=name, llms_txt_url=llms_txt_url, allowed_domains=allowed_domains
-        )
-
     def list_sources(self) -> List[Dict[str, Any]]:
         """List all available documentation sources."""
         return [
@@ -229,24 +216,3 @@ async def fetch_documentation(
         Dict containing the fetched content or error information
     """
     return await llms_txt_manager.fetch_docs(url, source_names)
-
-
-def add_doc_source(
-    name: str, llms_txt_url: str, allowed_domains: Optional[List[str]] = None
-) -> Dict[str, str]:
-    """
-    Add a new documentation source.
-
-    Args:
-        name: Name for the source
-        llms_txt_url: URL to the llms.txt file
-        allowed_domains: List of allowed domains (auto-detected if not provided)
-
-    Returns:
-        Success/error message
-    """
-    try:
-        llms_txt_manager.add_source(name, llms_txt_url, allowed_domains)
-        return {"success": f"Added documentation source '{name}'"}
-    except Exception as e:
-        return {"error": f"Failed to add source '{name}': {str(e)}"}
