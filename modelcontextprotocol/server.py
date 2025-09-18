@@ -23,6 +23,8 @@ from utils.parameters import (
     parse_list_parameter,
 )
 from middleware import ToolRestrictionMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -39,6 +41,11 @@ else:
 
 tool_restriction = ToolRestrictionMiddleware(restricted_tools=restricted_tools)
 mcp.add_middleware(tool_restriction)
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("OK")
 
 
 @mcp.tool()
@@ -923,7 +930,7 @@ if __name__ == "__main__":
         "--port", type=int, default=8000, help="Port to run the server on"
     )
     parser.add_argument(
-        "--path", type=str, default="/", help="Path of the streamable HTTP server"
+        "--path", type=str, default="/mcp/", help="Path of the streamable HTTP server"
     )
     args = parser.parse_args()
 
