@@ -14,25 +14,6 @@ from pyatlan.model.fields.atlan_fields import AtlanField
 # Initialize logging
 logger = logging.getLogger(__name__)
 
-
-def snake_to_camel(s: str) -> str:
-    """
-    Convert a snake_case string to camelCase.
-
-    Args:
-        s (str): The snake_case string.
-
-    Returns:
-        str: The camelCase string.
-    """
-    parts = s.split("_")
-    return (
-        parts[0] + "".join(word.capitalize() for word in parts[1:])
-        if len(parts) > 1
-        else s
-    )
-
-
 def validate_asset_history_params(
     guid: Optional[str],
     qualified_name: Optional[str],
@@ -68,8 +49,7 @@ def create_audit_search_request(
     qualified_name: Optional[str],
     type_name: Optional[str],
     size: int,
-    sort_item: SortItem,
-    include_attributes: Optional[List[Union[str, AtlanField]]],
+    sort_item: SortItem
 ) -> AuditSearchRequest:
     """
     Create an AuditSearchRequest based on the provided parameters.
@@ -80,7 +60,6 @@ def create_audit_search_request(
         type_name: Asset type name
         size: Number of results to return
         sort_item: Sort configuration
-        include_attributes: Attributes to include in results
 
     Returns:
         Configured AuditSearchRequest
@@ -107,11 +86,7 @@ def create_audit_search_request(
             f"Created audit search request by qualified name: {qualified_name}"
         )
 
-    # Only pass attributes if they are provided
-    if include_attributes:
-        return AuditSearchRequest(dsl=dsl, attributes=include_attributes)
-    else:
-        return AuditSearchRequest(dsl=dsl)
+    return AuditSearchRequest(dsl=dsl)
 
 
 def extract_basic_audit_info(result) -> Dict[str, Any]:
@@ -136,14 +111,13 @@ def extract_basic_audit_info(result) -> Dict[str, Any]:
 
 
 def process_audit_result(
-    result, include_attributes: Optional[List[Union[str, AtlanField]]]
+    result
 ) -> Dict[str, Any]:
     """
     Process a single audit result into a formatted dictionary.
 
     Args:
         result: Audit result object
-        include_attributes: List of attributes to include
 
     Returns:
         Formatted audit entry dictionary
@@ -151,13 +125,10 @@ def process_audit_result(
     try:
         # Extract basic audit information
         audit_entry = extract_basic_audit_info(result)
-
-        # Add requested attributes if specified
-        if include_attributes:
-            requested_attrs = result.detail.attributes.dict(
-                exclude_unset=True, by_alias=True
-            )
-            audit_entry.update(requested_attrs)
+        updates = result.detail.dict(
+            exclude_unset=True
+        )
+        audit_entry.update(updates)
 
         return audit_entry
 
@@ -184,21 +155,3 @@ def create_sort_item(sort_order: str) -> SortItem:
         "created",
         order=SortOrder.DESCENDING if sort_order == "DESC" else SortOrder.ASCENDING,
     )
-
-
-def convert_attributes_to_camel_case(
-    include_attributes: List[Union[str, AtlanField]],
-) -> List[Union[str, AtlanField]]:
-    """
-    Convert string attributes from snake_case to camelCase.
-
-    Args:
-        include_attributes: List of attributes to convert
-
-    Returns:
-        List with string attributes converted to camelCase
-    """
-    return [
-        snake_to_camel(attr) if isinstance(attr, str) else attr
-        for attr in include_attributes
-    ]

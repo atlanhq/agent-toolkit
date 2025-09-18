@@ -4,13 +4,11 @@ from client import get_atlan_client
 from .models import UpdatableAsset, UpdatableAttribute, CertificateStatus
 from pyatlan.model.assets import Readme
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
-from pyatlan.model.fields.atlan_fields import AtlanField
 from utils.asset_history import (
     validate_asset_history_params,
     create_audit_search_request,
     process_audit_result,
-    create_sort_item,
-    convert_attributes_to_camel_case,
+    create_sort_item
 )
 
 # Initialize logging
@@ -143,8 +141,7 @@ def get_asset_history(
     qualified_name: Optional[str] = None,
     type_name: Optional[str] = None,
     size: int = 10,
-    sort_order: str = "DESC",
-    include_attributes: Optional[List[Union[str, AtlanField]]] = None,
+    sort_order: str = "DESC"
 ) -> Dict[str, Any]:
     """
     Get the audit history of an asset by GUID or qualified name.
@@ -159,8 +156,6 @@ def get_asset_history(
         size (int): Number of history entries to return. Defaults to 10.
         sort_order (str): Sort order for results. "ASC" for oldest first, "DESC" for newest first.
             Defaults to "DESC".
-        include_attributes (List[Union[str, AtlanField]], optional): List of additional attributes to include in results.
-            Can be string attribute names or AtlanField objects. These will be added to the default set.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -196,19 +191,15 @@ def get_asset_history(
         # Create sort item
         sort_item = create_sort_item(sort_order)
 
-        # Convert include_attributes from snake_case to camelCase if needed
-        if include_attributes:
-            include_attributes = convert_attributes_to_camel_case(include_attributes)
-
         # Create and execute audit search request
         request = create_audit_search_request(
-            guid, qualified_name, type_name, size, sort_item, include_attributes
+            guid, qualified_name, type_name, size, sort_item
         )
         response = client.audit.search(criteria=request, bulk=False)
 
         # Process audit results - use current_page() to respect size parameter
         entity_audits = [
-            process_audit_result(result, include_attributes)
+            process_audit_result(result)
             for result in response.current_page()
         ]
 
