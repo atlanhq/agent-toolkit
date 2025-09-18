@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ATLAN_AGENT_ID: str = "NA"
     ATLAN_AGENT: str = "atlan-mcp"
     ATLAN_MCP_USER_AGENT: str = f"Atlan MCP Server {MCP_VERSION}"
-    ATLAN_PACKAGE_NAME: str = "x-atlan-package-name"
+    ATLAN_PACKAGE_NAME: str = "x-atlan-mcp-tool"
 
     @property
     def headers(self) -> dict:

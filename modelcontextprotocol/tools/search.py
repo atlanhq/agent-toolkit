@@ -74,7 +74,7 @@ def search_assets(
         f"Starting asset search with parameters: asset_type={asset_type}, "
         f"limit={limit}, include_archived={include_archived}"
     )
-    
+
     # Set tool-specific headers
     set_tool_headers("search_assets_tool")
     logger.debug(

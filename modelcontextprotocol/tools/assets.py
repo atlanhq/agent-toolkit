@@ -48,7 +48,7 @@ def update_assets(
         logger.info(
             f"Updating {len(updatable_assets)} assets with attribute '{attribute_name}'"
         )
-        
+
         # Set tool-specific headers
         set_tool_headers("update_assets_tool")
 

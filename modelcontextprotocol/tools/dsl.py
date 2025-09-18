@@ -20,10 +20,10 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         Dict[str, Any]: A dictionary containing the results and aggregations
     """
     logger.info("Starting DSL-based asset search")
-    
+
     # Set tool-specific headers
     set_tool_headers("get_assets_by_dsl_tool")
-    
+
     try:
         # Parse string to dict if needed
         if isinstance(dsl_query, str):

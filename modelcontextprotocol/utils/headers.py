@@ -14,5 +14,3 @@ def set_tool_headers(tool_name: str) -> None:
         get_atlan_client().update_headers({settings.ATLAN_PACKAGE_NAME: tool_name})
     except Exception as e:
         logger.warning(f"Could not set headers for {tool_name}: {e}")
-
-
