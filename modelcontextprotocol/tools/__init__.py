@@ -9,7 +9,6 @@ from .glossary import (
 )
 from .docs import (
     list_doc_sources,
-    fetch_llms_txt_content,
     fetch_documentation,
 )
 from .models import (
@@ -30,7 +29,6 @@ __all__ = [
     "create_glossary_assets",
     "create_glossary_term_assets",
     "list_doc_sources",
-    "fetch_llms_txt_content",
     "fetch_documentation",
     "CertificateStatus",
     "UpdatableAttribute",
