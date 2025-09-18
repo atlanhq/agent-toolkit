@@ -718,14 +718,10 @@ def query_asset_tool(
     """
     return query_asset(sql, connection_qualified_name, default_schema)
 
+
 @mcp.tool()
 def get_asset_history_tool(
-    guid=None,
-    qualified_name=None,
-    type_name=None,
-    size=10,
-    sort_order="DESC",
-    include_attributes=None,
+    guid=None, qualified_name=None, type_name=None, size=10, sort_order="DESC"
 ):
     """
     Get the audit history of an asset by GUID or qualified name.
@@ -740,8 +736,6 @@ def get_asset_history_tool(
         size (int): Number of history entries to return. Defaults to 10.
         sort_order (str): Sort order for results. "ASC" for oldest first, "DESC" for newest first.
             Defaults to "DESC".
-        include_attributes (List[Union[str, AtlanField]], optional): List of additional attributes to include in results.
-            Can be string attribute names or AtlanField objects. These will be added to the default set.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -756,7 +750,6 @@ def get_asset_history_tool(
             guid="6fc01478-1263-42ae-b8ca-c4a57da51392",
             size=20,
             sort_order="DESC",
-            include_attributes=["owner_users", "description"]
         )
 
         # Get history by qualified name
@@ -773,7 +766,6 @@ def get_asset_history_tool(
         type_name=type_name,
         size=size,
         sort_order=sort_order,
-        include_attributes=include_attributes,
     )
 
 
