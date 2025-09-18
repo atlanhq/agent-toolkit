@@ -10,10 +10,12 @@ from .parameters import (
     parse_json_parameter,
     parse_list_parameter,
 )
+from .headers import set_tool_headers
 
 __all__ = [
     "DEFAULT_SEARCH_ATTRIBUTES",
     "SearchUtils",
     "parse_json_parameter",
     "parse_list_parameter",
+    "set_tool_headers",
 ]

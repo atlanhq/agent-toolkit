@@ -5,6 +5,7 @@ from typing import Dict, Any, Union
 from client import get_atlan_client
 from pyatlan.model.search import DSL, IndexSearchRequest
 from utils.search import SearchUtils
+from utils.headers import set_tool_headers
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,6 +20,10 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         Dict[str, Any]: A dictionary containing the results and aggregations
     """
     logger.info("Starting DSL-based asset search")
+    
+    # Set tool-specific headers
+    set_tool_headers("get_assets_by_dsl_tool")
+    
     try:
         # Parse string to dict if needed
         if isinstance(dsl_query, str):

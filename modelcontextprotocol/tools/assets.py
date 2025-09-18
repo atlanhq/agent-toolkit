@@ -10,6 +10,7 @@ from .models import (
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+from utils.headers import set_tool_headers
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -47,6 +48,9 @@ def update_assets(
         logger.info(
             f"Updating {len(updatable_assets)} assets with attribute '{attribute_name}'"
         )
+        
+        # Set tool-specific headers
+        set_tool_headers("update_assets_tool")
 
         # Validate attribute values
         if len(updatable_assets) != len(attribute_values):

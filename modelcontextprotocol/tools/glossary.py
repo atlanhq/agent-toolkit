@@ -10,6 +10,7 @@ from pyatlan.model.assets import (
 )
 from utils.parameters import parse_list_parameter
 from client import get_atlan_client
+from utils.headers import set_tool_headers
 from .models import (
     CertificateStatus,
     Glossary,
@@ -34,6 +35,10 @@ def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
         Exception: If there's an error saving the assets.
     """
     logger.info("Starting bulk save operation")
+    
+    # Set tool-specific headers  
+    set_tool_headers("glossary_save_operation")
+    
     client = get_atlan_client()
     try:
         response = client.asset.save(assets)
@@ -85,6 +90,9 @@ def create_glossary_assets(
     """
     data = glossaries if isinstance(glossaries, list) else [glossaries]
     logger.info(f"Creating {len(data)} glossary asset(s)")
+    
+    # Set tool-specific headers
+    set_tool_headers("create_glossaries")
     logger.debug(f"Glossary specifications: {data}")
 
     specs = [Glossary(**item) for item in data]
@@ -137,6 +145,9 @@ def create_glossary_category_assets(
     """
     data = categories if isinstance(categories, list) else [categories]
     logger.info(f"Creating {len(data)} glossary category asset(s)")
+    
+    # Set tool-specific headers
+    set_tool_headers("create_glossary_categories")
     logger.debug(f"Category specifications: {data}")
 
     specs = [GlossaryCategory(**item) for item in data]
@@ -200,6 +211,9 @@ def create_glossary_term_assets(
     """
     data = terms if isinstance(terms, list) else [terms]
     logger.info(f"Creating {len(data)} glossary term asset(s)")
+    
+    # Set tool-specific headers
+    set_tool_headers("create_glossary_terms")
     logger.debug(f"Term specifications: {data}")
 
     specs = [GlossaryTerm(**item) for item in data]

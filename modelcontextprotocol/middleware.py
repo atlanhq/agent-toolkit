@@ -9,7 +9,6 @@ from typing import List, Set, Optional
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.exceptions import ToolError
 import logging
-from client import get_atlan_client
 
 logger = logging.getLogger(__name__)
 
@@ -101,16 +100,6 @@ class ToolRestrictionMiddleware(Middleware):
 
             # Tool is allowed, proceed with execution
             logger.debug(f"Tool access granted: {tool_name}", tool=tool_name)
-            try:
-                client = get_atlan_client()
-                client.update_headers({"x-atlan-package-name": tool_name})
-            except Exception:
-                logger.warning(
-                    "Could not set x-atlan-package-name header",
-                    tool=tool_name,
-                    exc_info=True,
-                )
-
             return await call_next(context)
 
         except ToolError:

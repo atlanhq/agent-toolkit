@@ -50,6 +50,9 @@ def query_asset(
     logger.info(
         f"Starting SQL query execution on connection: {connection_qualified_name}"
     )
+    
+    # Set tool-specific headers
+    set_tool_headers("query_asset_tool")
     logger.debug(f"SQL query: {sql}")
     logger.debug(f"Parameters - default_schema: {default_schema}")
 
