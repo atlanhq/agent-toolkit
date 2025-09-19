@@ -7,7 +7,7 @@ from pyatlan.model.lineage import FluentLineage
 from pyatlan.model.fields.atlan_fields import AtlanField
 from utils.search import SearchUtils
 from utils.constants import DEFAULT_SEARCH_ATTRIBUTES
-from utils.headers import set_tool_headers
+from settings import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -51,9 +51,6 @@ def traverse_lineage(
     )
     logger.debug(f"Include attributes parameter: {include_attributes}")
 
-    # Set tool-specific headers
-    set_tool_headers("traverse_lineage_tool")
-
     try:
         # Initialize base request
         logger.debug("Initializing FluentLineage object")
@@ -93,6 +90,8 @@ def traverse_lineage(
 
         logger.info("Executing lineage request")
         client = get_atlan_client()
+        settings = get_settings()
+        client.update_headers({settings.ATLAN_TOOL_NAME: "traverse_lineage_tool"})
         response = client.asset.get_lineage_list(request)
 
         # Process results using same pattern as search

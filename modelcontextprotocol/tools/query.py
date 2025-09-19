@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 
 from client import get_atlan_client
 from pyatlan.model.query import QueryRequest
+from settings import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -50,9 +51,6 @@ def query_asset(
     logger.info(
         f"Starting SQL query execution on connection: {connection_qualified_name}"
     )
-
-    # Set tool-specific headers
-    set_tool_headers("query_asset_tool")
     logger.debug(f"SQL query: {sql}")
     logger.debug(f"Parameters - default_schema: {default_schema}")
 
@@ -81,7 +79,8 @@ def query_asset(
         # Get Atlan client
         logger.debug("Getting Atlan client")
         client = get_atlan_client()
-
+        settings = get_settings()
+        client.update_headers({settings.ATLAN_TOOL_NAME: "query_asset_tool"})
         # Build query request
         logger.debug("Building QueryRequest object")
         query_request = QueryRequest(
