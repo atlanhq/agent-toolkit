@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 
 from client import get_atlan_client
 from pyatlan.model.query import QueryRequest
+from settings import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -78,7 +79,8 @@ def query_asset(
         # Get Atlan client
         logger.debug("Getting Atlan client")
         client = get_atlan_client()
-
+        settings = get_settings()
+        client.update_headers({settings.ATLAN_TOOL_NAME: "query_asset_tool"})
         # Build query request
         logger.debug("Building QueryRequest object")
         query_request = QueryRequest(

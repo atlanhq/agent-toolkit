@@ -7,6 +7,7 @@ from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.fields.atlan_fields import AtlanField
 from utils.search import SearchUtils
 from utils.constants import DEFAULT_SEARCH_ATTRIBUTES
+from settings import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -73,6 +74,8 @@ def search_assets(
         f"Starting asset search with parameters: asset_type={asset_type}, "
         f"limit={limit}, include_archived={include_archived}"
     )
+
+    # Set tool-specific headers
     logger.debug(
         f"Full search parameters: conditions={conditions}, "
         f"negative_conditions={negative_conditions}, some_conditions={some_conditions}, "
@@ -291,6 +294,8 @@ def search_assets(
 
         logger.info("Executing search request")
         client = get_atlan_client()
+        settings = get_settings()
+        client.update_headers({settings.ATLAN_TOOL_NAME: "search_assets_tool"})
         search_response = client.asset.search(request)
         processed_results = SearchUtils.process_results(search_response)
         logger.info(
