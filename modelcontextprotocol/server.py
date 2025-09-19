@@ -705,13 +705,22 @@ def main():
         help="Transport protocol (stdio/sse/streamable-http)",
     )
     parser.add_argument(
-        "--host", type=str, default=os.getenv("MCP_HOST", "0.0.0.0"), help="Host to run the server on"
+        "--host",
+        type=str,
+        default=os.getenv("MCP_HOST", "0.0.0.0"),
+        help="Host to run the server on",
     )
     parser.add_argument(
-        "--port", type=int, default=int(os.getenv("MCP_PORT", "8000")), help="Port to run the server on"
+        "--port",
+        type=int,
+        default=int(os.getenv("MCP_PORT", "8000")),
+        help="Port to run the server on",
     )
     parser.add_argument(
-        "--path", type=str, default=os.getenv("MCP_PATH", "/"), help="Path of the streamable HTTP server"
+        "--path",
+        type=str,
+        default=os.getenv("MCP_PATH", "/"),
+        help="Path of the streamable HTTP server",
     )
     args = parser.parse_args()
 
