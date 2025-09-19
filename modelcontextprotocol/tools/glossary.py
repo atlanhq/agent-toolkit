@@ -63,7 +63,7 @@ def save_assets(assets: List[Asset], tool_name: str) -> List[Dict[str, Any]]:
 
 
 def create_glossary_assets(
-    glossaries: Union[Dict[str, Any], List[Dict[str, Any]]]
+    glossaries: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> List[Dict[str, Any]]:
     """
     Create one or multiple AtlasGlossary assets in Atlan.
@@ -109,7 +109,7 @@ def create_glossary_assets(
             logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
         assets.append(glossary)
 
-    return save_assets(assets,"create_glossaries")
+    return save_assets(assets, "create_glossaries")
 
 
 def create_glossary_category_assets(
