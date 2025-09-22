@@ -3,6 +3,7 @@ import json
 import os
 from typing import Any, Dict, List
 from fastmcp import FastMCP
+from settings import Settings
 from tools import (
     search_assets,
     get_assets_by_dsl,
@@ -696,30 +697,33 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 def main():
     """Main entry point for the Atlan MCP Server."""
+    # Load settings from environment variables or .env file
+    settings = Settings()
+    
     parser = argparse.ArgumentParser(description="Atlan MCP Server")
     parser.add_argument(
         "--transport",
         type=str,
-        default=os.getenv("MCP_TRANSPORT", "stdio"),
+        default=settings.MCP_TRANSPORT,
         choices=["stdio", "sse", "streamable-http"],
         help="Transport protocol (stdio/sse/streamable-http)",
     )
     parser.add_argument(
         "--host",
         type=str,
-        default=os.getenv("MCP_HOST", "0.0.0.0"),
+        default=settings.MCP_HOST,
         help="Host to run the server on",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("MCP_PORT", "8000")),
+        default=settings.MCP_PORT,
         help="Port to run the server on",
     )
     parser.add_argument(
         "--path",
         type=str,
-        default=os.getenv("MCP_PATH", "/"),
+        default=settings.MCP_PATH,
         help="Path of the streamable HTTP server",
     )
     args = parser.parse_args()
