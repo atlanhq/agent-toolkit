@@ -699,7 +699,7 @@ def main():
     """Main entry point for the Atlan MCP Server."""
     # Load settings from environment variables or .env file
     settings = Settings()
-    
+
     parser = argparse.ArgumentParser(description="Atlan MCP Server")
     parser.add_argument(
         "--transport",
