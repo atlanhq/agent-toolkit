@@ -908,7 +908,7 @@ def main():
     """Main entry point for the Atlan MCP Server."""
 
     settings = get_settings()
-    
+
     parser = argparse.ArgumentParser(description="Atlan MCP Server")
     parser.add_argument(
         "--transport",
