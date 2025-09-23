@@ -9,6 +9,8 @@ from .models import (
     TermOperations,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm
+from pyatlan.model.core import Announcement as AtlanAnnouncement
+from pyatlan.model.enums import AnnouncementType as AtlanAnnouncementType
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 
 # Initialize logging
@@ -32,6 +34,10 @@ def update_assets(
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a TermOperations object with operation and term_guids.
+            For announcement, each value should be a dict with:
+                - announcement_type: "INFORMATION", "WARNING", or "ISSUE"
+                - announcement_title: Title of the announcement
+                - announcement_message: Message content
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -155,8 +161,19 @@ def update_assets(
                     error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
+            elif attribute_name == UpdatableAttribute.ANNOUNCEMENT:
+                announcement_data = attribute_values[index]
+                if not announcement_data:  # None or empty dict
+                    asset.remove_announcement()
+                else:
+                    announcement = AtlanAnnouncement(
+                        announcement_type=AtlanAnnouncementType[announcement_data["announcement_type"]],
+                        announcement_title=announcement_data["announcement_title"],
+                        announcement_message=announcement_data["announcement_message"]
+                    )
+                    asset.set_announcement(announcement)
+                assets.append(asset)
             else:
-                # Regular attribute update flow
                 setattr(asset, attribute_name.value, attribute_values[index])
                 assets.append(asset)
 
