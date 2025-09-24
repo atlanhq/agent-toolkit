@@ -153,9 +153,9 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 
 | Tool                | Description                                                       |
 | ------------------- | ----------------------------------------------------------------- |
-| `documentation`     | Unified tool for Atlan documentation operations with actions: `list_sources`, `fetch_index`, `fetch_content` |
+| `documentation`     | Provides Atlan documentation sources (llms.txt URLs) via `list_sources`. Clients should fetch content directly from these URLs. |
 
-> **📖 Documentation Tool Usage**: This unified tool enables AI agents to access and retrieve Atlan product documentation to answer user questions about features, APIs, integrations, and usage instructions. It automatically handles domain security, content parsing, and provides a streamlined interface for all documentation operations.
+> **📖 Documentation Tool Usage**: This tool exposes official Atlan documentation sources and their llms.txt URLs. MCP clients should fetch and read documentation content directly from those URLs. The server does not proxy or parse documentation.
 
 ## Tool Access Control
 
@@ -224,7 +224,7 @@ You can restrict any of the following tools:
 - `create_glossary_terms` - Term creation
 
 #### Documentation Tools
-- `documentation_tool` - Unified Atlan documentation tool (actions: list_sources, fetch_index, fetch_content)
+- `documentation_tool` - Atlan documentation sources tool (actions: list_sources)
 
 ### Common Use Cases
 

@@ -1,12 +1,12 @@
 """
 Documentation tools for MCP server.
-Provides access to Atlan documentation with domain validation for security.
+Provides only source discovery (llms.txt URLs) for Atlan documentation.
+
+Note: MCP clients should fetch documentation content directly using the
+provided URLs. This server intentionally does not proxy or fetch content.
 """
 
-import re
-import httpx
-from typing import Dict, List, Any, Optional
-from urllib.parse import urlparse
+from typing import Dict, List, Any
 from dataclasses import dataclass
 
 
@@ -21,14 +21,10 @@ class DocSource:
 
 
 class DocumentationManager:
-    """Manages documentation sources and secure fetching."""
+    """Manages documentation sources (discovery only)."""
 
     def __init__(self):
         self.sources: Dict[str, DocSource] = {}
-        self.timeout = (
-            15.0  # Timeout for documentation fetching (reduced to prevent MCP timeouts)
-        )
-        self.follow_redirects = True  # Allow redirects for documentation URLs
         self._initialize_default_sources()
 
     def _initialize_default_sources(self):
@@ -57,99 +53,7 @@ class DocumentationManager:
             for source in self.sources.values()
         ]
 
-    def _is_domain_allowed(self, url: str, allowed_domains: List[str]) -> bool:
-        """Check if URL domain is in allowed domains list."""
-        if "*" in allowed_domains:
-            return True
-
-        parsed = urlparse(url)
-        domain = parsed.netloc.lower()
-
-        for allowed in allowed_domains:
-            if domain == allowed.lower() or domain.endswith("." + allowed.lower()):
-                return True
-
-        return False
-
-    async def _fetch_content(self, url: str) -> str:
-        """Fetch content from URL with proper error handling."""
-        try:
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(self.timeout, read=self.timeout, connect=5.0),
-                follow_redirects=self.follow_redirects,
-            ) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-                return response.text
-        except httpx.TimeoutException:
-            raise Exception(f"Timeout fetching {url} after {self.timeout}s")
-        except httpx.RequestError as e:
-            raise Exception(f"Request error fetching {url}: {e}")
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP {e.response.status_code} error fetching {url}: {e}")
-        except Exception as e:
-            raise Exception(f"Unexpected error fetching {url}: {e}")
-
-    async def fetch_docs(
-        self, url: str, source_names: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
-        """
-        Fetch documentation from a URL with domain security checks.
-
-        Args:
-            url: The URL to fetch
-            source_names: Optional list of source names to check against their allowed domains.
-                         If None, checks against all sources.
-        """
-        # Determine which sources to check
-        sources_to_check = []
-        if source_names:
-            for name in source_names:
-                if name in self.sources:
-                    sources_to_check.append(self.sources[name])
-        else:
-            sources_to_check = list(self.sources.values())
-
-        # Check if URL is allowed by any source
-        allowed = False
-        matching_sources = []
-
-        for source in sources_to_check:
-            if self._is_domain_allowed(url, source.allowed_domains):
-                allowed = True
-                matching_sources.append(source.name)
-
-        if not allowed:
-            return {
-                "url": url,
-                "error": "Domain not allowed. URL must be from one of the allowed domains from configured sources.",
-                "available_sources": [s.name for s in sources_to_check],
-                "allowed_domains": [
-                    domain for s in sources_to_check for domain in s.allowed_domains
-                ],
-            }
-
-        try:
-            content = await self._fetch_content(url)
-
-            # Basic content parsing - remove excessive whitespace
-            cleaned_content = re.sub(r"\n\s*\n\s*\n", "\n\n", content)
-
-            return {
-                "url": url,
-                "content": cleaned_content,
-                "content_length": len(content),
-                "matching_sources": matching_sources,
-                "success": True,
-            }
-
-        except Exception as e:
-            return {
-                "url": url,
-                "error": str(e),
-                "matching_sources": matching_sources,
-                "success": False,
-            }
+    # No fetching or validation methods: clients should fetch content directly.
 
 
 # Global manager instance
@@ -159,19 +63,3 @@ documentation_manager = DocumentationManager()
 def list_doc_sources() -> List[Dict[str, Any]]:
     """List all available documentation sources with their llms.txt URLs."""
     return documentation_manager.list_sources()
-
-
-async def fetch_documentation(
-    url: str, source_names: Optional[List[str]] = None
-) -> Dict[str, Any]:
-    """
-    Fetch documentation from a URL with domain security validation.
-
-    Args:
-        url: The documentation URL to fetch
-        source_names: Optional list of source names to restrict domain checking
-
-    Returns:
-        Dict containing the fetched content or error information
-    """
-    return await documentation_manager.fetch_docs(url, source_names)
