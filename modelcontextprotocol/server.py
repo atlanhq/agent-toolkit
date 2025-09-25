@@ -766,7 +766,7 @@ def create_glossaries(glossaries) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for glossaries parameter: {str(e)}"}
 
-    return create_glossary_assets(glossaries, "create_glossaries")
+    return create_glossary_assets(glossaries)
 
 
 @mcp.tool()
@@ -831,7 +831,7 @@ def create_glossary_terms(terms) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for terms parameter: {str(e)}"}
 
-    return create_glossary_term_assets(terms, "create_glossary_terms")
+    return create_glossary_term_assets(terms)
 
 
 @mcp.tool()
@@ -900,7 +900,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
-    return create_glossary_category_assets(categories, "create_glossary_categories")
+    return create_glossary_category_assets(categories)
 
 
 def main():
