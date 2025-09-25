@@ -100,7 +100,6 @@ class ToolRestrictionMiddleware(Middleware):
 
             # Tool is allowed, proceed with execution
             logger.debug(f"Tool access granted: {tool_name}", tool=tool_name)
-
             return await call_next(context)
 
         except ToolError:

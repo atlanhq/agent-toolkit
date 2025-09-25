@@ -16,11 +16,12 @@ from .models import (
     GlossaryCategory,
     GlossaryTerm,
 )
+from settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
+def save_assets(assets: List[Asset], tool_name: str) -> List[Dict[str, Any]]:
     """
     Common bulk save and response processing for any asset type.
 
@@ -34,7 +35,10 @@ def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
         Exception: If there's an error saving the assets.
     """
     logger.info("Starting bulk save operation")
+
     client = get_atlan_client()
+    settings = get_settings()
+    client.update_headers({settings.ATLAN_TOOL_NAME: tool_name})
     try:
         response = client.asset.save(assets)
     except Exception as e:
@@ -85,6 +89,7 @@ def create_glossary_assets(
     """
     data = glossaries if isinstance(glossaries, list) else [glossaries]
     logger.info(f"Creating {len(data)} glossary asset(s)")
+
     logger.debug(f"Glossary specifications: {data}")
 
     specs = [Glossary(**item) for item in data]
@@ -104,7 +109,7 @@ def create_glossary_assets(
             logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
         assets.append(glossary)
 
-    return save_assets(assets)
+    return save_assets(assets, "create_glossaries")
 
 
 def create_glossary_category_assets(
@@ -137,6 +142,7 @@ def create_glossary_category_assets(
     """
     data = categories if isinstance(categories, list) else [categories]
     logger.info(f"Creating {len(data)} glossary category asset(s)")
+
     logger.debug(f"Category specifications: {data}")
 
     specs = [GlossaryCategory(**item) for item in data]
@@ -166,7 +172,7 @@ def create_glossary_category_assets(
 
         assets.append(category)
 
-    return save_assets(assets)
+    return save_assets(assets, "create_glossary_categories")
 
 
 def create_glossary_term_assets(
@@ -222,4 +228,4 @@ def create_glossary_term_assets(
             term.certificate_status = cs.value
         assets.append(term)
 
-    return save_assets(assets)
+    return save_assets(assets, "create_glossary_terms")

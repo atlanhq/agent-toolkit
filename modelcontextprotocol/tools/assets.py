@@ -10,6 +10,7 @@ from .models import (
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+from settings import get_settings
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -47,7 +48,6 @@ def update_assets(
         logger.info(
             f"Updating {len(updatable_assets)} assets with attribute '{attribute_name}'"
         )
-
         # Validate attribute values
         if len(updatable_assets) != len(attribute_values):
             error_msg = "Number of asset GUIDs must match number of attribute values"
@@ -67,7 +67,8 @@ def update_assets(
 
         # Get Atlan client
         client = get_atlan_client()
-
+        settings = get_settings()
+        client.update_headers({settings.ATLAN_TOOL_NAME: "update_assets_tool"})
         # Create assets with updated values
         assets = []
         # readme_update_parent_assets: Assets that were updated with readme.
