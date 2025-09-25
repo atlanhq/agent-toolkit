@@ -115,9 +115,13 @@ class DocumentationManager:
                 title = re.sub(r"\s*\|\s*Atlan Documentation.*$", "", title)
 
         # Pre-process HTML to remove JavaScript and other unwanted content
-        # Remove script tags and their content
+        # Remove script tags with proper case-insensitive matching for both opening and closing tags
+        # This pattern is more secure and handles nested content properly
         html = re.sub(
-            r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE
+            r"<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>",
+            "",
+            html,
+            flags=re.IGNORECASE,
         )
 
         # Remove inline JavaScript patterns
