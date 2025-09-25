@@ -153,9 +153,22 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 
 | Tool                | Description                                                       |
 | ------------------- | ----------------------------------------------------------------- |
-| `documentation`     | Unified tool for Atlan documentation operations with actions: `list_sources`, `fetch_index`, `fetch_content` |
+| `documentation_tool`| Unified tool for Atlan documentation operations with actions: `list_sources`, `fetch_content` |
 
-> **📖 Documentation Tool Usage**: This unified tool enables AI agents to access and retrieve Atlan product documentation to answer user questions about features, APIs, integrations, and usage instructions. It automatically handles domain security, content parsing, and provides a streamlined interface for all documentation operations.
+> **📖 Documentation Tool Usage**: This unified tool enables AI agents to access and retrieve Atlan product documentation to answer user questions about features, APIs, integrations, and usage instructions. It automatically handles domain security, content parsing with optimized HTML-to-markdown conversion, and provides a streamlined interface for all documentation operations. The tool achieves up to 88% token reduction while preserving all important content and links.
+
+#### Documentation Tool Actions
+
+| Action | Description | Parameters | Use Cases |
+|--------|-------------|------------|-----------|
+| `list_sources` | Lists all available Atlan documentation sources with their llms.txt URLs and allowed domains | None | Discover what documentation sources are available |
+| `fetch_content` | Fetches content from any valid Atlan documentation URL | `url` (required), `source_names` (optional) | Get llms.txt index, retrieve specific documentation pages, access nested documentation content |
+
+#### Common Documentation Workflows
+
+1. **Discovery**: Use `list_sources` to see available documentation sources
+2. **Index Retrieval**: Use `fetch_content` with an llms.txt URL to see all available topics
+3. **Content Fetching**: Use `fetch_content` with specific documentation URLs to get detailed content
 
 ## Tool Access Control
 
@@ -224,7 +237,7 @@ You can restrict any of the following tools:
 - `create_glossary_terms` - Term creation
 
 #### Documentation Tools
-- `documentation_tool` - Unified Atlan documentation tool (actions: list_sources, fetch_index, fetch_content)
+- `documentation_tool` - Unified Atlan documentation tool (actions: list_sources, fetch_content)
 
 ### Common Use Cases
 
