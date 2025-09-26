@@ -8,7 +8,7 @@ The Atlan MCP Server supports three transport modes. For more details about MCP 
 
 | Transport Mode | Use Case | Benefits | When to Use |
 |---|---|---|---|
-| **stdio** (Default) | Local development, IDE integrations | Simple, direct communication | Claude Desktop, Cursor IDE |
+| **stdio** (Default) | Local development, IDE integrations | Simple, direct communication | Claude Desktop, Cursor IDE, VSCode |
 | **SSE** (Server-Sent Events) | Remote deployments, web browsers | Real-time streaming, web-compatible | Cloud deployments, web clients |
 | **streamable-http** | HTTP-based remote connections | Standard HTTP, load balancer friendly | Kubernetes, containerized deployments |
 
@@ -21,6 +21,37 @@ python server.py
 
 # Or explicitly specify stdio
 python server.py --transport stdio
+```
+
+### VSCode Integration
+
+VSCode integration with MCP servers supports multiple approaches:
+
+#### Using AI Toolkit Extension
+```bash
+# Install the AI Toolkit extension in VSCode
+# Then configure MCP server through the Agent Builder interface
+# Command: uvx
+# Arguments: atlan-mcp-server
+# Environment Variables: ATLAN_API_KEY, ATLAN_BASE_URL, ATLAN_AGENT_ID
+```
+
+#### Manual VSCode Configuration
+```json
+// In VSCode settings.json
+{
+  "mcp.servers": {
+    "atlan": {
+      "command": "uvx",
+      "args": ["atlan-mcp-server"],
+      "env": {
+        "ATLAN_API_KEY": "<YOUR_API_KEY>",
+        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
+      }
+    }
+  }
+}
 ```
 
 ### Cloud Deployment (SSE)
