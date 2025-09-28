@@ -6,6 +6,7 @@ Tools can be restricted globally by providing a list during initialization.
 """
 
 from typing import List, Set, Optional
+import asyncio
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.exceptions import ToolError
 import logging
@@ -103,6 +104,9 @@ class ToolRestrictionMiddleware(Middleware):
 
             return await call_next(context)
 
+        except asyncio.CancelledError:
+            # Propagate cancellations so FastMCP can handle them properly
+            raise
         except ToolError:
             # Re-raise ToolError as-is
             raise
@@ -151,6 +155,9 @@ class ToolRestrictionMiddleware(Middleware):
 
             return filtered_tools
 
+        except asyncio.CancelledError:
+            # Propagate cancellations during list operations as well
+            raise
         except Exception as e:
             logger.error(
                 f"Error filtering tool list: {str(e)}",
