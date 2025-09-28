@@ -4,7 +4,9 @@ Provides access to Atlan documentation with domain validation for security.
 Includes HTML to Markdown conversion to preserve links and reduce tokens.
 """
 
+import os
 import re
+import asyncio
 import httpx
 from typing import Dict, List, Any, Optional
 from urllib.parse import urlparse
@@ -27,9 +29,12 @@ class DocumentationManager:
 
     def __init__(self):
         self.sources: Dict[str, DocSource] = {}
-        self.timeout = (
-            15.0  # Timeout for documentation fetching (reduced to prevent MCP timeouts)
-        )
+        # Timeout for documentation fetching in seconds. Keep this below typical MCP client timeouts.
+        # Configurable via DOCS_FETCH_TIMEOUT env var. Defaults to 8.0s.
+        try:
+            self.timeout = float(os.getenv("DOCS_FETCH_TIMEOUT", "8.0"))
+        except ValueError:
+            self.timeout = 8.0
         self.follow_redirects = True  # Allow redirects for documentation URLs
         self._initialize_default_sources()
 
@@ -86,6 +91,9 @@ class DocumentationManager:
                     "text": response.text,
                     "content_type": response.headers.get("content-type", ""),
                 }
+        except asyncio.CancelledError:
+            # Propagate cancellations so FastMCP can handle request cancellation properly
+            raise
         except httpx.TimeoutException:
             raise Exception(f"Timeout fetching {url} after {self.timeout}s")
         except httpx.RequestError as e:
@@ -318,7 +326,9 @@ class DocumentationManager:
                 "matching_sources": matching_sources,
                 "success": True,
             }
-
+        except asyncio.CancelledError:
+            # Ensure cancellations are not swallowed and are handled by FastMCP
+            raise
         except Exception as e:
             return {
                 "url": url,
