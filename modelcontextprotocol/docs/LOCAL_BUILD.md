@@ -45,3 +45,6 @@ uv run .venv/bin/atlan-mcp-server
 ```bash
 uv run mcp dev server.py
 ```
+
+> [!NOTE]
+> When running the server locally with Python, it will be available at `http://localhost:8000/mcp/` by default. You can customize the host, port, and path using the `--host`, `--port`, and `--path` arguments respectively.
