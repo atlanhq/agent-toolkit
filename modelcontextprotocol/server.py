@@ -8,12 +8,14 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    query_asset,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
+    TermOperations,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -23,6 +25,7 @@ from utils.parameters import (
 from middleware import ToolRestrictionMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
+from settings import get_settings
 
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -231,6 +234,68 @@ def search_assets_tool(
             include_attributes=["categories"]
         )
 
+        # Find popular but expensive assets (cost optimization)
+        search_assets(
+            conditions={
+                "popularityScore": {"operator": "gte", "value": 0.8},
+                "sourceReadQueryCost": {"operator": "gte", "value": 1000}
+            },
+            include_attributes=["sourceReadExpensiveQueryRecordList", "sourceCostUnit"]
+        )
+
+        # Find unused assets accessed before 2024
+        search_assets(
+            conditions={"sourceLastReadAt": {"operator": "lt", "value": 1704067200000}}, # Unix epoch in milliseconds
+            include_attributes=["sourceReadCount", "sourceLastReadAt"]
+        )
+
+        # Get top users for a specific table
+        # Note: Can't directly filter by user, but can retrieve the list
+        search_assets(
+            conditions={"name": "customer_transactions"},
+            include_attributes=["sourceReadTopUserList", "sourceReadUserCount"]
+        )
+
+        # Find frequently accessed uncertified assets (governance gap)
+        search_assets(
+            conditions={
+                "sourceReadUserCount": {"operator": "gte", "value": 10},
+                "certificate_status": {"operator": "ne", "value": "VERIFIED"}
+            }
+        )
+
+        # Query assets in specific connection with cost filters
+        search_assets(
+            connection_qualified_name="default/snowflake/123456",
+            conditions={"sourceTotalCost": {"operator": "gte", "value": 500}},
+            sort_by="sourceTotalCost",
+            sort_order="DESC",
+            include_attributes=[
+                "sourceReadQueryComputeCostRecordList",  # Shows breakdown by warehouse
+                "sourceQueryComputeCostList",  # List of warehouses used
+                "sourceCostUnit"
+            ]
+        )
+
+    The search supports various analytics attributes following similar patterns:
+    - Usage Metrics:
+        - `sourceReadCount`, `sourceReadUserCount` - Filter by read frequency or user diversity
+        - `sourceLastReadAt`, `lastRowChangedAt` - Time-based filtering (Unix timestamp in ms)
+        - `popularityScore` - Float value 0-1 indicating asset popularity
+
+    - Cost Metrics:
+        - `sourceReadQueryCost`, `sourceTotalCost` - Filter by cost thresholds
+        - Include `sourceCostUnit` in attributes to get cost units
+        - Include `sourceReadExpensiveQueryRecordList` for detailed breakdowns
+
+    - User Analytics:
+        - `sourceReadTopUserList`, `sourceReadRecentUserList` - Get user lists
+        - `sourceReadTopUserRecordList`, `sourceReadRecentUserRecordList` - Get detailed records
+
+    - Query Analytics:
+        - `sourceReadPopularQueryRecordList` - Popular queries for the asset
+        - `lastRowChangedQuery` - Query that last modified the asset
+
     Additional attributes you can include in the conditions to extract more metadata from an asset:
         - columns
         - column_count
@@ -415,21 +480,23 @@ def update_assets_tool(
     attribute_values,
 ):
     """
-    Update one or multiple assets with different values for the same attribute.
+    Update one or multiple assets with different values for attributes or term operations.
 
     Args:
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Only "user_description", "certificate_status" and "readme" are supported.
-        attribute_values (List[str]): List of values to set for the attribute.
+            Supports "user_description", "certificate_status", "readme", and "term".
+        attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
+            For term, the value must be a dict with "operation" and "term_guids" keys.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
+            - operation: The operation that was performed (for term operations)
 
     Examples:
         # Update certificate status for a single asset
@@ -482,6 +549,65 @@ def update_assets_tool(
             - Contains PII data
             - [Documentation](https://docs.example.com)''']
         )
+
+        # Append terms to a single asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Name Column",
+                "type_name": "Column",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_NAME"
+            },
+            attribute_name="term",
+            attribute_values=[{
+                "operation": "append",
+                "term_guids": ["term-guid-1", "term-guid-2"]
+            }]
+        )
+
+        # Replace all terms on multiple assets
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "asset-guid-1",
+                    "name": "Table 1",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_1"
+                },
+                {
+                    "guid": "asset-guid-2",
+                    "name": "Table 2",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_2"
+                }
+            ],
+            attribute_name="term",
+            attribute_values=[
+                {
+                    "operation": "replace",
+                    "term_guids": ["new-term-for-table-1-guid-1", "new-term-for-table-1-guid-2"]
+                },
+                {
+                    "operation": "replace",
+                    "term_guids": ["new-term-for-table-2-guid-1", "new-term-for-table-2-guid-2"]
+                }
+            ]
+        )
+
+        # Remove specific terms from an asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Data Table",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_DATA"
+            },
+            attribute_name="term",
+            attribute_values=[{
+                "operation": "remove",
+                "term_guids": ["term-guid-to-remove"]
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -491,8 +617,20 @@ def update_assets_tool(
         # Convert string attribute name to enum
         attr_enum = UpdatableAttribute(attribute_name)
 
+        # Handle term operations - convert dict to TermOperations object
+        if attr_enum == UpdatableAttribute.TERM:
+            term_operations = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    term_operations.append(TermOperations(**value))
+                else:
+                    return {
+                        "error": "Term attribute values must be dictionaries with 'operation' and 'term_guids' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = term_operations
         # For certificate status, convert values to enum
-        if attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
+        elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [
                 CertificateStatus(val) for val in parsed_attribute_values
             ]
@@ -513,6 +651,78 @@ def update_assets_tool(
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
         }
+
+
+@mcp.tool()
+def query_asset_tool(
+    sql: str, connection_qualified_name: str, default_schema: str | None = None
+):
+    """
+    Execute a SQL query on a table/view asset.
+
+    This tool enables querying table/view assets on the source similar to
+    what's available in the insights table. It uses the Atlan query capabilities
+    to execute SQL against connected data sources.
+
+    CRITICAL: Use READ-ONLY queries to retrieve data. Write and modify queries are not supported by this tool.
+
+
+    Args:
+        sql (str): The SQL query to execute (read-only queries allowed)
+        connection_qualified_name (str): Connection qualified name to use for the query.
+            This is the same parameter used in search_assets_tool.
+            You can find this value by searching for Table/View assets using search_assets_tool
+            and extracting the first part of the 'qualifiedName' attribute.
+            Example: from "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
+            use "default/snowflake/1657275059"
+        default_schema (str, optional): Default schema name to use for unqualified
+            objects in the SQL, in the form "DB.SCHEMA"
+            (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
+
+    Examples:
+        # Use case: How to query the PAGES table and retrieve the first 10 rows
+        # Find tables to query using search_assets_tool
+        tables = search_assets_tool(
+            asset_type="Table",
+            conditions={"name": "PAGES"},
+            limit=5
+        )
+        # Extract connection info from the table's qualifiedName
+        # Example qualifiedName: "default/snowflake/1657275059/LANDING/FRONTEND_PROD/PAGES"
+        # connection_qualified_name: "default/snowflake/1657275059"
+        # database.schema: "LANDING.FRONTEND_PROD"
+
+        # Query the table using extracted connection info
+        result = query_asset_tool(
+            sql='SELECT * FROM PAGES LIMIT 10',
+            connection_qualified_name="default/snowflake/1657275059",
+            default_schema="LANDING.FRONTEND_PROD"
+        )
+
+        # Query without specifying default schema (fully qualified table names)
+        result = query_asset_tool(
+            sql='SELECT COUNT(*) FROM "LANDING"."FRONTEND_PROD"."PAGES"',
+            connection_qualified_name="default/snowflake/1657275059"
+        )
+
+        # Complex analytical query on PAGES table
+        result = query_asset_tool(
+            sql='''
+            SELECT
+                page_type,
+                COUNT(*) AS page_count,
+                AVG(load_time) AS avg_load_time,
+                MAX(views) AS max_views
+            FROM PAGES
+            WHERE created_date >= '2024-01-01'
+            GROUP BY page_type
+            ORDER BY page_count DESC
+            ''',
+            connection_qualified_name="default/snowflake/1657275059",
+            default_schema="LANDING.FRONTEND_PROD"
+        )
+    """
+    return query_asset(sql, connection_qualified_name, default_schema)
 
 
 @mcp.tool()
@@ -702,26 +912,32 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 def main():
-    mcp.run()
+    """Main entry point for the Atlan MCP Server."""
 
+    settings = get_settings()
 
-if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Atlan MCP Server")
     parser.add_argument(
         "--transport",
         type=str,
-        default="stdio",
+        default=settings.MCP_TRANSPORT,
         choices=["stdio", "sse", "streamable-http"],
         help="Transport protocol (stdio/sse/streamable-http)",
     )
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0", help="Host to run the server on"
+        "--host",
+        type=str,
+        default=settings.MCP_HOST,
+        help="Host to run the server on",
     )
     parser.add_argument(
-        "--port", type=int, default=8000, help="Port to run the server on"
+        "--port",
+        type=int,
+        default=settings.MCP_PORT,
+        help="Port to run the server on",
     )
     parser.add_argument(
-        "--path", type=str, default="/mcp/", help="Path of the streamable HTTP server"
+        "--path", type=str, default="/", help="Path of the streamable HTTP server"
     )
     args = parser.parse_args()
 
@@ -735,3 +951,7 @@ if __name__ == "__main__":
         }
     # Run the server with the specified transport and host/port/path
     mcp.run(**kwargs)
+
+
+if __name__ == "__main__":
+    main()

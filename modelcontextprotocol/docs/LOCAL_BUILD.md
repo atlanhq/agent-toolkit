@@ -48,3 +48,26 @@ uv run mcp dev server.py
 
 > [!NOTE]
 > When running the server locally with Python, it will be available at `http://localhost:8000/mcp/` by default. You can customize the host, port, and path using the `--host`, `--port`, and `--path` arguments respectively.
+
+7. Integrate local MCP changes with Claude Desktop (For E2E testing):
+When claude is integrated with Atlan MCP, it runs its own MCP server
+Update config in claude desktop config as below to use your local code changes for testing end to end:
+```bash
+{
+  "mcpServers": {
+    "atlan-local": {
+      "command": "uv",
+      "args": [
+        "run",
+        "/path/to/agent-toolkit/modelcontextprotocol/.venv/bin/atlan-mcp-server"
+      ],
+      "cwd": "/path/to/agent-toolkit/modelcontextprotocol",
+      "env": {
+        "ATLAN_API_KEY": "your_api_key",
+        "ATLAN_BASE_URL": "https://your-instance.atlan.com",
+        "ATLAN_AGENT_ID": "your_agent_id"
+      }
+    }
+  }
+}
+```

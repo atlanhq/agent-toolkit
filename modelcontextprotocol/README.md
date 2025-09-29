@@ -146,6 +146,7 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossaries` | Create glossaries                                                 |
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
+| `query_asset`       | Execute SQL queries on table/view assets                          |
 
 ## Tool Access Control
 
@@ -243,11 +244,24 @@ When tools are restricted:
 
 If you don't set the `RESTRICTED_TOOLS` environment variable, all tools will be available by default.
 
+## Transport Modes
+
+The Atlan MCP Server supports three transport modes, each optimized for different deployment scenarios. For more details about MCP transport modes, see the [official MCP documentation](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports).
+
+| Transport Mode | Use Case | Benefits | When to Use |
+|---|---|---|---|
+| **stdio** (Default) | Local development, IDE integrations | Simple, direct communication | Claude Desktop, Cursor IDE |
+| **SSE** (Server-Sent Events) | Remote deployments, web browsers | Real-time streaming, web-compatible | Cloud deployments, web clients |
+| **streamable-http** | HTTP-based remote connections | Standard HTTP, load balancer friendly | Kubernetes, containerized deployments |
+
+For comprehensive deployment instructions, configuration examples, and production best practices, see our [Deployment Guide](./docs/Deployment.md).
+
 ## Production Deployment
 
 - Host the Atlan MCP container image on the cloud/platform of your choice
 - Make sure you add all the required environment variables
-- Make sure you start the server in the SSE transport mode `-e MCP_TRANSPORT=sse`
+- Choose the appropriate transport mode for your deployment scenario. SSE Transport is recommended for production (`-e MCP_TRANSPORT=sse`)
+- For detailed deployment scenarios and configurations, refer to the [Deployment Guide](./docs/Deployment.md)
 
 ### Remote MCP Configuration
 

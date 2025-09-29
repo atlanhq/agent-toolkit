@@ -18,6 +18,22 @@ class UpdatableAttribute(str, Enum):
     USER_DESCRIPTION = "user_description"
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
+    TERM = "term"
+
+
+class TermOperation(str, Enum):
+    """Enum for term operations on assets."""
+
+    APPEND = "append"
+    REPLACE = "replace"
+    REMOVE = "remove"
+
+
+class TermOperations(BaseModel):
+    """Model for term operations on assets."""
+
+    operation: TermOperation
+    term_guids: List[str]
 
 
 class UpdatableAsset(BaseModel):
