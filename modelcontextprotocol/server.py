@@ -478,6 +478,7 @@ def update_assets_tool(
     Args:
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
+            For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
             Supports "user_description", "certificate_status", "readme", and "term".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.

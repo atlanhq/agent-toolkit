@@ -6,7 +6,7 @@ from pyatlan.model.assets import Asset, AtlasGlossaryTerm
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 from pyatlan.model.fields.atlan_fields import AtlanField
 from utils.search import SearchUtils
-from utils.constants import DEFAULT_SEARCH_ATTRIBUTES
+from utils.constants import DEFAULT_SEARCH_ATTRIBUTES, VALID_RELATIONSHIPS
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -257,6 +257,8 @@ def search_assets(
                 if not isinstance(attr, str):
                     # Assume it's already an AtlanField object
                     logger.debug(f"Including attribute object: {attr}")
+                    search = search.include_on_results(attr)
+                elif attr in VALID_RELATIONSHIPS:
                     search = search.include_on_results(attr)
         try:
             search = search.include_on_results(Asset.ASSIGNED_TERMS)

@@ -45,6 +45,7 @@ class UpdatableAsset(BaseModel):
     type_name: str
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
+    glossary_guid: Optional[str] = None
 
 
 class Glossary(BaseModel):

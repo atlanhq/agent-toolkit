@@ -1,3 +1,7 @@
+VALID_RELATIONSHIPS = [
+    "anchor"
+]
+
 DEFAULT_SEARCH_ATTRIBUTES = [
     "name",
     "display_name",
