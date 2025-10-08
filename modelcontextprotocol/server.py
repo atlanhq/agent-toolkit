@@ -937,7 +937,10 @@ def main():
         help="Port to run the server on",
     )
     parser.add_argument(
-        "--path", type=str, default="/", help="Path of the streamable HTTP server"
+        "--path",
+        type=str,
+        default=settings.MCP_PATH,
+        help="Path of the streamable HTTP server",
     )
     args = parser.parse_args()
 
