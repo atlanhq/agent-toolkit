@@ -5,7 +5,7 @@ This module contains helper functions for retrieving and processing asset audit 
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Optional
 from pyatlan.client.audit import AuditSearchRequest
 from pyatlan.model.search import DSL, Bool, SortItem, Term
 from pyatlan.model.enums import SortOrder
@@ -14,42 +14,12 @@ from pyatlan.model.enums import SortOrder
 logger = logging.getLogger(__name__)
 
 
-def validate_asset_history_params(
-    guid: Optional[str],
-    qualified_name: Optional[str],
-    type_name: Optional[str],
-    sort_order: str,
-) -> Optional[str]:
-    """
-    Validate input parameters for asset history retrieval.
-
-    Args:
-        guid: Asset GUID
-        qualified_name: Asset qualified name
-        type_name: Asset type name
-        sort_order: Sort order
-
-    Returns:
-        Error message if validation fails, None if valid
-    """
-    if not guid and not qualified_name:
-        return "Either guid or qualified_name must be provided"
-
-    if qualified_name and not type_name:
-        return "type_name is required when using qualified_name"
-
-    if sort_order not in ["ASC", "DESC"]:
-        return "sort_order must be either 'ASC' or 'DESC'"
-
-    return None
-
-
 def create_audit_search_request(
     guid: Optional[str],
     qualified_name: Optional[str],
     type_name: Optional[str],
     size: int,
-    sort_item: SortItem,
+    sort_order: str,
 ) -> AuditSearchRequest:
     """
     Create an AuditSearchRequest based on the provided parameters.
@@ -59,11 +29,17 @@ def create_audit_search_request(
         qualified_name: Asset qualified name
         type_name: Asset type name
         size: Number of results to return
-        sort_item: Sort configuration
+        sort_order: Sort order ("ASC" or "DESC")
 
     Returns:
         Configured AuditSearchRequest
     """
+    # Create sort item inline
+    sort_item = SortItem(
+        "created",
+        order=SortOrder.DESCENDING if sort_order == "DESC" else SortOrder.ASCENDING,
+    )
+
     if guid:
         dsl = DSL(
             query=Bool(filter=[Term(field="entityId", value=guid)]),
@@ -89,65 +65,29 @@ def create_audit_search_request(
     return AuditSearchRequest(dsl=dsl)
 
 
-def extract_basic_audit_info(result) -> Dict[str, Any]:
+def process_audit_result(result):
     """
-    Extract basic audit information from a result object.
+    Process a single audit result into AuditEntry data.
 
     Args:
         result: Audit result object
 
     Returns:
-        Dictionary with basic audit information
+        Dictionary with audit entry data for AuditEntry model
     """
-    return {
-        "entityQualifiedName": getattr(result, "entity_qualified_name", None),
+    # Import here to avoid circular dependency
+    from tools.models import AuditEntry
+
+    # Extract basic audit information
+    audit_data = {
         "guid": getattr(result, "entity_id", None),
-        "typeName": getattr(result, "type_name", None),
         "timestamp": getattr(result, "timestamp", None),
         "action": getattr(result, "action", None),
         "user": getattr(result, "user", None),
-        "created": getattr(result, "created", None),
     }
 
+    # Add detail updates as additional fields
+    detail_updates = result.detail.dict(exclude_unset=True)
+    audit_data.update(detail_updates)
 
-def process_audit_result(result) -> Dict[str, Any]:
-    """
-    Process a single audit result into a formatted dictionary.
-
-    Args:
-        result: Audit result object
-
-    Returns:
-        Formatted audit entry dictionary
-    """
-    try:
-        # Extract basic audit information
-        audit_entry = extract_basic_audit_info(result)
-        updates = result.detail.dict(exclude_unset=True)
-        audit_entry.update(updates)
-
-        return audit_entry
-
-    except Exception as e:
-        logger.warning(f"Error processing audit result: {e}")
-        return {
-            "error": f"Failed to process audit entry: {str(e)}",
-            "entityQualifiedName": "Unknown",
-            "guid": "Unknown",
-        }
-
-
-def create_sort_item(sort_order: str) -> SortItem:
-    """
-    Create a SortItem based on the sort order.
-
-    Args:
-        sort_order: Sort order ("ASC" or "DESC")
-
-    Returns:
-        Configured SortItem
-    """
-    return SortItem(
-        "created",
-        order=SortOrder.DESCENDING if sort_order == "DESC" else SortOrder.ASCENDING,
-    )
+    return AuditEntry(**audit_data)

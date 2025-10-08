@@ -733,16 +733,17 @@ def get_asset_history_tool(
             Either guid or qualified_name must be provided.
         type_name (str, optional): Type name of the asset (required when using qualified_name).
             Examples: "Table", "Column", "DbtModel", "AtlasGlossary"
-        size (int): Number of history entries to return. Defaults to 10.
+        size (int): Number of history entries to return. Defaults to 10. Maximum is 50.
+            Size validation is handled automatically by Pydantic.
         sort_order (str): Sort order for results. "ASC" for oldest first, "DESC" for newest first.
-            Defaults to "DESC".
+            Defaults to "DESC". Validation is handled automatically by Pydantic.
 
     Returns:
-        Dict[str, Any]: Dictionary containing:
-            - entityAudits: List of audit entries with details about each change
+        AssetHistoryResponse: Pydantic model containing:
+            - entity_audits: List of audit entries with details about each change
             - count: Number of audit entries returned
-            - totalCount: Total number of audit entries available
-            - errors: List of any errors encountered
+            - total_count: Total number of audit entries available
+            - errors: List of any validation or retrieval errors encountered
 
     Examples:
         # Get history by GUID

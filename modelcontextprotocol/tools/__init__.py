@@ -16,6 +16,9 @@ from .models import (
     Glossary,
     GlossaryCategory,
     GlossaryTerm,
+    AssetHistoryRequest,
+    AssetHistoryResponse,
+    AuditEntry,
 )
 
 __all__ = [
@@ -35,4 +38,7 @@ __all__ = [
     "Glossary",
     "GlossaryCategory",
     "GlossaryTerm",
+    "AssetHistoryRequest",
+    "AssetHistoryResponse",
+    "AuditEntry",
 ]
