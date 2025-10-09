@@ -1,6 +1,4 @@
-VALID_RELATIONSHIPS = [
-    "anchor"
-]
+VALID_RELATIONSHIPS = ["anchor"]
 
 DEFAULT_SEARCH_ATTRIBUTES = [
     "name",

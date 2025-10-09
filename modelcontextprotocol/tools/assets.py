@@ -81,7 +81,10 @@ def update_assets(
             )
 
             # Special handling for Glossary Term updates
-            if updatable_asset.type_name == AtlasGlossaryTerm.__name__ or updatable_asset.type_name == AtlasGlossaryCategory.__name__:
+            if (
+                updatable_asset.type_name == AtlasGlossaryTerm.__name__
+                or updatable_asset.type_name == AtlasGlossaryCategory.__name__
+            ):
                 asset = asset_cls.updater(
                     qualified_name=updatable_asset.qualified_name,
                     name=updatable_asset.name,
