@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.10] - 2025-10-13
 
 ### Fixed
-- Fixed a bug in `update_assets_tool` where it could not update glossary terms and categories due to missing glossary GUID
+- Fixed a bug in `update_assets_tool` where glossary terms and categories could not be updated - now properly sends the glossary GUID as a required parameter for these asset types
 
 ## [0.2.9] - 2025-09-22
 
