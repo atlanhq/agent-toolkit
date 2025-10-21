@@ -129,10 +129,6 @@ def search_assets(
             for guid in domain_guids:
                 search = search.where(Asset.DOMAIN_GUIDS.eq(guid))
 
-        # Cache custom metadata field objects for reuse
-        # Maps CM name -> CustomMetadataField object
-        cm_field_cache = {}
-
         # Apply positive conditions
         if conditions:
             if not isinstance(conditions, dict):
@@ -175,8 +171,6 @@ def search_assets(
                 for cm_attr_name, cm_condition in custom_metadata_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
-                    # Cache the field object for reuse in auto-inclusion
-                    cm_field_cache[cm_attr_name] = attr
                     logger.debug(
                         f"Processing custom metadata condition for: {cm_attr_name}"
                     )
@@ -228,8 +222,6 @@ def search_assets(
                 ) in custom_metadata_negative_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
-                    # Cache the field object for reuse in auto-inclusion
-                    cm_field_cache[cm_attr_name] = attr
                     logger.debug(
                         f"Processing custom metadata negative condition for: {cm_attr_name}"
                     )
@@ -281,8 +273,6 @@ def search_assets(
                 ) in custom_metadata_some_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
-                    # Cache the field object for reuse in auto-inclusion
-                    cm_field_cache[cm_attr_name] = attr
                     logger.debug(
                         f"Processing custom metadata 'some' condition for: {cm_attr_name}"
                     )
@@ -291,18 +281,6 @@ def search_assets(
                     )
 
             search = search.min_somes(min_somes)
-
-        # Auto-include custom metadata attributes in results
-        if cm_field_cache:
-            logger.debug(
-                f"Auto-including {len(cm_field_cache)} custom metadata attributes"
-            )
-            if include_attributes is None:
-                include_attributes = []
-            # Reuse cached CustomMetadataField objects (already created during filtering)
-            for cm_attr_name, cm_field in cm_field_cache.items():
-                include_attributes.append(cm_field)
-                logger.debug(f"Auto-included custom metadata field: {cm_attr_name}")
 
         # Apply date range filters
         if date_range:
