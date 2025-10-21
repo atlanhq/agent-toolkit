@@ -1,172 +1,155 @@
 import logging
-from typing import Any, Dict, List, Optional
-from settings import Settings
+from typing import Any, Dict, List
+from client import get_atlan_client
+from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
+from pyatlan.cache.enum_cache import EnumCache
 
 logger = logging.getLogger(__name__)
 
 
 def process_business_metadata(
-    bm_def: Dict[str, Any],
+    cm_def: Any,
+    enum_cache: EnumCache,
 ) -> Dict[str, Any]:
     """
     Generates context prompt for a given Atlan business metadata definition.
 
     Args:
-        bm_def: A dictionary representing the business metadata definition.
-                Expected keys: 'displayName', 'description', 'attributeDefs'.
+        cm_def: CustomMetadataDef object from PyAtlan
+        enum_cache: EnumCache instance for enriching enum attributes
 
     Returns:
-        A list containing a single string: the formatted semantic search prompt,
-        and a list containing the metadata dictionary.
+        Dictionary containing prompt, metadata details, and id
     """
-    bm_def_name_for_prompt = bm_def.get("name", "N/A")
-    bm_def_display_name = bm_def.get("displayName", "N/A")
-    description_for_prompt = bm_def.get("description", "No description available.")
-
-    attribute_defs = bm_def.get("attributeDefs", [])
-    guid = bm_def.get("guid")
+    cm_name = cm_def.name or "N/A"
+    cm_display_name = cm_def.display_name or "N/A"
+    description = cm_def.description or "No description available."
+    guid = cm_def.guid
 
     # For prompt: comma separated attribute names and descriptions
     attributes_list_for_prompt: List[str] = []
-    if attribute_defs:
-        for attr in attribute_defs:
-            attr_name = attr.get("displayName", attr.get("name", "Unnamed attribute"))
-            attr_desc = attr.get(
-                "description", "No description"
-            )  # As per schema: names and descriptions
-            attributes_list_for_prompt.append(f"{str(attr_name)}:{str(attr_desc)}")
-    attributes_str_for_prompt = (
-        ", ".join(attributes_list_for_prompt) if attributes_list_for_prompt else "None"
-    )
-
-    # For metadata: list of attribute objects
     parsed_attributes_for_metadata: List[Dict[str, Any]] = []
-    if attribute_defs:
-        for attr_def_item in attribute_defs:
-            base_description = attr_def_item.get("description", "")
 
-            # Check for enum enrichment and enhance description
-            enum_enrichment = attr_def_item.get("enumEnrichment")
+    if cm_def.attribute_defs:
+        for attr_def in cm_def.attribute_defs:
+            attr_name = attr_def.display_name or attr_def.name or "Unnamed attribute"
+            attr_desc = attr_def.description or "No description"
+            attributes_list_for_prompt.append(f"{attr_name}:{attr_desc}")
+
+            base_description = attr_def.description or ""
             enhanced_description = base_description
-            if enum_enrichment and enum_enrichment.get("values"):
-                enum_values = enum_enrichment["values"]
-                if enum_values:
-                    # Create comma-separated quoted values
-                    quoted_values = ", ".join([f"'{value}'" for value in enum_values])
-                    enum_suffix = (
-                        f" This attribute can have enum values: {quoted_values}."
-                    )
-                    enhanced_description = f"{base_description}{enum_suffix}".strip()
+
+            # Check if attribute is an enum type and enrich with enum values
+            if attr_def.options and attr_def.options.is_enum:
+                enum_type = attr_def.options.enum_type
+                if enum_type:
+                    try:
+                        enum_def = enum_cache.get_by_name(enum_type)
+                        if enum_def and enum_def.element_defs:
+                            enum_values = [elem.value for elem in enum_def.element_defs if elem.value]
+                            if enum_values:
+                                quoted_values = ", ".join([f"'{value}'" for value in enum_values])
+                                enum_suffix = f" This attribute can have enum values: {quoted_values}."
+                                enhanced_description = f"{base_description}{enum_suffix}".strip()
+
+                            # Create enum enrichment data
+                            enum_enrichment = {
+                                "status": "ENRICHED",
+                                "enumType": enum_type,
+                                "enumGuid": enum_def.guid,
+                                "enumDescription": enum_def.description,
+                                "values": enum_values,
+                            }
+                    except Exception as e:
+                        logger.debug(f"Could not enrich enum type {enum_type}: {e}")
+                        enum_enrichment = None
+                else:
+                    enum_enrichment = None
+            else:
+                enum_enrichment = None
 
             attribute_metadata = {
-                "name": attr_def_item.get("name"),
-                "display_name": attr_def_item.get("displayName"),
-                "data_type": attr_def_item.get(
-                    "typeName"
-                ),  # Assuming typeName is data_type
+                "name": attr_def.name,
+                "display_name": attr_def.display_name,
+                "data_type": attr_def.type_name,
                 "description": enhanced_description,
             }
 
-            # Include enum enrichment data if present
             if enum_enrichment:
                 attribute_metadata["enumEnrichment"] = enum_enrichment
 
             parsed_attributes_for_metadata.append(attribute_metadata)
 
+    attributes_str_for_prompt = (
+        ", ".join(attributes_list_for_prompt) if attributes_list_for_prompt else "None"
+    )
+
     metadata: Dict[str, Any] = {
-        "name": bm_def_name_for_prompt,
-        "display_name": bm_def_display_name,
-        "description": description_for_prompt,
+        "name": cm_name,
+        "display_name": cm_display_name,
+        "description": description,
         "attributes": parsed_attributes_for_metadata,
     }
 
-    prompt = f"""{bm_def_display_name}|{description_for_prompt}|{attributes_str_for_prompt}"""
+    prompt = f"""{cm_display_name}|{description}|{attributes_str_for_prompt}"""
 
     return {"prompt": prompt, "metadata": metadata, "id": guid}
 
 
 def get_custom_metadata_context() -> Dict[str, Any]:
-    display_name: str = "Business Metadata"
+    """
+    Fetch custom metadata context using PyAtlan's native cache classes.
+
+    Returns:
+        Dictionary containing context and business metadata results
+    """
     business_metadata_results: List[Dict[str, Any]] = []
 
     try:
-        # Fetch enum definitions for enrichment
-        enum_endpoint: str = Settings.get_atlan_typedef_api_endpoint(param="ENUM")
-        enum_response: Optional[Dict[str, Any]] = Settings.make_request(enum_endpoint)
-        enum_lookup: Dict[str, Dict[str, Any]] = {}
-        if enum_response:
-            enum_defs = enum_response.get("enumDefs", [])
-            for enum_def in enum_defs:
-                enum_name = enum_def.get("name", "")
-                if enum_name:
-                    enum_lookup[enum_name] = {
-                        "guid": enum_def.get("guid", ""),
-                        "description": enum_def.get("description", ""),
-                        "values": [
-                            element.get("value", "")
-                            for element in enum_def.get("elementDefs", [])
-                        ],
-                        "elementDefs": enum_def.get("elementDefs", []),
-                        "version": enum_def.get("version", 1),
-                        "createTime": enum_def.get("createTime", 0),
-                        "updateTime": enum_def.get("updateTime", 0),
-                    }
+        # Get Atlan client
+        client = get_atlan_client()
 
-        # Fetch business metadata definitions
-        business_metadata_endpoint: str = Settings.get_atlan_typedef_api_endpoint(
-            param="BUSINESS_METADATA"
-        )
-        business_metadata_response: Optional[Dict[str, Any]] = Settings.make_request(
-            business_metadata_endpoint
-        )
-        if business_metadata_response is None:
-            logger.error(
-                f"Service: Failed to make request to {business_metadata_endpoint} for {display_name}. No data returned."
-            )
-            return []
+        # Initialize caches using PyAtlan's native classes
+        cm_cache = CustomMetadataCache(client)
+        enum_cache = EnumCache(client)
 
-        business_metadata_defs: List[Dict[str, Any]] = business_metadata_response.get(
-            "businessMetadataDefs", []
+        # Get all custom metadata attributes (includes full definitions)
+        all_custom_attributes = cm_cache.get_all_custom_attributes(
+            include_deleted=False,
+            force_refresh=True
         )
 
-        # Enrich business metadata with enum information before processing
-        for business_metadata_def in business_metadata_defs:
-            # Enrich each business metadata definition with enum data
-            attribute_defs = business_metadata_def.get("attributeDefs", [])
-            for attribute in attribute_defs:
-                options = attribute.get("options", {})
-                is_enum = options.get("isEnum") == "true"
+        # Process each custom metadata set
+        for set_name in all_custom_attributes.keys():
+            try:
+                # Get the full custom metadata definition
+                cm_def = cm_cache.get_custom_metadata_def(set_name)
 
-                if is_enum:
-                    enum_type = options.get("enumType", "")
-                    if enum_type and enum_type in enum_lookup:
-                        enum_def = enum_lookup[enum_type]
-                        attribute["enumEnrichment"] = {
-                            "status": "ENRICHED",
-                            "enumType": enum_type,
-                            "enumGuid": enum_def["guid"],
-                            "enumDescription": enum_def["description"],
-                            "enumVersion": enum_def["version"],
-                            "values": enum_def["values"],
-                            "elementDefs": enum_def["elementDefs"],
-                            "enrichedTimestamp": None,
-                        }
+                # Process and enrich with enum data
+                result = process_business_metadata(cm_def, enum_cache)
+                business_metadata_results.append(result)
 
-            # Process the enriched business metadata
-            business_metadata_results.append(
-                process_business_metadata(business_metadata_def)
-            )
+            except Exception as e:
+                logger.warning(
+                    f"Error processing custom metadata set '{set_name}': {e}"
+                )
+                continue
+
+        logger.info(
+            f"Fetched {len(business_metadata_results)} business metadata definitions with enum enrichment."
+        )
 
     except Exception as e:
         logger.error(
-            f"Service: Error fetching or processing {display_name}: {e}",
+            f"Error fetching custom metadata context: {e}",
             exc_info=True,
         )
-        return []
+        return {
+            "context": "Error fetching business metadata definitions",
+            "business_metadata_results": [],
+            "error": str(e)
+        }
 
-    logger.info(
-        f"Fetched {len(business_metadata_results)} {display_name} definitions with enum enrichment."
-    )
     return {
         "context": "This is the list of business metadata definitions used in the data catalog to add more information to an asset",
         "business_metadata_results": business_metadata_results,

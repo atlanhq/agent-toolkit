@@ -1,6 +1,6 @@
 import logging
 from client import get_atlan_client
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union
 from pyatlan.model.assets import Asset
 from pyatlan.model.fields.atlan_fields import CustomMetadataField
 from pyatlan.model.fluent_search import FluentSearch
@@ -19,9 +19,70 @@ class SearchUtils:
         "gte": lambda custom_metadata_field_class, value: custom_metadata_field_class.gte(value),
         "match": lambda custom_metadata_field_class, value: custom_metadata_field_class.match(value),
         "has_any_value": lambda attr: attr.has_any_value(),
+        "between": lambda custom_metadata_field_class, value: custom_metadata_field_class.between(value[0], value[1]),
+        "within": lambda custom_metadata_field_class, value: custom_metadata_field_class.within(value),
     }
 
-    CUSTOM_METADATAFIELD_NO_CASE_INSENSITIVE_OPERATORS = {"lt", "lte", "gt", "gte", "match"}
+    CUSTOM_METADATAFIELD_NO_CASE_INSENSITIVE_OPERATORS = {"lt", "lte", "gt", "gte", "match", "between", "within"}
+
+    @staticmethod
+    def _get_custom_metadata_field(attr_name: str) -> Optional[CustomMetadataField]:
+        """
+        Create a CustomMetadataField for the given attribute name.
+        
+        Since custom metadata is now explicitly provided in the "custom_metadata" dict,
+        we trust the user's intent and create the field directly.
+        PyAtlan validates if the custom metadata set exists during field creation.
+        
+        Args:
+            attr_name: Attribute name in format "SetName.AttributeName"
+            
+        Returns:
+            CustomMetadataField instance or None if invalid format
+            
+        Raises:
+            ValueError: If custom metadata doesn't exist (enhanced PyAtlan error)
+        """
+        try:
+            parts = attr_name.split(".", 1)
+            if len(parts) != 2:
+                error_msg = (
+                    f"❌ Invalid custom metadata format: '{attr_name}'\n\n"
+                    f"Expected format: 'SetName.AttributeName'\n"
+                    f"Example: 'Cost Center Attribution.Cost Center Attribution'\n\n"
+                    f"💡 Use get_custom_metadata_context_tool() to see available custom metadata."
+                )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+                
+            set_name, attribute_name = parts
+            client = get_atlan_client()
+            return CustomMetadataField(
+                client=client,
+                set_name=set_name,
+                attribute_name=attribute_name
+            )
+        except ValueError:
+            # Re-raise our own ValueError
+            raise
+        except Exception as e:
+            # Catch PyAtlan validation errors and enhance them
+            error_str = str(e)
+            if "does not exist" in error_str.lower():
+                enhanced_msg = (
+                    f"❌ Invalid custom metadata: '{attr_name}' does not exist in Atlan.\n\n"
+                    f"Please verify:\n"
+                    f"  • Custom metadata set name: '{set_name}'\n"
+                    f"  • Attribute name: '{attribute_name}'\n\n"
+                    f"💡 Use get_custom_metadata_context_tool() to see all available custom metadata.\n\n"
+                    f"Original error: {error_str}"
+                )
+                logger.error(enhanced_msg)
+                raise ValueError(enhanced_msg)
+            else:
+                # Unexpected error - log and re-raise
+                logger.error(f"Unexpected error creating CustomMetadataField for '{attr_name}': {e}")
+                raise
 
     @staticmethod
     def process_results(results: Any) -> Dict[str, Any]:
@@ -134,10 +195,12 @@ class SearchUtils:
     ):
         """
         Process a single condition and apply it to the search using the specified method.
+        
+        Handles both normal Asset attributes and custom metadata fields.
 
         Args:
             search: The FluentSearch object
-            attr: The Asset attribute object
+            attr: The Asset attribute object or CustomMetadataField
             condition: The condition value (dict, list, or simple value)
             attr_name (str): The attribute name for logging
             search_method_name (str): The search method to use ('where', 'where_not', 'where_some')
@@ -146,6 +209,7 @@ class SearchUtils:
             FluentSearch: The updated search object
         """
         search_method = getattr(search, search_method_name)
+        is_custom_metadata = isinstance(attr, CustomMetadataField)
 
         if isinstance(condition, dict):
             operator = condition.get("operator", "eq")
@@ -188,89 +252,3 @@ class SearchUtils:
             search = search_method(attr.eq(condition))
             return search
 
-    @staticmethod
-    def _process_custom_metadata_condition(
-        search: FluentSearch, condition: Dict[str, Any], search_method_name: str
-    ):
-        """
-        Process a single custom metadata condition and apply it to the search using the specified method.
-
-        Args:
-            search: The FluentSearch object
-            condition: Dictionary containing display_name (display name of the business metadata), property_filters (list of propert or attribute filters)
-            search_method_name: The search method to use ('where', 'where_not', 'where_some')
-
-        Returns:
-            FluentSearch: The updated search object
-        """
-
-        # Validate required fields
-        required_fields = ["display_name", "property_filters"]
-        if not all(field in condition for field in required_fields):
-            logger.warning(
-                f"Custom metadata condition missing required fields: {required_fields}"
-            )
-            return search
-
-        # Get the search method
-        search_method = getattr(search, search_method_name)
-
-        try:
-
-            # Initializes the AtlanClient class from pyatlan.client.atlan by executing the get_atlan_client function from client.py
-            # This registers the client in the thread-local storage (TLS)
-            client = get_atlan_client()
-
-            # Process each property filter
-            for property_filter in condition["property_filters"]:
-                operator = property_filter.get("operator", "eq")
-                property_name = property_filter.get("property_name")
-                property_value = property_filter.get("property_value")
-                case_insensitive = property_filter.get("case_insensitive", False)
-
-                # Create the custom metadata field for this specific property
-                custom_metadata_field = CustomMetadataField(
-                    client=client, set_name=condition["display_name"], attribute_name=property_name
-                )
-
-                # Custom handling for between and within operators
-                if operator == "between":
-                    if isinstance(property_value, (list, tuple)) and len(property_value) == 2:
-                        query_condition = custom_metadata_field.between(property_value[0], property_value[1])
-                    else:
-                        raise ValueError(
-                            f"Invalid value format for 'between' operator: {property_value}, expected [start, end]"
-                        )
-                elif operator == "within":
-                    if isinstance(property_value, list):
-                        query_condition = custom_metadata_field.within(property_value)
-                    else:
-                        raise ValueError(
-                            f"Invalid value format for 'within' operator: {property_value}, expected list"
-                        )
-                elif operator in SearchUtils.CUSTOM_METADATAFIELD_OPERATOR_MAP:
-                    # Get the operator method dynamically based on the operator from the property filter
-                    # Supports case insensitive matching for eq and startswith operators
-                    operator_method = SearchUtils.CUSTOM_METADATAFIELD_OPERATOR_MAP[operator]
-
-                    if operator not in SearchUtils.CUSTOM_METADATAFIELD_NO_CASE_INSENSITIVE_OPERATORS:
-                        query_condition = operator_method(custom_metadata_field, property_value, case_insensitive)
-                    else:
-                        query_condition = operator_method(custom_metadata_field, property_value)
-                else:
-                    # Fallback to eq if operator not found
-                    logger.warning(f"Operator '{operator}' not found, falling back to 'eq' operator for custom metadata field")
-                    query_condition = custom_metadata_field.eq(property_value, case_insensitive)
-
-
-                # Apply the condition to the search object
-                search = search_method(query_condition)
-                logger.debug(
-                    f"Applied custom metadata condition: {condition['display_name']}.{condition['property_name']} {operator} {condition['property_value']}"
-                )
-
-        except Exception as e:
-            logger.error(f"Error processing custom metadata condition: {e}")
-            logger.exception("Exception details:")
-
-        return search
