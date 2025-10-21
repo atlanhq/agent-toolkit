@@ -62,7 +62,7 @@ def search_assets_tool(
 ):
     """
     Advanced asset search using FluentSearch with flexible conditions.
-    
+
     Custom metadata can be referenced directly in conditions using the format "SetName.AttributeName".
 
     Args:
@@ -749,10 +749,10 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 def get_custom_metadata_context_tool() -> Dict[str, Any]:
     """
     Fetch all available custom metadata (business metadata) definitions from the Atlan instance.
-    
+
     This tool returns information about all custom metadata sets and their attributes,
     including attribute names, data types, descriptions, and enum values (if applicable).
-    
+
     Use this tool to discover what custom metadata is available before searching for assets
     with custom metadata filters.
 
@@ -765,17 +765,17 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
                     - name: Internal name of the custom metadata set
                     - display_name: Display name of the custom metadata set
                     - description: Description of the custom metadata set
-                    - attributes: List of attribute definitions with name, display_name, data_type, 
+                    - attributes: List of attribute definitions with name, display_name, data_type,
                                 description, and optional enumEnrichment (with allowed values)
                 - id: GUID of the custom metadata definition
 
     Example:
         # Get available custom metadata
         context = get_custom_metadata_context_tool()
-        
+
         # The response will show custom metadata sets like "Data Classification", "Business Ownership", etc.
         # Then you can use them in search_assets_tool with the format "SetName.AttributeName":
-        
+
         assets = search_assets_tool(
             conditions={
                 "Data Classification.sensitivity_level": "sensitive",

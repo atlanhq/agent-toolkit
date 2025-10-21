@@ -46,11 +46,19 @@ def process_business_metadata(
                     try:
                         enum_def = enum_cache.get_by_name(enum_type)
                         if enum_def and enum_def.element_defs:
-                            enum_values = [elem.value for elem in enum_def.element_defs if elem.value]
+                            enum_values = [
+                                elem.value
+                                for elem in enum_def.element_defs
+                                if elem.value
+                            ]
                             if enum_values:
-                                quoted_values = ", ".join([f"'{value}'" for value in enum_values])
+                                quoted_values = ", ".join(
+                                    [f"'{value}'" for value in enum_values]
+                                )
                                 enum_suffix = f" This attribute can have enum values: {quoted_values}."
-                                enhanced_description = f"{base_description}{enum_suffix}".strip()
+                                enhanced_description = (
+                                    f"{base_description}{enum_suffix}".strip()
+                                )
 
                             # Create enum enrichment data
                             enum_enrichment = {
@@ -115,8 +123,7 @@ def get_custom_metadata_context() -> Dict[str, Any]:
 
         # Get all custom metadata attributes (includes full definitions)
         all_custom_attributes = cm_cache.get_all_custom_attributes(
-            include_deleted=False,
-            force_refresh=True
+            include_deleted=False, force_refresh=True
         )
 
         # Process each custom metadata set
@@ -147,7 +154,7 @@ def get_custom_metadata_context() -> Dict[str, Any]:
         return {
             "context": "Error fetching business metadata definitions",
             "business_metadata_results": [],
-            "error": str(e)
+            "error": str(e),
         }
 
     return {

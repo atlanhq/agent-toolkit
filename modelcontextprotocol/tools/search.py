@@ -36,7 +36,7 @@ def search_assets(
 
     By default, only essential attributes used in result processing are included.
     Additional attributes can be specified via include_attributes parameter.
-    
+
     Custom metadata can be referenced in conditions using the format "SetName.AttributeName".
 
     Args:
@@ -142,9 +142,9 @@ def search_assets(
 
             # Extract custom metadata conditions if provided explicitly
             custom_metadata_conditions = conditions.get("custom_metadata", None)
-            
+
             logger.debug(f"Applying positive conditions: {conditions}")
-            
+
             # Process standard attribute conditions
             for attr_name, condition in conditions.items():
                 # Skip custom_metadata key as it's processed separately
@@ -161,21 +161,25 @@ def search_assets(
                 search = SearchUtils._process_condition(
                     search, attr, condition, attr_name, "where"
                 )
-            
+
             # Process explicit custom metadata conditions
             if custom_metadata_conditions:
                 if not isinstance(custom_metadata_conditions, dict):
                     error_msg = f"custom_metadata must be a dictionary, got {type(custom_metadata_conditions).__name__}"
                     logger.error(error_msg)
                     raise ValueError(error_msg)
-                
-                logger.debug(f"Applying custom metadata conditions: {custom_metadata_conditions}")
+
+                logger.debug(
+                    f"Applying custom metadata conditions: {custom_metadata_conditions}"
+                )
                 for cm_attr_name, cm_condition in custom_metadata_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
                     # Cache the field object for reuse in auto-inclusion
                     cm_field_cache[cm_attr_name] = attr
-                    logger.debug(f"Processing custom metadata condition for: {cm_attr_name}")
+                    logger.debug(
+                        f"Processing custom metadata condition for: {cm_attr_name}"
+                    )
                     search = SearchUtils._process_condition(
                         search, attr, cm_condition, cm_attr_name, "where"
                     )
@@ -183,10 +187,12 @@ def search_assets(
         # Apply negative conditions
         if negative_conditions:
             # Extract custom metadata negative conditions if provided explicitly
-            custom_metadata_negative_conditions = negative_conditions.get("custom_metadata", None)
-            
+            custom_metadata_negative_conditions = negative_conditions.get(
+                "custom_metadata", None
+            )
+
             logger.debug(f"Applying negative conditions: {negative_conditions}")
-            
+
             # Process standard attribute negative conditions
             for attr_name, condition in negative_conditions.items():
                 # Skip custom_metadata key as it's processed separately
@@ -198,26 +204,35 @@ def search_assets(
                         f"Unknown attribute for negative condition: {attr_name}, skipping"
                     )
                     continue
-                logger.debug(f"Processing negative condition for attribute: {attr_name}")
+                logger.debug(
+                    f"Processing negative condition for attribute: {attr_name}"
+                )
 
                 search = SearchUtils._process_condition(
                     search, attr, condition, attr_name, "where_not"
                 )
-            
+
             # Process explicit custom metadata negative conditions
             if custom_metadata_negative_conditions:
                 if not isinstance(custom_metadata_negative_conditions, dict):
                     error_msg = f"custom_metadata in negative_conditions must be a dictionary, got {type(custom_metadata_negative_conditions).__name__}"
                     logger.error(error_msg)
                     raise ValueError(error_msg)
-                
-                logger.debug(f"Applying custom metadata negative conditions: {custom_metadata_negative_conditions}")
-                for cm_attr_name, cm_condition in custom_metadata_negative_conditions.items():
+
+                logger.debug(
+                    f"Applying custom metadata negative conditions: {custom_metadata_negative_conditions}"
+                )
+                for (
+                    cm_attr_name,
+                    cm_condition,
+                ) in custom_metadata_negative_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
                     # Cache the field object for reuse in auto-inclusion
                     cm_field_cache[cm_attr_name] = attr
-                    logger.debug(f"Processing custom metadata negative condition for: {cm_attr_name}")
+                    logger.debug(
+                        f"Processing custom metadata negative condition for: {cm_attr_name}"
+                    )
                     search = SearchUtils._process_condition(
                         search, attr, cm_condition, cm_attr_name, "where_not"
                     )
@@ -225,12 +240,14 @@ def search_assets(
         # Apply where_some conditions with min_somes
         if some_conditions:
             # Extract custom metadata some conditions if provided explicitly
-            custom_metadata_some_conditions = some_conditions.get("custom_metadata", None)
-            
+            custom_metadata_some_conditions = some_conditions.get(
+                "custom_metadata", None
+            )
+
             logger.debug(
                 f"Applying 'some' conditions: {some_conditions} with min_somes={min_somes}"
             )
-            
+
             # Process standard attribute some conditions
             for attr_name, condition in some_conditions.items():
                 # Skip custom_metadata key as it's processed separately
@@ -247,30 +264,39 @@ def search_assets(
                 search = SearchUtils._process_condition(
                     search, attr, condition, attr_name, "where_some"
                 )
-            
+
             # Process explicit custom metadata some conditions
             if custom_metadata_some_conditions:
                 if not isinstance(custom_metadata_some_conditions, dict):
                     error_msg = f"custom_metadata in some_conditions must be a dictionary, got {type(custom_metadata_some_conditions).__name__}"
                     logger.error(error_msg)
                     raise ValueError(error_msg)
-                
-                logger.debug(f"Applying custom metadata some conditions: {custom_metadata_some_conditions}")
-                for cm_attr_name, cm_condition in custom_metadata_some_conditions.items():
+
+                logger.debug(
+                    f"Applying custom metadata some conditions: {custom_metadata_some_conditions}"
+                )
+                for (
+                    cm_attr_name,
+                    cm_condition,
+                ) in custom_metadata_some_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
                     # Cache the field object for reuse in auto-inclusion
                     cm_field_cache[cm_attr_name] = attr
-                    logger.debug(f"Processing custom metadata 'some' condition for: {cm_attr_name}")
+                    logger.debug(
+                        f"Processing custom metadata 'some' condition for: {cm_attr_name}"
+                    )
                     search = SearchUtils._process_condition(
                         search, attr, cm_condition, cm_attr_name, "where_some"
                     )
-            
+
             search = search.min_somes(min_somes)
 
         # Auto-include custom metadata attributes in results
         if cm_field_cache:
-            logger.debug(f"Auto-including {len(cm_field_cache)} custom metadata attributes")
+            logger.debug(
+                f"Auto-including {len(cm_field_cache)} custom metadata attributes"
+            )
             if include_attributes is None:
                 include_attributes = []
             # Reuse cached CustomMetadataField objects (already created during filtering)

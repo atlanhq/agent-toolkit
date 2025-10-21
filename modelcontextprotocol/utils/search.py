@@ -1,45 +1,64 @@
 import logging
 from client import get_atlan_client
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 from pyatlan.model.assets import Asset
 from pyatlan.model.fields.atlan_fields import CustomMetadataField
-from pyatlan.model.fluent_search import FluentSearch
 
 logger = logging.getLogger(__name__)
 
 
 class SearchUtils:
-
     CUSTOM_METADATAFIELD_OPERATOR_MAP = {
-        "eq": lambda custom_metadata_field_class, value, ci: custom_metadata_field_class.eq(value, case_insensitive=ci),
-        "startswith": lambda custom_metadata_field_class, value, ci: custom_metadata_field_class.startswith(value, case_insensitive=ci),
-        "lt": lambda custom_metadata_field_class, value: custom_metadata_field_class.lt(value),
-        "lte": lambda custom_metadata_field_class, value: custom_metadata_field_class.lte(value),
-        "gt": lambda custom_metadata_field_class, value: custom_metadata_field_class.gt(value),
-        "gte": lambda custom_metadata_field_class, value: custom_metadata_field_class.gte(value),
-        "match": lambda custom_metadata_field_class, value: custom_metadata_field_class.match(value),
+        "eq": lambda custom_metadata_field_class,
+        value,
+        ci: custom_metadata_field_class.eq(value, case_insensitive=ci),
+        "startswith": lambda custom_metadata_field_class,
+        value,
+        ci: custom_metadata_field_class.startswith(value, case_insensitive=ci),
+        "lt": lambda custom_metadata_field_class, value: custom_metadata_field_class.lt(
+            value
+        ),
+        "lte": lambda custom_metadata_field_class,
+        value: custom_metadata_field_class.lte(value),
+        "gt": lambda custom_metadata_field_class, value: custom_metadata_field_class.gt(
+            value
+        ),
+        "gte": lambda custom_metadata_field_class,
+        value: custom_metadata_field_class.gte(value),
+        "match": lambda custom_metadata_field_class,
+        value: custom_metadata_field_class.match(value),
         "has_any_value": lambda attr: attr.has_any_value(),
-        "between": lambda custom_metadata_field_class, value: custom_metadata_field_class.between(value[0], value[1]),
-        "within": lambda custom_metadata_field_class, value: custom_metadata_field_class.within(value),
+        "between": lambda custom_metadata_field_class,
+        value: custom_metadata_field_class.between(value[0], value[1]),
+        "within": lambda custom_metadata_field_class,
+        value: custom_metadata_field_class.within(value),
     }
 
-    CUSTOM_METADATAFIELD_NO_CASE_INSENSITIVE_OPERATORS = {"lt", "lte", "gt", "gte", "match", "between", "within"}
+    CUSTOM_METADATAFIELD_NO_CASE_INSENSITIVE_OPERATORS = {
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "match",
+        "between",
+        "within",
+    }
 
     @staticmethod
     def _get_custom_metadata_field(attr_name: str) -> Optional[CustomMetadataField]:
         """
         Create a CustomMetadataField for the given attribute name.
-        
+
         Since custom metadata is now explicitly provided in the "custom_metadata" dict,
         we trust the user's intent and create the field directly.
         PyAtlan validates if the custom metadata set exists during field creation.
-        
+
         Args:
             attr_name: Attribute name in format "SetName.AttributeName"
-            
+
         Returns:
             CustomMetadataField instance or None if invalid format
-            
+
         Raises:
             ValueError: If custom metadata doesn't exist (enhanced PyAtlan error)
         """
@@ -54,13 +73,11 @@ class SearchUtils:
                 )
                 logger.error(error_msg)
                 raise ValueError(error_msg)
-                
+
             set_name, attribute_name = parts
             client = get_atlan_client()
             return CustomMetadataField(
-                client=client,
-                set_name=set_name,
-                attribute_name=attribute_name
+                client=client, set_name=set_name, attribute_name=attribute_name
             )
         except ValueError:
             # Re-raise our own ValueError
@@ -81,7 +98,9 @@ class SearchUtils:
                 raise ValueError(enhanced_msg)
             else:
                 # Unexpected error - log and re-raise
-                logger.error(f"Unexpected error creating CustomMetadataField for '{attr_name}': {e}")
+                logger.error(
+                    f"Unexpected error creating CustomMetadataField for '{attr_name}': {e}"
+                )
                 raise
 
     @staticmethod
@@ -195,7 +214,7 @@ class SearchUtils:
     ):
         """
         Process a single condition and apply it to the search using the specified method.
-        
+
         Handles both normal Asset attributes and custom metadata fields.
 
         Args:
@@ -251,4 +270,3 @@ class SearchUtils:
             )
             search = search_method(attr.eq(condition))
             return search
-
