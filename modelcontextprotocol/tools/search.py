@@ -129,8 +129,9 @@ def search_assets(
             for guid in domain_guids:
                 search = search.where(Asset.DOMAIN_GUIDS.eq(guid))
 
-        # Track custom metadata attributes for auto-inclusion
-        custom_metadata_attrs = set()
+        # Cache custom metadata field objects for reuse
+        # Maps CM name -> CustomMetadataField object
+        cm_field_cache = {}
 
         # Apply positive conditions
         if conditions:
@@ -172,7 +173,8 @@ def search_assets(
                 for cm_attr_name, cm_condition in custom_metadata_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
-                    custom_metadata_attrs.add(cm_attr_name)
+                    # Cache the field object for reuse in auto-inclusion
+                    cm_field_cache[cm_attr_name] = attr
                     logger.debug(f"Processing custom metadata condition for: {cm_attr_name}")
                     search = SearchUtils._process_condition(
                         search, attr, cm_condition, cm_attr_name, "where"
@@ -213,7 +215,8 @@ def search_assets(
                 for cm_attr_name, cm_condition in custom_metadata_negative_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
-                    custom_metadata_attrs.add(cm_attr_name)
+                    # Cache the field object for reuse in auto-inclusion
+                    cm_field_cache[cm_attr_name] = attr
                     logger.debug(f"Processing custom metadata negative condition for: {cm_attr_name}")
                     search = SearchUtils._process_condition(
                         search, attr, cm_condition, cm_attr_name, "where_not"
@@ -256,7 +259,8 @@ def search_assets(
                 for cm_attr_name, cm_condition in custom_metadata_some_conditions.items():
                     # _get_custom_metadata_field raises ValueError if CM doesn't exist
                     attr = SearchUtils._get_custom_metadata_field(cm_attr_name)
-                    custom_metadata_attrs.add(cm_attr_name)
+                    # Cache the field object for reuse in auto-inclusion
+                    cm_field_cache[cm_attr_name] = attr
                     logger.debug(f"Processing custom metadata 'some' condition for: {cm_attr_name}")
                     search = SearchUtils._process_condition(
                         search, attr, cm_condition, cm_attr_name, "where_some"
@@ -265,20 +269,14 @@ def search_assets(
             search = search.min_somes(min_somes)
 
         # Auto-include custom metadata attributes in results
-        if custom_metadata_attrs:
-            logger.debug(f"Auto-including custom metadata attributes: {custom_metadata_attrs}")
+        if cm_field_cache:
+            logger.debug(f"Auto-including {len(cm_field_cache)} custom metadata attributes")
             if include_attributes is None:
                 include_attributes = []
-            # Create CustomMetadataField objects for each custom metadata attribute
-            for cm_attr in custom_metadata_attrs:
-                try:
-                    # Create CustomMetadataField object directly
-                    cm_field = SearchUtils._get_custom_metadata_field(cm_attr)
-                    if cm_field:
-                        include_attributes.append(cm_field)
-                        logger.debug(f"Auto-included custom metadata field: {cm_attr}")
-                except Exception as e:
-                    logger.debug(f"Could not auto-include custom metadata {cm_attr}: {e}")
+            # Reuse cached CustomMetadataField objects (already created during filtering)
+            for cm_attr_name, cm_field in cm_field_cache.items():
+                include_attributes.append(cm_field)
+                logger.debug(f"Auto-included custom metadata field: {cm_attr_name}")
 
         # Apply date range filters
         if date_range:
