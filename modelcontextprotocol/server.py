@@ -114,7 +114,7 @@ def search_assets_tool(
             include_attributes=["owner_users", "owner_groups"]
         )
 
-        # Search for assets with custom metadata (EXPLICIT FORMAT - RECOMMENDED)
+        # Search for assets with custom metadata
         # Use nested "custom_metadata" key for clarity
         assets = search_assets(
             conditions={
@@ -125,7 +125,7 @@ def search_assets_tool(
             }
         )
 
-        # Search for assets with custom metadata using operators (EXPLICIT FORMAT)
+        # Search for assets with custom metadata using operators
         assets = search_assets(
             conditions={
                 "custom_metadata": {
@@ -142,7 +142,7 @@ def search_assets_tool(
             }
         )
 
-        # Search with multiple custom metadata and standard conditions (EXPLICIT FORMAT)
+        # Search with multiple custom metadata and standard conditions
         assets = search_assets(
             asset_type="Table",
             conditions={
