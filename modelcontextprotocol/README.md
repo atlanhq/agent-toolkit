@@ -135,6 +135,110 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 }
 ```
 
+### Add to VSCode
+
+VSCode integration with MCP servers is evolving. Here are the current approaches:
+
+#### Option 1: AI Toolkit Extension (Recommended)
+
+1. **Install the AI Toolkit Extension:**
+   - Open VSCode Extensions (`Ctrl+Shift+X`)
+   - Search for "AI Toolkit" by Microsoft
+   - Install the extension
+
+2. **Configure MCP Server:**
+   - Open Command Palette (`Ctrl+Shift+P`)
+   - Run "AI Toolkit: Open Agent Builder"
+   - In the Agent Builder, click "+ MCP Server"
+   - Choose "Command (stdio)" connection type
+   - Configure with the following settings:
+     ```
+     Command: uvx
+     Arguments: atlan-mcp-server
+     Environment Variables:
+       ATLAN_API_KEY: <YOUR_API_KEY>
+       ATLAN_BASE_URL: https://<YOUR_INSTANCE>.atlan.com
+       ATLAN_AGENT_ID: <YOUR_AGENT_ID>
+     ```
+
+3. **Test the Integration:**
+   - Use the Agent Builder to create prompts that utilize Atlan tools
+   - Test asset search, lineage traversal, and other Atlan operations
+
+#### Option 2: Manual Configuration (Advanced)
+
+If you prefer manual configuration or need more control:
+
+1. **Create VSCode Settings:**
+   - Open VSCode Settings (`Ctrl+,`)
+   - Search for "mcp" or "model context protocol"
+   - Add configuration in your `settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "atlan": {
+      "command": "uvx",
+      "args": ["atlan-mcp-server"],
+      "env": {
+        "ATLAN_API_KEY": "<YOUR_API_KEY>",
+        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
+      }
+    }
+  }
+}
+```
+
+2. **Install MCP Extension:**
+   - Search for "MCP" or "Model Context Protocol" in VSCode Extensions
+   - Install any available MCP-related extensions
+
+#### Option 3: Development Mode
+
+For development and testing:
+
+1. **Clone and Setup:**
+   ```bash
+   git clone https://github.com/atlanhq/agent-toolkit.git
+   cd agent-toolkit/modelcontextprotocol
+   uv sync
+   ```
+
+2. **Create .env file:**
+   ```env
+   ATLAN_BASE_URL=https://your-instance.atlan.com
+   ATLAN_API_KEY=your_api_key
+   ATLAN_AGENT_ID=your_agent_id
+   ```
+
+3. **Run in Development Mode:**
+   ```bash
+   uv run mcp dev server.py
+   ```
+
+4. **Configure VSCode for Local Development:**
+   - Use the local path in your MCP configuration:
+   ```json
+   {
+     "mcp.servers": {
+       "atlan-local": {
+         "command": "uv",
+         "args": ["run", "/path/to/agent-toolkit/modelcontextprotocol/.venv/bin/atlan-mcp-server"],
+         "cwd": "/path/to/agent-toolkit/modelcontextprotocol",
+         "env": {
+           "ATLAN_API_KEY": "<YOUR_API_KEY>",
+           "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+           "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
+         }
+       }
+     }
+   }
+   ```
+
+> [!NOTE]
+> VSCode MCP integration is still evolving. The AI Toolkit extension is the most mature option currently available. For the latest updates on VSCode MCP support, check the [Model Context Protocol documentation](https://modelcontextprotocol.io/).
+
 ## Available Tools
 
 | Tool                | Description                                                       |
@@ -250,11 +354,13 @@ The Atlan MCP Server supports three transport modes, each optimized for differen
 
 | Transport Mode | Use Case | Benefits | When to Use |
 |---|---|---|---|
-| **stdio** (Default) | Local development, IDE integrations | Simple, direct communication | Claude Desktop, Cursor IDE |
+| **stdio** (Default) | Local development, IDE integrations | Simple, direct communication | Claude Desktop, Cursor IDE, VSCode |
 | **SSE** (Server-Sent Events) | Remote deployments, web browsers | Real-time streaming, web-compatible | Cloud deployments, web clients |
 | **streamable-http** | HTTP-based remote connections | Standard HTTP, load balancer friendly | Kubernetes, containerized deployments |
 
 For comprehensive deployment instructions, configuration examples, and production best practices, see our [Deployment Guide](./docs/Deployment.md).
+
+For detailed VSCode integration instructions, see our [VSCode Integration Guide](./docs/VSCODE_INTEGRATION.md).
 
 ## Production Deployment
 
