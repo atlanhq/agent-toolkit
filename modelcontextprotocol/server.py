@@ -12,6 +12,7 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
+    retrieve_domain,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -903,6 +904,68 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
+
+
+@mcp.tool()
+def retrieve_domain_tool(
+    guid: str = None, qualified_name: str = None
+) -> Dict[str, Any]:
+    """
+    Retrieve a specific data domain by GUID or qualified name with comprehensive details.
+
+    This tool provides detailed information about data domains including their hierarchical
+    relationships (parent domains, subdomains) and associated stakeholders. Relationship
+    objects are automatically enriched with full details via additional API calls when necessary.
+
+    Args:
+        guid (str, optional): GUID of the data domain to retrieve.
+        qualified_name (str, optional): Qualified name of the data domain to retrieve.
+            Format typically: "default/domain/{domain-name}"
+
+    Note:
+        Exactly one of guid or qualified_name must be provided.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing comprehensive domain details:
+            - domain: Data domain object with all relevant attributes including:
+                - Basic attributes: guid, qualified_name, name, display_name, description, etc.
+                - Metadata: created_by, updated_by, create_time, update_time, status, certificate_status
+                - Domain hierarchy: parent_domain (object), sub_domains (list of objects)
+                - Relationships: stakeholders (list of objects)
+                - Domain-specific: parent_domain_qualified_name, super_domain_qualified_name
+                - Asset metadata: readme, asset_tags
+            - error: None if successful, error message otherwise
+
+    Note:
+        Relationship objects (sub_domains, parent_domain, stakeholders) include full details
+        with all relevant attributes extracted via additional API calls when necessary.
+
+    Examples:
+        # Retrieve a parent domain by qualified name
+        retrieve_domain_tool(qualified_name="default/domain/marketing")
+
+        # Retrieve a subdomain to see parent relationship
+        retrieve_domain_tool(qualified_name="default/domain/marketing/campaigns")
+
+        # Retrieve by GUID for direct access
+        retrieve_domain_tool(guid="12345678-1234-1234-1234-123456789abc")
+
+        # Use with search results to get detailed domain information
+        domains = search_assets_tool(asset_type="DataDomain", limit=5)
+        if domains["assets"]:
+            # Get full domain details including relationships
+            domain_details = retrieve_domain_tool(guid=domains["assets"][0]["guid"])
+
+            # Access subdomain information
+            sub_domains = domain_details["domain"]["sub_domains"]
+            print(f"Found {len(sub_domains)} subdomains with full details")
+
+            # Access parent domain information (if subdomain)
+            parent = domain_details["domain"]["parent_domain"]
+            if parent:
+                print(f"Parent domain: {parent['name']}")
+    """
+    return retrieve_domain(guid=guid, qualified_name=qualified_name)
 
 
 def main():
