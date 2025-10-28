@@ -18,6 +18,8 @@ classifiers = [
 dependencies = [
     "fastmcp==2.11.0",
     "pyatlan>=6.0.1",
+    "httpx>=0.25.0",
+    "markdownify>=0.11.6",
 ]
 
 [project.scripts]
@@ -39,3 +41,8 @@ packages = ["."]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+]

@@ -12,6 +12,8 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
+    list_doc_sources,
+    fetch_documentation,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -903,6 +905,103 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
+
+
+@mcp.tool()
+async def documentation_tool(
+    action: str, url: str = None, source_names: str = None
+) -> Dict[str, Any]:
+    """
+    UNIFIED DOCUMENTATION TOOL - Your one-stop solution for all Atlan documentation needs!
+
+    WHEN TO USE: Call this tool whenever users ask questions about Atlan products, features,
+    integrations, APIs, usage instructions, or any other Atlan-related topics.
+
+    This powerful unified tool handles all Atlan documentation operations through different actions:
+    - list_sources: Discover available Atlan documentation sources with their llms.txt URLs
+    - fetch_content: Retrieve Atlan documentation content from any valid URL
+
+    Args:
+        action (str): The operation to perform. Must be one of:
+            - "list_sources": List all available Atlan documentation sources with llms.txt URLs
+            - "fetch_content": Fetch content from any Atlan documentation URL
+
+        url (str, optional): Documentation URL to fetch content from (for fetch_content)
+        source_names (str, optional): Comma-separated source names for domain checking (for fetch_content)
+
+    Returns:
+        Dict[str, Any]: Response varies by action:
+
+        list_sources: List of available Atlan sources with names, llms.txt URLs, allowed domains, and descriptions
+        fetch_content: Documentation content, success status, and metadata
+
+    FETCH_CONTENT USE CASES:
+    The fetch_content action is versatile and supports multiple scenarios:
+
+    1. **Fetch llms.txt index**: Get all available documentation URLs
+       - Use the llms.txt URL from list_sources to see what topics are available
+       - This returns the raw llms.txt content with all documentation URLs
+
+    2. **Fetch specific documentation pages**: Read any documentation webpage
+       - Main documentation URLs listed in llms.txt
+       - Nested/linked pages within the documentation site
+       - Any docs.atlan.com URL for detailed content
+
+    Examples:
+        # 1. Discover available Atlan documentation sources and their llms.txt URLs
+        await documentation_tool(action="list_sources")
+
+        # 2. Fetch llms.txt to see all available documentation topics
+        await documentation_tool(
+            action="fetch_content",
+            url="https://docs.atlan.com/llms.txt",
+            source_names="Atlan Docs"
+        )
+
+        # 3. Fetch specific documentation page to answer user questions
+        await documentation_tool(
+            action="fetch_content",
+            url="https://docs.atlan.com/integrations/snowflake",
+            source_names="Atlan Docs"
+        )
+
+        # 4. Fetch any nested documentation page
+        await documentation_tool(
+            action="fetch_content",
+            url="https://docs.atlan.com/setup-and-settings/admin/lineage-settings",
+            source_names="Atlan Docs"
+        )
+
+    Security Features:
+    - Domain validation prevents access to unauthorized websites
+    - Source management ensures only trusted Atlan documentation sources
+    - Comprehensive error handling for network and parsing issues
+    """
+
+    if action == "list_sources":
+        return {"sources": list_doc_sources(), "action": "list_sources"}
+
+    elif action == "fetch_content":
+        if not url:
+            return {
+                "error": "url is required for fetch_content action",
+                "action": "fetch_content",
+            }
+
+        # Parse source_names if provided
+        parsed_source_names = None
+        if source_names:
+            parsed_source_names = [name.strip() for name in source_names.split(",")]
+
+        result = await fetch_documentation(url, parsed_source_names)
+        result["action"] = "fetch_content"
+        return result
+
+    else:
+        return {
+            "error": f"Invalid action '{action}'. Must be one of: list_sources, fetch_content",
+            "available_actions": ["list_sources", "fetch_content"],
+        }
 
 
 def main():
