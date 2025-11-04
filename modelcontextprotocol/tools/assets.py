@@ -185,13 +185,16 @@ def update_assets(
                 f"Successfully updated {result['readme_updated']} readme assets: {result['updated_readme_assets']}"
             )
 
-        # Proces response
+        # Process response
         if len(assets) > 0:
             response = client.asset.save(assets)
             result["updated_count"] = len(response.guid_assignments)
         logger.info(f"Successfully updated {result['updated_count']} assets")
 
-        return result
+        # Apply TOON formatting for token optimization
+        from utils.formatting import format_update_results
+
+        return format_update_results(result)
 
     except Exception as e:
         error_msg = f"Error updating assets: {str(e)}"

@@ -107,7 +107,13 @@ def traverse_lineage(
         logger.info(
             f"Lineage traversal completed, returned {len(results_list)} results"
         )
-        return {"assets": results_list, "error": None}
+
+        lineage_results = {"assets": results_list, "error": None}
+
+        # Apply TOON formatting for token optimization
+        from utils.formatting import format_lineage_results
+
+        return format_lineage_results(lineage_results)
 
     except Exception as e:
         logger.error(f"Error traversing lineage: {str(e)}")
