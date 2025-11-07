@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     MCP_TRANSPORT: str = "stdio"
     MCP_HOST: str = "0.0.0.0"
     MCP_PORT: int = 8000
-    MCP_PATH: str = "/"
+    MCP_PATH: str = "/mcp/"
 
     @property
     def headers(self) -> dict:
