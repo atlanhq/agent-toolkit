@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2025-11-07
+
+### Changed
+- Upgraded FastMCP dependency from 2.11.0 to 2.13.0.2
+
+## [0.2.10] - 2025-10-13
+
+### Fixed
+- Fixed a bug in `update_assets_tool` where glossary terms and categories could not be updated because the glossary GUID parameter was not being sent - now properly includes the glossary GUID as a required parameter for these asset types
+
+## [0.2.9] - 2025-09-22
+
+### Fixed
+- Transport configuration not working when installed via PyPI and executed using `uvx atlan-mcp-server` - server would ignore environment variables and command-line arguments, always defaulting to stdio mode
+
 ## [0.2.8] - 2025-09-15
 
 ### Added
