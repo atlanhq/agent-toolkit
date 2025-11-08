@@ -9,7 +9,6 @@ from .models import (
     TermOperations,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
-from pyatlan.model.core import Announcement as AtlanAnnouncement
 from pyatlan.model.enums import AnnouncementType as AtlanAnnouncementType
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 
@@ -30,7 +29,7 @@ def update_assets(
             Can be a single UpdatableAsset or a list of UpdatableAssets.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Supports userDescription, certificateStatus, readme, and term.
+            Supports userDescription, certificateStatus, readme, term, and announcement.
         attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
@@ -179,12 +178,9 @@ def update_assets(
                 if not announcement_data:  # None or empty dict
                     asset.remove_announcement()
                 else:
-                    announcement = AtlanAnnouncement(
-                        announcement_type=AtlanAnnouncementType[announcement_data["announcement_type"]],
-                        announcement_title=announcement_data["announcement_title"],
-                        announcement_message=announcement_data["announcement_message"]
-                    )
-                    asset.set_announcement(announcement)
+                    asset.announcement_type = AtlanAnnouncementType[announcement_data["announcement_type"]]
+                    asset.announcement_title = announcement_data["announcement_title"]
+                    asset.announcement_message = announcement_data["announcement_message"]
                 assets.append(asset)
             else:
                 setattr(asset, attribute_name.value, attribute_values[index])
