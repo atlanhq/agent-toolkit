@@ -134,7 +134,7 @@ def search_assets(
             if not isinstance(conditions, dict):
                 error_msg = f"Conditions parameter must be a dictionary, got {type(conditions).__name__}"
                 logger.error(error_msg)
-                return []
+                return {"results": [], "aggregations": {}, "error": error_msg}
 
             # Extract custom metadata conditions if provided explicitly
             custom_metadata_conditions = conditions.get("custom_metadata", None)
@@ -163,7 +163,7 @@ def search_assets(
                 if not isinstance(custom_metadata_conditions, dict):
                     error_msg = f"custom_metadata must be a dictionary, got {type(custom_metadata_conditions).__name__}"
                     logger.error(error_msg)
-                    raise ValueError(error_msg)
+                    return {"results": [], "aggregations": {}, "error": error_msg}
 
                 logger.debug(
                     f"Applying custom metadata conditions: {custom_metadata_conditions}"
@@ -211,7 +211,7 @@ def search_assets(
                 if not isinstance(custom_metadata_negative_conditions, dict):
                     error_msg = f"custom_metadata in negative_conditions must be a dictionary, got {type(custom_metadata_negative_conditions).__name__}"
                     logger.error(error_msg)
-                    raise ValueError(error_msg)
+                    return {"results": [], "aggregations": {}, "error": error_msg}
 
                 logger.debug(
                     f"Applying custom metadata negative conditions: {custom_metadata_negative_conditions}"
@@ -262,7 +262,7 @@ def search_assets(
                 if not isinstance(custom_metadata_some_conditions, dict):
                     error_msg = f"custom_metadata in some_conditions must be a dictionary, got {type(custom_metadata_some_conditions).__name__}"
                     logger.error(error_msg)
-                    raise ValueError(error_msg)
+                    return {"results": [], "aggregations": {}, "error": error_msg}
 
                 logger.debug(
                     f"Applying custom metadata some conditions: {custom_metadata_some_conditions}"
@@ -395,4 +395,4 @@ def search_assets(
 
     except Exception as e:
         logger.error(f"Error searching assets: {str(e)}")
-        return [{"results": [], "aggregations": {}, "error": str(e)}]
+        return {"results": [], "aggregations": {}, "error": str(e)}

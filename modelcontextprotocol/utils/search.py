@@ -54,7 +54,8 @@ class SearchUtils:
         PyAtlan validates if the custom metadata set exists during field creation.
 
         Args:
-            attr_name: Attribute name in format "SetName.AttributeName"
+            attr_name: Attribute name in format "Display Set Name.Display Attribute Name"
+                Use display names (not internal names) as keys. Format: "Display Set Name.Display Attribute Name"
 
         Returns:
             CustomMetadataField instance or None if invalid format
@@ -228,7 +229,6 @@ class SearchUtils:
             FluentSearch: The updated search object
         """
         search_method = getattr(search, search_method_name)
-        is_custom_metadata = isinstance(attr, CustomMetadataField)
 
         if isinstance(condition, dict):
             operator = condition.get("operator", "eq")

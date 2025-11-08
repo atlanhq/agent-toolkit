@@ -64,6 +64,7 @@ def search_assets_tool(
     Advanced asset search using FluentSearch with flexible conditions.
 
     Custom metadata can be referenced directly in conditions using the format "SetName.AttributeName".
+    Use display names (not internal names) for custom metadata. Format: "Display Set Name.Display Attribute Name"
 
     Args:
         conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
@@ -78,6 +79,21 @@ def search_assets_tool(
             Can be string attribute names or AtlanField objects.
         asset_type (Union[Type[Asset], str], optional): Type of asset to search for.
             Either a class (e.g., Table, Column) or a string type name (e.g., "Table", "Column")
+
+        Operators:
+            - "eq": Equals (supports case_insensitive)
+            - "neq": Not equals (supports case_insensitive)
+            - "startswith": Starts with (supports case_insensitive)
+            - "contains": Contains (supports case_insensitive)
+            - "match": Full text match
+            - "gt": Greater than
+            - "gte": Greater than or equal
+            - "lt": Less than
+            - "lte": Less than or equal
+            - "between": Between two values (value must be [start, end])
+            - "within": Value is within a list
+            - "has_any_value": Attribute has any value (useful in negative_conditions)
+
         include_archived (bool): Whether to include archived assets. Defaults to False.
         limit (int, optional): Maximum number of results to return. Defaults to 10.
         offset (int, optional): Offset for pagination. Defaults to 0.
@@ -116,24 +132,26 @@ def search_assets_tool(
 
         # Search for assets with custom metadata
         # Use nested "custom_metadata" key for clarity
+        # Use display names: "Display Set Name.Display Attribute Name"
         assets = search_assets(
             conditions={
                 "certificate_status": CertificateStatus.VERIFIED.value,
                 "custom_metadata": {
-                    "Business Ownership.business_owner": "John"
+                    "Business Ownership.Business Owner": "John"
                 }
             }
         )
 
         # Search for assets with custom metadata using operators
+        # Use display names: "Display Set Name.Display Attribute Name"
         assets = search_assets(
             conditions={
                 "custom_metadata": {
-                    "Data Quality.quality_score": {
+                    "Data Quality.Quality Score": {
                         "operator": "gt",
                         "value": 80
                     },
-                    "Data Classification.sensitivity_level": {
+                    "Data Classification.Sensitivity Level": {
                         "operator": "eq",
                         "value": "sensitive",
                         "case_insensitive": True
@@ -143,6 +161,7 @@ def search_assets_tool(
         )
 
         # Search with multiple custom metadata and standard conditions
+        # Use display names: "Display Set Name.Display Attribute Name"
         assets = search_assets(
             asset_type="Table",
             conditions={
@@ -151,8 +170,8 @@ def search_assets_tool(
                     "value": "customer_"
                 },
                 "custom_metadata": {
-                    "Data Governance.data_owner": "John Smith",
-                    "Data Governance.retention_period": {
+                    "Data Governance.Data Owner": "John Smith",
+                    "Data Governance.Retention Period": {
                         "operator": "gte",
                         "value": 365
                     }
@@ -759,7 +778,7 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Dictionary containing:
             - context: Description of the returned data
-            - business_metadata_results: List of business metadata definitions, each containing:
+            - custom_metadata_results: List of custom metadata definitions, each containing:
                 - prompt: Formatted string with metadata name and attributes
                 - metadata: Dictionary with:
                     - name: Internal name of the custom metadata set
@@ -774,12 +793,14 @@ def get_custom_metadata_context_tool() -> Dict[str, Any]:
         context = get_custom_metadata_context_tool()
 
         # The response will show custom metadata sets like "Data Classification", "Business Ownership", etc.
-        # Then you can use them in search_assets_tool with the format "SetName.AttributeName":
+        # Use display names (not internal names) in search_assets_tool with the format "Display Set Name.Display Attribute Name":
 
         assets = search_assets_tool(
             conditions={
-                "Data Classification.sensitivity_level": "sensitive",
-                "Business Ownership.business_owner": "John Smith"
+                "custom_metadata": {
+                    "Data Classification.Sensitivity Level": "sensitive",
+                    "Business Ownership.Business Owner": "John Smith"
+                }
             }
         )
     """
