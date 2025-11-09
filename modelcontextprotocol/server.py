@@ -12,8 +12,11 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
+<<<<<<< HEAD
     create_data_domain_assets,
     create_data_product_assets,
+=======
+>>>>>>> feature/add-dq-tools
     create_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
@@ -909,6 +912,7 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
+<<<<<<< HEAD
 def create_domains(domains) -> List[Dict[str, Any]]:
     """
     Create Data Domains or Sub Domains in Atlan.
@@ -1043,6 +1047,8 @@ def create_data_products(products) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
+=======
+>>>>>>> feature/add-dq-tools
 def create_dq_rules_tool(rules):
     """
     Create one or multiple data quality rules in Atlan.
@@ -1055,7 +1061,12 @@ def create_dq_rules_tool(rules):
             specification or a list of rule specifications. Each specification
             must include:
             - rule_type (str): Type of rule (see Supported Rule Types) [REQUIRED]
+<<<<<<< HEAD
             - asset_qualified_name (str): Qualified name of the table/view [REQUIRED]
+=======
+            - asset_qualified_name (str): Qualified name of the asset (Table, View, MaterialisedView, or SnowflakeDynamicTable) [REQUIRED]
+            - asset_type (str): Type of asset - "Table", "View", "MaterialisedView", or "SnowflakeDynamicTable" [OPTIONAL, default: "Table"]
+>>>>>>> feature/add-dq-tools
             - threshold_value (int/float): Threshold value for comparison [REQUIRED]
             - column_qualified_name (str): Column qualified name [REQUIRED for column-level rules, NOT for Row Count/Custom SQL]
             - threshold_compare_operator (str): Comparison operator (EQUAL, GREATER_THAN, etc.) [OPTIONAL, default varies by rule]
@@ -1114,6 +1125,19 @@ def create_dq_rules_tool(rules):
         })
         # For Freshness: Add "column_qualified_name" + "threshold_unit": "DAYS"/"HOURS"/"MINUTES"
 
+<<<<<<< HEAD
+=======
+        # Row Count rule on a View
+        rule = create_dq_rules_tool({
+            "rule_type": "Row Count",
+            "asset_type": "View",  # Specify asset type for non-Table assets
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/MY_VIEW",
+            "threshold_compare_operator": "GREATER_THAN_EQUAL",
+            "threshold_value": 100,
+            "alert_priority": "NORMAL"
+        })
+
+>>>>>>> feature/add-dq-tools
         # Custom SQL rule
         rule = create_dq_rules_tool({
             "rule_type": "Custom SQL",
@@ -1143,6 +1167,12 @@ def create_dq_rules_tool(rules):
         Volume: "Row Count"
         Custom: "Custom SQL"
 
+<<<<<<< HEAD
+=======
+    Supported Asset Types:
+        "Table", "View", "MaterialisedView", "SnowflakeDynamicTable"
+
+>>>>>>> feature/add-dq-tools
     Valid Alert Priority Levels:
         "LOW", "NORMAL" (default), "URGENT"
 
