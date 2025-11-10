@@ -178,9 +178,13 @@ def update_assets(
                 if not announcement_data:  # None or empty dict
                     asset.remove_announcement()
                 else:
-                    asset.announcement_type = AtlanAnnouncementType[announcement_data["announcement_type"]]
+                    asset.announcement_type = AtlanAnnouncementType[
+                        announcement_data["announcement_type"]
+                    ]
                     asset.announcement_title = announcement_data["announcement_title"]
-                    asset.announcement_message = announcement_data["announcement_message"]
+                    asset.announcement_message = announcement_data[
+                        "announcement_message"
+                    ]
                 assets.append(asset)
             else:
                 setattr(asset, attribute_name.value, attribute_values[index])
