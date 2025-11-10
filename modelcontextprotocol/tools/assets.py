@@ -9,6 +9,7 @@ from .models import (
     TermOperations,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
+from pyatlan.model.enums import AnnouncementType as AtlanAnnouncementType
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 
 # Initialize logging
@@ -28,11 +29,15 @@ def update_assets(
             Can be a single UpdatableAsset or a list of UpdatableAssets.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Supports userDescription, certificateStatus, readme, and term.
+            Supports userDescription, certificateStatus, readme, term, and announcement.
         attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a TermOperations object with operation and term_guids.
+            For announcement, each value should be a dict with:
+                - announcement_type: "INFORMATION", "WARNING", or "ISSUE"
+                - announcement_title: Title of the announcement
+                - announcement_message: Message content
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -168,8 +173,20 @@ def update_assets(
                     error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
+            elif attribute_name == UpdatableAttribute.ANNOUNCEMENT:
+                announcement_data = attribute_values[index]
+                if not announcement_data:  # None or empty dict
+                    asset.remove_announcement()
+                else:
+                    asset.announcement_type = AtlanAnnouncementType[
+                        announcement_data["announcement_type"]
+                    ]
+                    asset.announcement_title = announcement_data["announcement_title"]
+                    asset.announcement_message = announcement_data[
+                        "announcement_message"
+                    ]
+                assets.append(asset)
             else:
-                # Regular attribute update flow
                 setattr(asset, attribute_name.value, attribute_values[index])
                 assets.append(asset)
 
