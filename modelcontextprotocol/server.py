@@ -478,7 +478,7 @@ def update_assets_tool(
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "term", and "announcement".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
