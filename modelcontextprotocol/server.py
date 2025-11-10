@@ -23,6 +23,7 @@ from utils.parameters import (
     parse_list_parameter,
 )
 from middleware import ToolRestrictionMiddleware
+from settings import get_settings
 
 
 mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
@@ -477,6 +478,7 @@ def update_assets_tool(
     Args:
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
+            For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
             Supports "user_description", "certificate_status", "readme", "term", and "announcement".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
@@ -943,26 +945,35 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 def main():
-    mcp.run()
+    """Main entry point for the Atlan MCP Server."""
 
+    settings = get_settings()
 
-if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Atlan MCP Server")
     parser.add_argument(
         "--transport",
         type=str,
-        default="stdio",
+        default=settings.MCP_TRANSPORT,
         choices=["stdio", "sse", "streamable-http"],
         help="Transport protocol (stdio/sse/streamable-http)",
     )
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0", help="Host to run the server on"
+        "--host",
+        type=str,
+        default=settings.MCP_HOST,
+        help="Host to run the server on",
     )
     parser.add_argument(
-        "--port", type=int, default=8000, help="Port to run the server on"
+        "--port",
+        type=int,
+        default=settings.MCP_PORT,
+        help="Port to run the server on",
     )
     parser.add_argument(
-        "--path", type=str, default="/", help="Path of the streamable HTTP server"
+        "--path",
+        type=str,
+        default=settings.MCP_PATH,
+        help="Path of the streamable HTTP server",
     )
     args = parser.parse_args()
 
@@ -976,3 +987,7 @@ if __name__ == "__main__":
         }
     # Run the server with the specified transport and host/port/path
     mcp.run(**kwargs)
+
+
+if __name__ == "__main__":
+    main()

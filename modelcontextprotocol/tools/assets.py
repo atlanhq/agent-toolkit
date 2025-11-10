@@ -27,6 +27,7 @@ def update_assets(
     Args:
         updatable_assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAssets.
+            For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
             Supports userDescription, certificateStatus, readme, term, and announcement.
         attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
@@ -83,10 +84,22 @@ def update_assets(
             asset_cls = getattr(
                 __import__("pyatlan.model.assets", fromlist=[type_name]), type_name
             )
-            asset = asset_cls.updater(
-                qualified_name=updatable_asset.qualified_name,
-                name=updatable_asset.name,
-            )
+
+            # Special handling for Glossary Term updates
+            if (
+                updatable_asset.type_name == AtlasGlossaryTerm.__name__
+                or updatable_asset.type_name == AtlasGlossaryCategory.__name__
+            ):
+                asset = asset_cls.updater(
+                    qualified_name=updatable_asset.qualified_name,
+                    name=updatable_asset.name,
+                    glossary_guid=updatable_asset.glossary_guid,
+                )
+            else:
+                asset = asset_cls.updater(
+                    qualified_name=updatable_asset.qualified_name,
+                    name=updatable_asset.name,
+                )
 
             # Special handling for README updates
             if attribute_name == UpdatableAttribute.README:
