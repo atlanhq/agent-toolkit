@@ -7,9 +7,13 @@ from .models import (
     CertificateStatus,
     TermOperation,
     TermOperations,
+    AnnouncementData,
+    AnnouncementType,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+from pyatlan.model.core import Announcement
+from pyatlan.model.enums import AnnouncementType as PyAtlanAnnouncementType
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -18,7 +22,7 @@ logger = logging.getLogger(__name__)
 def update_assets(
     updatable_assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: UpdatableAttribute,
-    attribute_values: List[Union[str, CertificateStatus, TermOperations]],
+    attribute_values: List[Union[str, CertificateStatus, TermOperations, AnnouncementData]],
 ) -> Dict[str, Any]:
     """
     Update one or multiple assets with different values for attributes or term operations.
@@ -28,11 +32,13 @@ def update_assets(
             Can be a single UpdatableAsset or a list of UpdatableAssets.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Supports userDescription, certificateStatus, readme, and term.
-        attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
+            Supports userDescription, certificateStatus, readme, term, and announcement.
+        attribute_values (List[Union[str, CertificateStatus, TermOperations, AnnouncementData]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a TermOperations object with operation and term_guids.
+            For announcement, the value must be an AnnouncementData object with announcement_title, announcement_type, and optional announcement_message.
+            Note: Only one announcement can exist per asset. Updating an announcement will replace any existing announcement.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -166,6 +172,69 @@ def update_assets(
 
                 except Exception as e:
                     error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+            elif attribute_name == UpdatableAttribute.ANNOUNCEMENT:
+                # Special handling for announcement updates
+                announcement_value = attribute_values[index]
+                if not isinstance(announcement_value, AnnouncementData):
+                    error_msg = f"Announcement value must be an AnnouncementData object for asset {updatable_asset.qualified_name}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+                # Convert AnnouncementType enum to PyAtlan AnnouncementType
+                announcement_type_map = {
+                    AnnouncementType.INFORMATION: PyAtlanAnnouncementType.INFORMATION,
+                    AnnouncementType.WARNING: PyAtlanAnnouncementType.WARNING,
+                    AnnouncementType.ISSUE: PyAtlanAnnouncementType.ISSUE,
+                }
+                pyatlan_announcement_type = announcement_type_map.get(
+                    announcement_value.announcement_type
+                )
+                if not pyatlan_announcement_type:
+                    error_msg = f"Invalid announcement type: {announcement_value.announcement_type}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+                # Create PyAtlan Announcement object
+                pyatlan_announcement = Announcement(
+                    announcement_title=announcement_value.announcement_title,
+                    announcement_type=pyatlan_announcement_type,
+                    announcement_message=announcement_value.announcement_message,
+                )
+
+                try:
+                    # Use the client's update_announcement method
+                    glossary_guid = (
+                        updatable_asset.glossary_guid
+                        if (
+                            updatable_asset.type_name == AtlasGlossaryTerm.__name__
+                            or updatable_asset.type_name == AtlasGlossaryCategory.__name__
+                        )
+                        else None
+                    )
+                    updated_asset = client.asset.update_announcement(
+                        asset_type=asset_cls,
+                        qualified_name=updatable_asset.qualified_name,
+                        name=updatable_asset.name,
+                        announcement=pyatlan_announcement,
+                        glossary_guid=glossary_guid,
+                    )
+
+                    if updated_asset:
+                        result["updated_count"] += 1
+                        logger.info(
+                            f"Successfully updated announcement on asset: {updatable_asset.qualified_name}"
+                        )
+                    else:
+                        error_msg = f"Failed to update announcement on asset {updatable_asset.qualified_name}"
+                        logger.error(error_msg)
+                        result["errors"].append(error_msg)
+
+                except Exception as e:
+                    error_msg = f"Error updating announcement on asset {updatable_asset.qualified_name}: {str(e)}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
             else:

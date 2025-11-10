@@ -15,4 +15,9 @@ DEFAULT_SEARCH_ATTRIBUTES = [
     "readme",
     "owner_groups",
     "asset_tags",
+    "announcement_title",
+    "announcement_message",
+    "announcement_type",
+    "announcement_updated_at",
+    "announcement_updated_by",
 ]
