@@ -8,7 +8,7 @@ from .models import (
     TermOperation,
     TermOperations,
 )
-from pyatlan.model.assets import Readme, AtlasGlossaryTerm
+from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
 from pyatlan.model.enums import AnnouncementType as AtlanAnnouncementType
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
 
