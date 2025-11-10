@@ -12,6 +12,7 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
+    create_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -26,7 +27,7 @@ from middleware import ToolRestrictionMiddleware
 from settings import get_settings
 
 
-mcp = FastMCP("Atlan MCP Server", dependencies=["pyatlan", "fastmcp"])
+mcp = FastMCP("Atlan MCP Server")
 
 # Get restricted tools from environment variable or use default
 restricted_tools_env = os.getenv("RESTRICTED_TOOLS", "")
@@ -904,6 +905,205 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
     return create_glossary_category_assets(categories)
 
+@mcp.tool()
+def create_dq_rules_tool(rules):
+    """
+    Create one or multiple data quality rules in Atlan.
+    
+    Supports all rule types: column-level, table-level, and custom SQL rules.
+    Rules can be created individually or in bulk for efficient setup.
+    
+    Args:
+        rules (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single rule
+            specification or a list of rule specifications. Each specification
+            must include:
+            - rule_type (str): Type of rule (see examples for valid types)
+            - asset_qualified_name (str): Qualified name of the table/view
+            - Additional fields based on rule type (see examples)
+    
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - created_count: Number of rules successfully created
+            - created_rules: List of created rules with guid, qualified_name, rule_type
+            - errors: List of any errors encountered
+    
+    Examples:
+        # 1. Column-level: Null Count with threshold
+        rule = create_dq_rules_tool({
+            "rule_type": "Null Count",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/EMAIL",
+            "threshold_compare_operator": "LESS_THAN_EQUAL",
+            "threshold_value": 5,
+            "alert_priority": "URGENT",
+            "row_scope_filtering_enabled": True,
+            "description": "Email column should have minimal nulls"
+        })
+        
+        # 2. Table-level: Row Count
+        rule = create_dq_rules_tool({
+            "rule_type": "Row Count",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "threshold_compare_operator": "GREATER_THAN_EQUAL",
+            "threshold_value": 1000,
+            "alert_priority": "URGENT"
+        })
+        
+        # 3. Freshness check with time unit
+        rule = create_dq_rules_tool({
+            "rule_type": "Freshness",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/UPDATED_AT",
+            "threshold_value": 1,
+            "threshold_unit": "DAYS",
+            "alert_priority": "URGENT"
+        })
+        
+        # 4. String Length with conditions
+        rule = create_dq_rules_tool({
+            "rule_type": "String Length",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/PHONE",
+            "threshold_value": 10,
+            "alert_priority": "NORMAL",
+            "rule_conditions": [{
+                "type": "STRING_LENGTH_BETWEEN",
+                "min_value": 10,
+                "max_value": 15
+            }],
+            "row_scope_filtering_enabled": True
+        })
+        
+        # 5. Regex pattern validation
+        rule = create_dq_rules_tool({
+            "rule_type": "Regex",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/EMAIL",
+            "threshold_value": 5,
+            "alert_priority": "URGENT",
+            "rule_conditions": [{
+                "type": "REGEX_NOT_MATCH",
+                "value": "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}$"
+            }]
+        })
+        
+        # 6. Valid Values with allowed list
+        rule = create_dq_rules_tool({
+            "rule_type": "Valid Values",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/STATUS",
+            "threshold_value": 10,
+            "alert_priority": "URGENT",
+            "rule_conditions": [{
+                "type": "IN_LIST",
+                "value": ["ACTIVE", "INACTIVE", "PENDING", "ARCHIVED"]
+            }],
+            "row_scope_filtering_enabled": True
+        })
+        
+        # 7. Custom SQL rule
+        rule = create_dq_rules_tool({
+            "rule_type": "Custom SQL",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "rule_name": "Revenue Consistency Check",
+            "custom_sql": "SELECT COUNT(*) FROM TABLE WHERE revenue < 0 OR revenue > 1000000",
+            "threshold_compare_operator": "EQUAL",
+            "threshold_value": 0,
+            "alert_priority": "URGENT",
+            "dimension": "CONSISTENCY",
+            "description": "Ensure revenue values are within expected range"
+        })
+        
+        # 8. Bulk creation - Multiple rules at once
+        rules = create_dq_rules_tool([
+            {
+                "rule_type": "Null Count",
+                "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+                "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/EMAIL",
+                "threshold_compare_operator": "LESS_THAN_EQUAL",
+                "threshold_value": 5,
+                "alert_priority": "URGENT"
+            },
+            {
+                "rule_type": "Duplicate Count",
+                "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+                "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/USER_ID",
+                "threshold_compare_operator": "EQUAL",
+                "threshold_value": 0,
+                "alert_priority": "URGENT"
+            },
+            {
+                "rule_type": "Row Count",
+                "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+                "threshold_compare_operator": "GREATER_THAN",
+                "threshold_value": 100,
+                "alert_priority": "NORMAL"
+            }
+        ])
+        
+        # 9. Statistical checks
+        rule = create_dq_rules_tool({
+            "rule_type": "Min Value",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/PRICE",
+            "threshold_compare_operator": "GREATER_THAN_EQUAL",
+            "threshold_value": 0,
+            "alert_priority": "URGENT",
+            "description": "Price should never be negative"
+        })
+        
+        # 10. Uniqueness check
+        rule = create_dq_rules_tool({
+            "rule_type": "Unique Count",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/EMAIL",
+            "threshold_compare_operator": "GREATER_THAN_EQUAL",
+            "threshold_value": 1000,
+            "alert_priority": "NORMAL"
+        })
+    
+    Supported Rule Types:
+        Completeness: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage"
+        Statistical: "Min Value", "Max Value", "Average", "Standard Deviation"
+        Uniqueness: "Unique Count", "Duplicate Count"
+        Validity: "Regex", "String Length", "Valid Values"
+        Timeliness: "Freshness"
+        Volume: "Row Count"
+        Custom: "Custom SQL"
+    
+    Valid Alert Priority Levels:
+        - "LOW": Low priority alert
+        - "NORMAL": Normal priority alert (default)
+        - "URGENT": Urgent priority alert
+    
+    Threshold Operators:
+        "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", 
+        "LESS_THAN", "LESS_THAN_EQUAL", "BETWEEN"
+    
+    Threshold Units (for Freshness rules):
+        "DAYS", "HOURS", "MINUTES"
+    
+    Data Quality Dimensions (for Custom SQL):
+        "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", 
+        "VOLUME", "ACCURACY", "CONSISTENCY"
+    
+    Rule Condition Types:
+        String Length: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN", 
+                      "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_GREATER_THAN_EQUALS",
+                      "STRING_LENGTH_LESS_THAN", "STRING_LENGTH_LESS_THAN_EQUALS"
+        Regex: "REGEX_MATCH", "REGEX_NOT_MATCH"
+        Valid Values: "IN_LIST", "NOT_IN_LIST"
+    """
+    try:
+        # Parse JSON parameters
+        parsed_rules = parse_json_parameter(rules)
+        return create_dq_rules(parsed_rules)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "created_count": 0,
+            "created_rules": [],
+            "errors": [f"Parameter parsing error: {str(e)}"]
+        }
 
 def main():
     """Main entry point for the Atlan MCP Server."""
