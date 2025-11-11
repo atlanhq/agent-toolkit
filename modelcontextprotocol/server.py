@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from typing import Any, Dict, List
+from pydantic import ValidationError
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -16,6 +17,7 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    Announcement,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -654,19 +656,20 @@ def update_assets_tool(
             ]
 
         elif attr_enum == UpdatableAttribute.ANNOUNCEMENT:
-            # Validate announcement structure
-            for val in parsed_attribute_values:
-                if val and not isinstance(val, dict):
-                    raise ValueError(f"Announcement must be a dict, got {type(val)}")
-                if val and not all(
-                    k in val
-                    for k in [
-                        "announcement_type",
-                        "announcement_title",
-                        "announcement_message",
-                    ]
-                ):
-                    raise ValueError("Announcement must have type, title, and message")
+            announcement_objects = []
+            for value in parsed_attribute_values:
+                if value and not isinstance(value, dict):
+                    return {
+                        "error": f"Announcement must be a dict, got {type(value).__name__}",
+                        "updated_count": 0,
+                    }
+                if value:
+                    if "announcement_type" in value:
+                        value["announcement_type"] = value["announcement_type"].upper()
+                    announcement_objects.append(Announcement(**value))
+                else:
+                    announcement_objects.append(None)
+            parsed_attribute_values = announcement_objects
 
         # Convert assets to UpdatableAsset objects
         if isinstance(parsed_assets, dict):
@@ -679,7 +682,7 @@ def update_assets_tool(
             attribute_name=attr_enum,
             attribute_values=parsed_attribute_values,
         )
-    except (json.JSONDecodeError, ValueError, TypeError) as e:
+    except (json.JSONDecodeError, ValueError, TypeError, ValidationError) as e:
         return {
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
