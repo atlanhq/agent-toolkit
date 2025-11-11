@@ -200,7 +200,9 @@ def update_assets(
                             announcement_data.announcement_type.value
                         ]
                         asset.announcement_title = announcement_data.announcement_title
-                        asset.announcement_message = announcement_data.announcement_message
+                        asset.announcement_message = (
+                            announcement_data.announcement_message
+                        )
                         assets.append(asset)
                         result["updated_count"] += 1
                         logger.info(
