@@ -1,5 +1,6 @@
 import logging
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Optional
+from pydantic import ValidationError
 from client import get_atlan_client
 from .models import (
     UpdatableAsset,
@@ -7,9 +8,15 @@ from .models import (
     CertificateStatus,
     TermOperation,
     TermOperations,
+    AssetHistoryRequest,
+    AssetHistoryResponse,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+from utils.asset_history import (
+    create_audit_search_request,
+    process_audit_result,
+)
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -197,3 +204,91 @@ def update_assets(
         error_msg = f"Error updating assets: {str(e)}"
         logger.error(error_msg)
         return {"updated_count": 0, "errors": [error_msg]}
+
+
+def get_asset_history(
+    guid: Optional[str] = None,
+    qualified_name: Optional[str] = None,
+    type_name: Optional[str] = None,
+    size: int = 10,
+    sort_order: str = "DESC",
+) -> AssetHistoryResponse:
+    """
+    Get the audit history of an asset by GUID or qualified name.
+
+    Args:
+        guid (Optional[str]): GUID of the asset to get history for.
+            Either guid or qualified_name must be provided.
+        qualified_name (Optional[str]): Qualified name of the asset to get history for.
+            Either guid or qualified_name must be provided.
+        type_name (Optional[str]): Type name of the asset (required when using qualified_name).
+            Examples: "Table", "Column", "DbtModel", "AtlasGlossary"
+        size (int): Number of history entries to return. Defaults to 10. Maximum is 50.
+        sort_order (str): Sort order for results. "ASC" for oldest first, "DESC" for newest first.
+            Defaults to "DESC".
+
+    Returns:
+        AssetHistoryResponse: Response containing:
+            - entity_audits: List of audit entries
+            - count: Number of audit entries returned
+            - total_count: Total number of audit entries available
+            - errors: List of any errors encountered
+    """
+    try:
+        # Validate input parameters using Pydantic model
+        request_model = AssetHistoryRequest(
+            guid=guid,
+            qualified_name=qualified_name,
+            type_name=type_name,
+            size=size,
+            sort_order=sort_order,
+        )
+
+        logger.info(
+            f"Retrieving asset history with parameters: guid={request_model.guid}, "
+            f"qualified_name={request_model.qualified_name}, size={request_model.size}"
+        )
+
+        # Get Atlan client
+        client = get_atlan_client()
+
+        # Create and execute audit search request
+        request = create_audit_search_request(
+            request_model.guid,
+            request_model.qualified_name,
+            request_model.type_name,
+            request_model.size,
+            request_model.sort_order,
+        )
+        response = client.audit.search(criteria=request, bulk=False)
+
+        # Process audit results - use current_page() to respect size parameter
+        entity_audits = [
+            process_audit_result(result) for result in response.current_page()
+        ]
+
+        logger.info(
+            f"Successfully retrieved {len(entity_audits)} audit entries for asset"
+        )
+
+        return AssetHistoryResponse(
+            entity_audits=entity_audits,
+            count=len(entity_audits),
+            total_count=response.total_count,
+            errors=[],
+        )
+
+    except ValidationError as e:
+        error_messages = [f"{err['loc'][0]}: {err['msg']}" for err in e.errors()]
+        error_msg = f"Validation error: {'; '.join(error_messages)}"
+        logger.error(error_msg)
+        return AssetHistoryResponse(
+            entity_audits=[], count=0, total_count=0, errors=error_messages
+        )
+    except Exception as e:
+        error_msg = f"Error retrieving asset history: {str(e)}"
+        logger.error(error_msg)
+        logger.exception("Exception details:")
+        return AssetHistoryResponse(
+            entity_audits=[], count=0, total_count=0, errors=[error_msg]
+        )
