@@ -7,6 +7,7 @@ from .models import (
     CertificateStatus,
     TermOperation,
     TermOperations,
+    Announcement,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
 from pyatlan.model.enums import AnnouncementType as AtlanAnnouncementType
@@ -176,14 +177,39 @@ def update_assets(
             elif attribute_name == UpdatableAttribute.ANNOUNCEMENT:
                 announcement_data = attribute_values[index]
                 if not announcement_data:
-                    asset.remove_announcement()
+                    try:
+                        asset.remove_announcement()
+                        assets.append(asset)
+                        result["updated_count"] += 1
+                        logger.info(
+                            f"Successfully removed announcement from asset: {updatable_asset.qualified_name}"
+                        )
+                    except Exception as e:
+                        error_msg = f"Error removing announcement from asset {updatable_asset.qualified_name}: {str(e)}"
+                        logger.error(error_msg)
+                        result["errors"].append(error_msg)
                 else:
-                    asset.announcement_type = AtlanAnnouncementType[
-                        announcement_data.announcement_type.value
-                    ]
-                    asset.announcement_title = announcement_data.announcement_title
-                    asset.announcement_message = announcement_data.announcement_message
-                assets.append(asset)
+                    if not isinstance(announcement_data, Announcement):
+                        error_msg = f"Announcement value must be an Announcement object for asset {updatable_asset.qualified_name}"
+                        logger.error(error_msg)
+                        result["errors"].append(error_msg)
+                        continue
+
+                    try:
+                        asset.announcement_type = AtlanAnnouncementType[
+                            announcement_data.announcement_type.value
+                        ]
+                        asset.announcement_title = announcement_data.announcement_title
+                        asset.announcement_message = announcement_data.announcement_message
+                        assets.append(asset)
+                        result["updated_count"] += 1
+                        logger.info(
+                            f"Successfully updated announcement on asset: {updatable_asset.qualified_name}"
+                        )
+                    except (KeyError, AttributeError, TypeError, Exception) as e:
+                        error_msg = f"Error setting announcement on asset {updatable_asset.qualified_name}: {str(e)}"
+                        logger.error(error_msg)
+                        result["errors"].append(error_msg)
             else:
                 setattr(asset, attribute_name.value, attribute_values[index])
                 assets.append(asset)
