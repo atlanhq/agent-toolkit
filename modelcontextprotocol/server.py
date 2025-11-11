@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from typing import Any, Dict, List
+from pydantic import ValidationError
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -16,6 +17,7 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    Announcement,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -480,7 +482,7 @@ def update_assets_tool(
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "term", and "announcement".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
@@ -602,6 +604,30 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Add warning announcement to an asset
+        update_assets_tool(
+            assets={
+                "guid": "abc-123",
+                "name": "sales_data",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/db/schema/sales_data"
+            },
+            attribute_name="announcement",
+            attribute_values=[{
+                "announcement_type": "WARNING",
+                "announcement_title": "Data Quality Issue",
+                "announcement_message": "Missing records for Q4 2024. ETL team investigating."
+            }]
+        )
+
+        # Remove announcement
+        update_assets_tool(
+            assets={"guid": "abc-123", ...},
+            attribute_name="announcement",
+            attribute_values=[None]  # or [{}]
+        )
+
     """
     try:
         # Parse JSON parameters
@@ -629,6 +655,22 @@ def update_assets_tool(
                 CertificateStatus(val) for val in parsed_attribute_values
             ]
 
+        elif attr_enum == UpdatableAttribute.ANNOUNCEMENT:
+            announcement_objects = []
+            for value in parsed_attribute_values:
+                if value and not isinstance(value, dict):
+                    return {
+                        "error": f"Announcement must be a dict, got {type(value).__name__}",
+                        "updated_count": 0,
+                    }
+                if value:
+                    if "announcement_type" in value:
+                        value["announcement_type"] = value["announcement_type"].upper()
+                    announcement_objects.append(Announcement(**value))
+                else:
+                    announcement_objects.append(None)
+            parsed_attribute_values = announcement_objects
+
         # Convert assets to UpdatableAsset objects
         if isinstance(parsed_assets, dict):
             updatable_assets = [UpdatableAsset(**parsed_assets)]
@@ -640,7 +682,7 @@ def update_assets_tool(
             attribute_name=attr_enum,
             attribute_values=parsed_attribute_values,
         )
-    except (json.JSONDecodeError, ValueError, TypeError) as e:
+    except (json.JSONDecodeError, ValueError, TypeError, ValidationError) as e:
         return {
             "error": f"Parameter parsing/conversion error: {str(e)}",
             "updated_count": 0,
