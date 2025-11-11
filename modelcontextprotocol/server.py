@@ -905,14 +905,15 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
     return create_glossary_category_assets(categories)
 
+
 @mcp.tool()
 def create_dq_rules_tool(rules):
     """
     Create one or multiple data quality rules in Atlan.
-    
+
     Supports all rule types: column-level, table-level, and custom SQL rules.
     Rules can be created individually or in bulk for efficient setup.
-    
+
     Args:
         rules (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single rule
             specification or a list of rule specifications. Each specification
@@ -920,13 +921,13 @@ def create_dq_rules_tool(rules):
             - rule_type (str): Type of rule (see examples for valid types)
             - asset_qualified_name (str): Qualified name of the table/view
             - Additional fields based on rule type (see examples)
-    
+
     Returns:
         Dict[str, Any]: Dictionary containing:
             - created_count: Number of rules successfully created
             - created_rules: List of created rules with guid, qualified_name, rule_type
             - errors: List of any errors encountered
-    
+
     Examples:
         # 1. Column-level: Null Count with threshold
         rule = create_dq_rules_tool({
@@ -939,7 +940,7 @@ def create_dq_rules_tool(rules):
             "row_scope_filtering_enabled": True,
             "description": "Email column should have minimal nulls"
         })
-        
+
         # 2. Table-level: Row Count
         rule = create_dq_rules_tool({
             "rule_type": "Row Count",
@@ -948,7 +949,7 @@ def create_dq_rules_tool(rules):
             "threshold_value": 1000,
             "alert_priority": "URGENT"
         })
-        
+
         # 3. Freshness check with time unit
         rule = create_dq_rules_tool({
             "rule_type": "Freshness",
@@ -958,7 +959,7 @@ def create_dq_rules_tool(rules):
             "threshold_unit": "DAYS",
             "alert_priority": "URGENT"
         })
-        
+
         # 4. String Length with conditions
         rule = create_dq_rules_tool({
             "rule_type": "String Length",
@@ -973,7 +974,7 @@ def create_dq_rules_tool(rules):
             }],
             "row_scope_filtering_enabled": True
         })
-        
+
         # 5. Regex pattern validation
         rule = create_dq_rules_tool({
             "rule_type": "Regex",
@@ -986,7 +987,7 @@ def create_dq_rules_tool(rules):
                 "value": "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}$"
             }]
         })
-        
+
         # 6. Valid Values with allowed list
         rule = create_dq_rules_tool({
             "rule_type": "Valid Values",
@@ -1000,7 +1001,7 @@ def create_dq_rules_tool(rules):
             }],
             "row_scope_filtering_enabled": True
         })
-        
+
         # 7. Custom SQL rule
         rule = create_dq_rules_tool({
             "rule_type": "Custom SQL",
@@ -1013,7 +1014,7 @@ def create_dq_rules_tool(rules):
             "dimension": "CONSISTENCY",
             "description": "Ensure revenue values are within expected range"
         })
-        
+
         # 8. Bulk creation - Multiple rules at once
         rules = create_dq_rules_tool([
             {
@@ -1040,7 +1041,7 @@ def create_dq_rules_tool(rules):
                 "alert_priority": "NORMAL"
             }
         ])
-        
+
         # 9. Statistical checks
         rule = create_dq_rules_tool({
             "rule_type": "Min Value",
@@ -1051,7 +1052,7 @@ def create_dq_rules_tool(rules):
             "alert_priority": "URGENT",
             "description": "Price should never be negative"
         })
-        
+
         # 10. Uniqueness check
         rule = create_dq_rules_tool({
             "rule_type": "Unique Count",
@@ -1061,7 +1062,7 @@ def create_dq_rules_tool(rules):
             "threshold_value": 1000,
             "alert_priority": "NORMAL"
         })
-    
+
     Supported Rule Types:
         Completeness: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage"
         Statistical: "Min Value", "Max Value", "Average", "Standard Deviation"
@@ -1070,25 +1071,25 @@ def create_dq_rules_tool(rules):
         Timeliness: "Freshness"
         Volume: "Row Count"
         Custom: "Custom SQL"
-    
+
     Valid Alert Priority Levels:
         - "LOW": Low priority alert
         - "NORMAL": Normal priority alert (default)
         - "URGENT": Urgent priority alert
-    
+
     Threshold Operators:
-        "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", 
+        "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL",
         "LESS_THAN", "LESS_THAN_EQUAL", "BETWEEN"
-    
+
     Threshold Units (for Freshness rules):
         "DAYS", "HOURS", "MINUTES"
-    
+
     Data Quality Dimensions (for Custom SQL):
-        "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", 
+        "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS",
         "VOLUME", "ACCURACY", "CONSISTENCY"
-    
+
     Rule Condition Types:
-        String Length: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN", 
+        String Length: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN",
                       "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_GREATER_THAN_EQUALS",
                       "STRING_LENGTH_LESS_THAN", "STRING_LENGTH_LESS_THAN_EQUALS"
         Regex: "REGEX_MATCH", "REGEX_NOT_MATCH"
@@ -1102,8 +1103,9 @@ def create_dq_rules_tool(rules):
         return {
             "created_count": 0,
             "created_rules": [],
-            "errors": [f"Parameter parsing error: {str(e)}"]
+            "errors": [f"Parameter parsing error: {str(e)}"],
         }
+
 
 def main():
     """Main entry point for the Atlan MCP Server."""
