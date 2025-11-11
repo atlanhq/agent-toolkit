@@ -246,8 +246,8 @@ def _validate_rule_specification(spec: DQRuleSpecification) -> List[str]:
     if spec.rule_type == DQRuleType.FRESHNESS and not spec.threshold_unit:
         errors.append("Freshness rules require threshold_unit (DAYS, HOURS, or MINUTES)")
     
-    # Most rules require threshold_value
-    if spec.rule_type not in {DQRuleType.CUSTOM_SQL} and spec.threshold_value is None:
+    # All rules require threshold_value
+    if spec.threshold_value is None:
         errors.append(f"{spec.rule_type.value} requires threshold_value")
     
     return errors
