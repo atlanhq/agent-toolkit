@@ -242,14 +242,19 @@ def search_assets(
 
         # Include all attributes in results
         for attr_name in all_attributes:
-            attr_obj = SearchUtils._get_asset_attribute(attr_name)
-            if attr_obj is None:
+            # Use new resolver that handles Process-specific attributes
+            attr_objs = SearchUtils.resolve_attribute_objects(attr_name)
+            
+            if not attr_objs:
                 logger.warning(
                     f"Unknown attribute for inclusion: {attr_name}, skipping"
                 )
                 continue
-            logger.debug(f"Including attribute: {attr_name}")
-            search = search.include_on_results(attr_obj)
+            
+            # Include all resolved attribute objects
+            for attr_obj in attr_objs:
+                logger.debug(f"Including attribute: {attr_name} -> {attr_obj}")
+                search = search.include_on_results(attr_obj)
 
         # Include additional AtlanField objects specified by user
         if include_attributes:

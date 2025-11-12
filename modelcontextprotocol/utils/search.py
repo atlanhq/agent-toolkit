@@ -1,6 +1,8 @@
-from typing import Dict, Any
 import logging
-from pyatlan.model.assets import Asset
+from client import get_atlan_client
+from typing import Dict, Any, Optional, List
+from pyatlan.model.assets import Asset, Process, DbtProcess, DbtColumnProcess
+from pyatlan.model.fields.atlan_fields import CustomMetadataField, AtlanField
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,71 @@ class SearchUtils:
         Get Asset attribute by name.
         """
         return getattr(Asset, attr_name.upper(), None)
+
+    @staticmethod
+    def resolve_attribute_objects(attr_name: str) -> List[AtlanField]:
+        """
+        Resolve attribute name to list of AtlanField objects.
+        
+        For Process-specific attributes (sql, code, ast), returns fields from
+        Process, DbtProcess, and DbtColumnProcess classes.
+        
+        For other attributes, returns the field from the Asset class.
+        
+        Args:
+            attr_name: The attribute name to resolve (e.g., "sql", "code", "name")
+            
+        Returns:
+            List of AtlanField objects, or empty list if attribute not found
+        """
+        attr_name_lower = attr_name.lower()
+        
+        # Handle namespaced attributes like "Process.sql"
+        if "." in attr_name:
+            parts = attr_name.split(".", 1)
+            class_name = parts[0]
+            field_name = parts[1].upper()
+            
+            # Map class names to classes
+            class_map = {
+                "Process": Process,
+                "DbtProcess": DbtProcess,
+                "DbtColumnProcess": DbtColumnProcess,
+            }
+            
+            if class_name in class_map:
+                attr_obj = getattr(class_map[class_name], field_name, None)
+                if attr_obj is not None:
+                    return [attr_obj]
+            
+            logger.warning(f"Unknown namespaced attribute: {attr_name}")
+            return []
+        
+        # Handle Process-specific attributes
+        if attr_name_lower in ["sql", "code", "ast"]:
+            field_name = attr_name.upper()
+            result = []
+            
+            # Include from all Process types
+            for process_class in [Process, DbtProcess, DbtColumnProcess]:
+                attr_obj = getattr(process_class, field_name, None)
+                if attr_obj is not None:
+                    result.append(attr_obj)
+            
+            if result:
+                logger.debug(f"Resolved Process-specific attribute '{attr_name}' to {len(result)} fields")
+                return result
+            
+            logger.warning(f"Process-specific attribute '{attr_name}' not found")
+            return []
+        
+        # For other attributes, use the Asset class
+        attr_obj = getattr(Asset, attr_name.upper(), None)
+        if attr_obj is not None:
+            return [attr_obj]
+        
+        logger.warning(f"Unknown attribute: {attr_name}")
+        return []
 
     @staticmethod
     def _apply_operator_condition(

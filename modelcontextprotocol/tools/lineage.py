@@ -74,14 +74,19 @@ def traverse_lineage(
 
         # Include all string attributes in results
         for attr_name in all_attributes:
-            attr_obj = SearchUtils._get_asset_attribute(attr_name)
-            if attr_obj is None:
+            # Use new resolver that handles Process-specific attributes
+            attr_objs = SearchUtils.resolve_attribute_objects(attr_name)
+            
+            if not attr_objs:
                 logger.warning(
                     f"Unknown attribute for inclusion: {attr_name}, skipping"
                 )
                 continue
-            logger.debug(f"Including attribute: {attr_name}")
-            lineage_builder = lineage_builder.include_on_results(attr_obj)
+            
+            # Include all resolved attribute objects
+            for attr_obj in attr_objs:
+                logger.debug(f"Including attribute: {attr_name} -> {attr_obj}")
+                lineage_builder = lineage_builder.include_on_results(attr_obj)
 
         # Execute request
         logger.debug("Converting FluentLineage to request object")

@@ -432,6 +432,21 @@ def traverse_lineage_tool(
         - connector_name, has_lineage, source_created_at, source_updated_at
         - readme, asset_tags
 
+    Process-Specific Attributes (available via include_attributes):
+        - sql: SQL query that ran to produce the outputs (Process, DbtProcess, DbtColumnProcess)
+        - code: Code that ran within the process (Process, DbtProcess, DbtColumnProcess)
+        - ast: Parsed AST of the code or SQL statements (Process, DbtProcess, DbtColumnProcess)
+        
+    Note: When requesting Process-specific attributes like "sql", the tool automatically
+    includes the attribute from Process, DbtProcess, and DbtColumnProcess classes.
+
+    IMPORTANT: When requesting SQL queries (include_attributes=["sql"]), ALWAYS use depth=1
+    to limit results to immediate upstream/downstream transforms. This prevents context window
+    overflow from multiple Process objects with large SQL queries. For example:
+        - Use depth=1 when asking "what transforms were used to build this table"
+        - Use depth=1 when asking "what SQL queries created this asset"
+        - Use depth=1 when requesting sql, code, or ast attributes
+
     Returns:
         Dict[str, Any]: Dictionary containing:
             - assets: List of assets in the lineage with processed attributes
@@ -444,6 +459,16 @@ def traverse_lineage_tool(
             direction="DOWNSTREAM",
             depth=1000,
             size=10
+        )
+
+        # Get upstream lineage with SQL queries from Process objects
+        # IMPORTANT: Use depth=1 to limit to immediate transforms and prevent context overflow
+        lineage = traverse_lineage_tool(
+            guid="table-guid-here",
+            direction="UPSTREAM",
+            depth=1,  # CRITICAL: Use depth=1 when requesting SQL to avoid context window overflow
+            size=10,
+            include_attributes=["sql", "code"]  # Will include from all Process types
         )
     """
     try:
