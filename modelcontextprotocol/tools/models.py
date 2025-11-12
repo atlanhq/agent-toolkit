@@ -76,11 +76,6 @@ class GlossaryTerm(BaseModel):
     category_guids: Optional[List[str]] = None
 
 
-# ============================================================================
-# Data Quality Rule Models
-# ============================================================================
-
-
 class DQRuleType(str, Enum):
     """Enum for supported data quality rule types."""
 
