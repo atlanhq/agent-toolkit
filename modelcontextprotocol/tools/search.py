@@ -294,10 +294,20 @@ def search_assets(
         logger.info("Executing search request")
         client = get_atlan_client()
         search_response = client.asset.search(request)
-        processed_results = SearchUtils.process_results(search_response)
-        logger.info(
-            f"Search completed, returned {len(processed_results['results'])} results"
-        )
+
+        # Process results with TOON formatting enabled by default
+        processed_results = SearchUtils.process_results(search_response, use_toon=True)
+
+        # Log result count (handle both TOON string and dict formats)
+        if isinstance(processed_results, str):
+            logger.info(
+                "Search completed, results formatted as TOON for token optimization"
+            )
+        else:
+            logger.info(
+                f"Search completed, returned {len(processed_results.get('results', []))} results"
+            )
+
         return processed_results
 
     except Exception as e:

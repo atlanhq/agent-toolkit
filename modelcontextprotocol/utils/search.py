@@ -1,13 +1,16 @@
-from typing import Dict, Any
+from typing import Dict, Any, Union
 import logging
 from pyatlan.model.assets import Asset
+from .formatting import format_search_results
 
 logger = logging.getLogger(__name__)
 
 
 class SearchUtils:
     @staticmethod
-    def process_results(results: Any) -> Dict[str, Any]:
+    def process_results(
+        results: Any, use_toon: bool = True
+    ) -> Union[str, Dict[str, Any]]:
         """
         Process the results from the search index using Pydantic serialization.
 
@@ -15,11 +18,15 @@ class SearchUtils:
         - Convert field names to their API-friendly camelCase format (by_alias=True)
         - Exclude any fields that weren't explicitly set (exclude_unset=True)
 
+        Optionally formats results using TOON for token optimization.
+
         Args:
             results: The search results from Atlan
+            use_toon: Whether to format results using TOON for token optimization
 
         Returns:
-            Dict[str, Any]: Dictionary containing:
+            Union[str, Dict[str, Any]]: TOON-formatted string if use_toon=True,
+                otherwise dictionary containing:
                 - results: List of processed results
                 - aggregations: Search aggregations if available
                 - error: None if no error occurred, otherwise the error message
@@ -38,7 +45,17 @@ class SearchUtils:
             if result is not None
         ]
 
-        return {"results": results_list, "aggregations": aggregations, "error": None}
+        processed_results = {
+            "results": results_list,
+            "aggregations": aggregations,
+            "error": None,
+        }
+
+        # Apply TOON formatting if requested
+        if use_toon:
+            return format_search_results(processed_results)
+
+        return processed_results
 
     @staticmethod
     def _get_asset_attribute(attr_name: str):
