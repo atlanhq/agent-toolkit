@@ -1,20 +1,12 @@
 """Configuration settings for the application."""
 
 from typing import Optional
-from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from version import __version__ as MCP_VERSION
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or .env file."""
-
-    model_config = ConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="allow",
-        case_sensitive=False,
-    )
 
     ATLAN_BASE_URL: str
     ATLAN_API_KEY: str
@@ -35,6 +27,13 @@ class Settings(BaseSettings):
             "X-Atlan-Agent-Id": self.ATLAN_AGENT_ID,
             "X-Atlan-Client-Origin": self.ATLAN_AGENT,
         }
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "allow"
+        # Allow case-insensitive environment variables
+        case_sensitive = False
 
 
 _settings: Optional[Settings] = None
