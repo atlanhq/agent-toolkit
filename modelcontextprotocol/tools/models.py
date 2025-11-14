@@ -74,3 +74,30 @@ class GlossaryTerm(BaseModel):
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     category_guids: Optional[List[str]] = None
+
+
+class DataDomainSpec(BaseModel):
+    """Payload model for creating a Data Domain asset."""
+
+    name: str
+    user_description: Optional[str] = None
+    certificate_status: Optional[CertificateStatus] = None
+
+
+class DataSubDomainSpec(BaseModel):
+    """Payload model for creating a Sub Domain (Data Domain with parent) asset."""
+
+    name: str
+    parent_domain_qualified_name: str
+    user_description: Optional[str] = None
+    certificate_status: Optional[CertificateStatus] = None
+
+
+class DataProductSpec(BaseModel):
+    """Payload model for creating a Data Product asset."""
+
+    name: str
+    domain_qualified_name: str
+    user_description: Optional[str] = None
+    certificate_status: Optional[CertificateStatus] = None
+    asset_selection: Optional[dict] = None
