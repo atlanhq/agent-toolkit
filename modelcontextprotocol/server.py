@@ -9,6 +9,7 @@ from tools import (
     traverse_lineage,
     update_assets,
     query_asset,
+    get_workflow_runs,
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
@@ -717,6 +718,97 @@ def query_asset_tool(
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
+
+
+@mcp.tool()
+def get_workflow_runs_tool(
+    workflow_name: str | None = None,
+    workflow_phase: str | None = None,
+    workflow_run_id: str | None = None,
+    from_: int = 0,
+    size: int = 100,
+    start_time: str | None = None,
+    end_time: str | None = None,
+):
+    """
+    Retrieve workflow runs based on various criteria such as workflow name, phase, run ID, or time range.
+
+    This tool enables you to query workflow execution history, monitor running workflows,
+    and analyze workflow performance over time.
+
+    Args:
+        workflow_name (str, optional): Name of the workflow as displayed in the UI.
+            Example: "atlan-snowflake-miner-1714638976"
+        workflow_phase (str, optional): Phase/status of the workflow run.
+            Valid values: "Success", "Succeeded", "Running", "Failed", "Pending", "Error"
+        workflow_run_id (str, optional): Specific workflow run ID to retrieve.
+            Example: "atlan-snowflake-miner-1714638976-9wfxz"
+        from_ (int): Starting index of the search results. Defaults to 0.
+        size (int): Maximum number of search results to return. Defaults to 100.
+        start_time (str, optional): Start time for filtering runs.
+            Supports: "now-Xh" format (e.g., "now-24h") or epoch milliseconds (string).
+            Examples: "now-24h", "1704067200000"
+        end_time (str, optional): End time for filtering runs.
+            Supports: "now-Xh" format (e.g., "now") or epoch milliseconds (string).
+            Examples: "now", "1735689599000"
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - runs: List of workflow run objects with details (id, phase, timestamps, etc.)
+            - total: Total number of runs matching the criteria
+            - error: None if no error occurred, otherwise the error message
+
+    Examples:
+        # Get all running workflows for a specific workflow
+        result = get_workflow_runs_tool(
+            workflow_name="atlan-snowflake-miner-1714638976",
+            workflow_phase="Running"
+        )
+
+        # Get a specific workflow run by ID
+        result = get_workflow_runs_tool(
+            workflow_run_id="atlan-snowflake-miner-1714638976-9wfxz"
+        )
+
+        # Get all succeeded workflows in a time range
+        result = get_workflow_runs_tool(
+            workflow_name="atlan-snowflake-miner-1714638976",
+            workflow_phase="Succeeded",
+            start_time="now-7d",  # 7 days ago
+            end_time="now"
+        )
+
+        # Get all failed workflows
+        result = get_workflow_runs_tool(
+            workflow_phase="Failed",
+            from_=0,
+            size=50
+        )
+
+        # Get recent workflow runs by time range using "now-Xh" format
+        result = get_workflow_runs_tool(
+            workflow_name="atlan-snowflake-miner-1714638976",
+            workflow_phase="Succeeded",
+            start_time="now-24h",  # 24 hours ago
+            end_time="now"
+        )
+
+        # Get workflow runs using epoch timestamps
+        result = get_workflow_runs_tool(
+            workflow_name="atlan-snowflake-miner-1714638976",
+            start_time="1704067200000",  # Unix timestamp in milliseconds
+            end_time="1735689599000"
+        )
+    """
+    return get_workflow_runs(
+        workflow_name=workflow_name,
+        workflow_phase=workflow_phase,
+        workflow_run_id=workflow_run_id,
+        from_=from_,
+        size=size,
+        start_time=start_time,
+        end_time=end_time,
+    )
 
 
 @mcp.tool()
