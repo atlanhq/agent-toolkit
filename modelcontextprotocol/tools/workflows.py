@@ -2,12 +2,12 @@
 
 Naming Convention Note:
 The Argo/Kubernetes API uses terminology that can be confusing:
-- "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what users see as "Workflow" in UI)
-- "Workflow" (kind="Workflow") = Executed instance/run (what users see as "WorkflowRun" in UI)
+- "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
+- "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
 Throughout this module:
-- Functions dealing with "WorkflowTemplate" handle template definitions
-- Functions dealing with "Workflow" handle executed instances/runs
+- "workflow" refers to WorkflowTemplate (kind="WorkflowTemplate") - the template definition
+- "workflow_run" refers to Workflow (kind="Workflow") - an executed instance/run
 - The extract_workflow_metadata() function returns fields prefixed with "run_*" for execution data
   and "workflow_*" for workflow-level metadata to clearly distinguish between the two.
 """
@@ -28,20 +28,20 @@ logger = logging.getLogger(__name__)
 
 def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str, Any]]:
     """
-    Process a workflow object into a standardized dictionary format.
+    Process a workflow or workflow_run object into a standardized dictionary format.
 
     Note: There is a naming confusion in the Argo/Kubernetes API:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what we call "Workflow" in UI)
-    - "Workflow" (kind="Workflow") = Executed instance/run (what we call "WorkflowRun" in UI)
+    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
+    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
     
     This function handles both types and returns standardized metadata dictionaries.
 
     Args:
-        result: The workflow object from PyAtlan (WorkflowSearchResult or Workflow).
-        include_dag: If True, includes the workflow DAG in the output. This only applies if the input is a WorkflowTemplate.
-            For Workflow instances (runs), this parameter has no effect.
+        result: The workflow or workflow_run object from PyAtlan (WorkflowSearchResult or Workflow).
+        include_dag: If True, includes the workflow DAG in the output. This only applies if the input is a workflow (WorkflowTemplate).
+            For workflow_run instances, this parameter has no effect.
     Returns:
-        Optional[Dict[str, Any]]: Serialized workflow dictionary using Pydantic's dict() method.
+        Optional[Dict[str, Any]]: Serialized workflow or workflow_run dictionary using Pydantic's dict() method.
             Returns None for unsupported workflow types. Returns empty dict {} if result is None or conversion fails.
     """
     if result is None:
@@ -68,18 +68,18 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
 
 def extract_workflow_template_metadata(dict_repr: Dict[str, Any], include_dag: bool = False) -> Dict[str, Any]:
     """
-    Extract useful metadata from an Argo WorkflowTemplate.
+    Extract useful metadata from a workflow (WorkflowTemplate).
 
-    Note: In Argo terminology, "WorkflowTemplate" is the template definition (what users see as "Workflow" in the UI).
-    This function extracts template metadata including package info, source system, certification status, etc.
+    Note: In Argo terminology, "WorkflowTemplate" (kind="WorkflowTemplate") is a workflow (template definition).
+    This function extracts workflow metadata including package info, source system, certification status, etc.
 
     Args:
-        dict_repr: The workflow template object from the workflows array (kind="WorkflowTemplate")
+        dict_repr: The workflow object from the workflows array (kind="WorkflowTemplate")
         include_dag: If True, includes the workflow DAG (workflow_steps and workflow_spec) in the output.
             When False, returns only essential metadata fields.
 
     Returns:
-        Dictionary containing extracted template metadata with fields like:
+        Dictionary containing extracted workflow metadata with fields like:
             - template_name, package_name, package_version
             - source_system, source_category, workflow_type
             - certified, verified flags
@@ -121,20 +121,20 @@ def extract_workflow_template_metadata(dict_repr: Dict[str, Any], include_dag: b
 
 def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extract comprehensive metadata from a Workflow (executed instance/run).
+    Extract comprehensive metadata from a workflow_run (Workflow executed instance/run).
 
-    Note: In Argo terminology, "Workflow" (kind="Workflow") is an executed instance/run 
-    (what users see as "WorkflowRun" in the UI). This is different from "WorkflowTemplate".
+    Note: In Argo terminology, "Workflow" (kind="Workflow") is a workflow_run (executed instance/run).
+    This is different from "WorkflowTemplate" which is a workflow (template definition).
 
     The returned dictionary uses a two-tier naming convention:
     - Fields prefixed with "run_*" contain execution-specific metadata (phase, timing, resource usage)
     - Fields prefixed with "workflow_*" contain workflow-level metadata (template reference, package, creator)
 
     Args:
-        dict_repr: The workflow object dictionary representation (kind="Workflow")
+        dict_repr: The workflow_run object dictionary representation (kind="Workflow")
 
     Returns:
-        Dictionary containing comprehensive workflow run metadata with fields:
+        Dictionary containing comprehensive workflow_run metadata with fields:
             Run Metadata (execution-specific):
             - run_id: Unique identifier for this run
             - run_phase: Execution phase (Succeeded, Running, Failed, etc.)
@@ -143,7 +143,7 @@ def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
             - run_cpu_usage, run_memory_usage: Resource usage
             
             Workflow Metadata (workflow-level):
-            - workflow_id: Reference to the workflow template used
+            - workflow_id: Reference to the workflow (template) used
             - workflow_package_name: Package identifier
             - workflow_cron_schedule, workflow_cron_timezone: Scheduling info
             - workflow_creator_*, workflow_modifier_*: Ownership information
@@ -191,7 +191,7 @@ def get_workflow_package_names() -> List[str]:
 
 def get_workflows_by_type(workflow_package_name: Union[WorkflowPackage, str], max_results: int = 10) -> Dict[str, Any]:
     """
-    Retrieve workflows by type (workflow package name). Note: Only workflows that have been run will be found.
+    Retrieve workflows (WorkflowTemplate) by type (workflow package name).
 
     Args:
         workflow_package_name (Union[WorkflowPackage, str]): Workflow package type (e.g., WorkflowPackage.SNOWFLAKE or "atlan-snowflake").
@@ -199,7 +199,7 @@ def get_workflows_by_type(workflow_package_name: Union[WorkflowPackage, str], ma
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflows: List of workflows with their configurations
+            - workflows: List of workflows (WorkflowTemplate) with their configurations
             - total: Total count of workflows
             - error: None if no error occurred, otherwise the error message
 
@@ -247,14 +247,14 @@ def get_workflows_by_type(workflow_package_name: Union[WorkflowPackage, str], ma
 
 def get_workflow_by_id(id: str) -> Dict[str, Any]:
     """
-    Retrieve a specific workflow by its ID. Note: Only workflows that have been run will be found.
+    Retrieve a specific workflow (WorkflowTemplate) by its ID.
 
     Args:
         id (str): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflow: The workflow object with its configuration, or None if not found
+            - workflow: The workflow (WorkflowTemplate) object with its configuration, or None if not found
             - error: None if no error occurred, otherwise the error message
 
     Examples:
@@ -304,26 +304,26 @@ def get_workflow_runs(
     size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Retrieve all workflow runs for a specific workflow and phase.
+    Retrieve all workflow_runs for a specific workflow and phase.
 
     Args:
-        workflow_name (str): Name of the workflow as displayed in the UI (e.g., 'atlan-snowflake-miner-1714638976').
-        workflow_phase (Union[AtlanWorkflowPhase, str]): Phase of the workflow (e.g., Succeeded, Running, Failed).
+        workflow_name (str): Name of the workflow (template) as displayed in the UI (e.g., 'atlan-snowflake-miner-1714638976').
+        workflow_phase (Union[AtlanWorkflowPhase, str]): Phase of the workflow_run (e.g., Succeeded, Running, Failed).
         from_ (int, optional): Starting index of the search results. Defaults to 0.
         size (int, optional): Maximum number of search results to return. Defaults to 100.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - runs: List of workflow runs with their details
-            - total: Total count of runs
+            - runs: List of workflow_runs with their details
+            - total: Total count of workflow_runs
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded workflow runs
+        # Get succeeded workflow_runs
         from pyatlan.model.enums import AtlanWorkflowPhase
         result = get_workflow_runs("atlan-snowflake-miner-1714638976", AtlanWorkflowPhase.SUCCESS)
 
-        # Get running workflows
+        # Get running workflow_runs
         result = get_workflow_runs("atlan-snowflake-miner-1714638976", "Running")
     """
     logger.info(f"Retrieving workflow runs: workflow_name={workflow_name}, phase={workflow_phase}, from_={from_}, size={size}")
@@ -399,60 +399,6 @@ def get_workflow_runs(
         }
 
 
-def get_workflow_run_by_id(id: str) -> Dict[str, Any]:
-    """
-    Find workflow runs based on their ID. Note: Only workflow runs will be found.
-
-    Args:
-        id (str): The ID of the workflow run to find (e.g., 'atlan-snowflake-miner-1714638976-t7s8b').
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - run: The workflow run object with its details, or None if not found
-            - error: None if no error occurred, otherwise the error message
-
-    Examples:
-        # Get a specific workflow run
-        result = get_workflow_run_by_id("atlan-snowflake-miner-1714638976-t7s8b")
-    """
-    logger.info(f"Retrieving workflow run with ID: {id}")
-
-    try:
-        if not id:
-            raise ValueError("id cannot be empty")
-
-        client = get_atlan_client()
-
-        # Retrieve workflow run using the pyatlan SDK
-        logger.debug(f"Calling client.workflow.find_run_by_id() with id={id}")
-        run = client.workflow.find_run_by_id(id=id)
-
-        if run is None:
-            logger.warning(f"Workflow run with ID '{id}' not found")
-            return {
-                "run": None,
-                "error": f"Workflow run with ID '{id}' not found",
-            }
-
-        logger.info(f"Successfully retrieved workflow run with ID: {id}")
-
-        # Process the run result using _result_to_dict for proper serialization
-        processed_run = _result_to_dict(run, include_dag=True)
-
-        return {
-            "run": processed_run,
-            "error": None,
-        }
-
-    except Exception as e:
-        error_msg = f"Failed to retrieve workflow run with ID '{id}': {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return {
-            "run": None,
-            "error": error_msg,
-        }
-
-
 def get_workflow_runs_by_status_and_time_range(
     status: Union[List[AtlanWorkflowPhase], List[str]],
     started_at: Optional[str] = None,
@@ -461,10 +407,10 @@ def get_workflow_runs_by_status_and_time_range(
     size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Retrieve workflow runs based on their status and time range.
+    Retrieve workflow_runs based on their status and time range.
 
     Args:
-        status (Union[List[AtlanWorkflowPhase], List[str]]): List of workflow phases to filter by
+        status (Union[List[AtlanWorkflowPhase], List[str]]): List of workflow_run phases to filter by
             (e.g., ['Succeeded', 'Failed'] or [AtlanWorkflowPhase.SUCCESS, AtlanWorkflowPhase.FAILED]).
         started_at (str, optional): Lower bound on 'status.startedAt' (e.g., 'now-2h', '2024-01-01T00:00:00Z').
         finished_at (str, optional): Lower bound on 'status.finishedAt' (e.g., 'now-1h', '2024-01-01T00:00:00Z').
@@ -473,19 +419,19 @@ def get_workflow_runs_by_status_and_time_range(
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - runs: List of workflow runs with their details
-            - total: Total count of runs
+            - runs: List of workflow_runs with their details
+            - total: Total count of workflow_runs
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded runs from the last 2 hours
+        # Get succeeded workflow_runs from the last 2 hours
         from pyatlan.model.enums import AtlanWorkflowPhase
         result = get_workflow_runs_by_status_and_time_range(
             status=[AtlanWorkflowPhase.SUCCESS],
             started_at="now-2h"
         )
 
-        # Get failed runs with both time filters
+        # Get failed workflow_runs with both time filters
         result = get_workflow_runs_by_status_and_time_range(
             status=["Failed"],
             started_at="now-24h",

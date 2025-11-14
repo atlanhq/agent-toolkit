@@ -16,7 +16,6 @@ from tools import (
     get_workflows_by_type,
     get_workflow_by_id,
     get_workflow_runs,
-    get_workflow_run_by_id,
     get_workflow_runs_by_status_and_time_range,
     UpdatableAttribute,
     CertificateStatus,
@@ -932,27 +931,24 @@ def get_workflow_package_names_tool() -> List[str]:
 @mcp.tool()
 def get_workflows_by_type_tool(workflow_package_name: str, max_results: int = 10) -> Dict[str, Any]:
     """
-    Retrieve workflows by workflow package name.
+    Retrieve workflows (WorkflowTemplate) by workflow package name.
 
     Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what users see as "Workflow" in UI)
-    - "Workflow" (kind="Workflow") = Executed instance/run (what users see as "WorkflowRun" in UI)
+    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
+    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
-    This tool primarily retrieves executed workflow instances (Workflow kind) that have been run.
-    It may occasionally return WorkflowTemplate definitions if they are included in the search results.
-
-    IMPORTANT: This tool returns only metadata and execution status. It does NOT return full workflow
+    IMPORTANT: This tool returns only basic metadata. It does NOT return full workflow
     instructions, steps, or transformations. To get complete workflow details including all steps and
     transformations, use get_workflow_by_id_tool instead.
 
+    Note: This tool only returns workflows (WorkflowTemplate), not workflow_runs. 
+    To get workflow_run information, use functions that start with get_workflow_run.
+
     When to use this tool:
     - Use when you need to list multiple workflows by package type
-    - Use when you only need metadata (status, timing, resource usage) without full workflow details
+    - Use when you only need metadata (package info, certification status) without full workflow details
     - Do NOT use if you need the complete workflow specification with all steps and transformations
-
-    The returned workflows can be of two types:
-    1. Workflow (kind="Workflow"): An executed workflow instance/run with execution status, timing, and resource usage.
-    2. WorkflowTemplate (kind="WorkflowTemplate"): A template definition (if templates are included in results).
+    - Do NOT use if you need workflow_run (execution) information
 
     Args:
         workflow_package_name (str): The workflow package name (e.g., 'atlan-snowflake', 'atlan-bigquery', 'SNOWFLAKE').
@@ -961,38 +957,16 @@ def get_workflows_by_type_tool(workflow_package_name: str, max_results: int = 10
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflows: List of workflow dictionaries. Each workflow contains:
-                For Workflow type:
-                    Run Metadata:
-                    - run_id: Unique identifier for this workflow run
-                    - run_phase: Execution phase (Succeeded, Running, Failed, etc.)
-                    - run_started_at: When the workflow run started
-                    - run_finished_at: When the workflow run finished
-                    - run_estimated_duration: Estimated execution duration
-                    - run_progress: Progress indicator
-                    - run_cpu_usage: CPU resource usage
-                    - run_memory_usage: Memory resource usage
-                    
-                    Workflow Metadata:
-                    - workflow_id: Reference to the workflow template used
-                    - workflow_package_name: Package identifier
-                    - workflow_cron_schedule: Cron schedule if scheduled
-                    - workflow_cron_timezone: Timezone for cron schedule
-                    - workflow_creator_email, workflow_creator_username: Creator information
-                    - workflow_modifier_email, workflow_modifier_username: Last modifier information
-                    - workflow_creation_timestamp: When the workflow was created
-                    - workflow_archiving_status: Archiving status
-                For WorkflowTemplate type:
-                    - template_name: Name of the template
-                    - package_name, package_version: Package information
-                    - source_system, source_category, workflow_type: Source information
-                    - certified, verified: Certification status
-                    - creator_email, creator_username: Creator information
-                    - modifier_email, modifier_username: Last modifier information
-                    - creation_timestamp: When template was created
-                    - package_author, package_description, package_repository: Package metadata
+            - workflows: List of workflow (WorkflowTemplate) dictionaries. Each workflow contains:
+                - template_name: Name of the template
+                - package_name, package_version: Package information
+                - source_system, source_category, workflow_type: Source information
+                - certified, verified: Certification status
+                - creator_email, creator_username: Creator information
+                - modifier_email, modifier_username: Last modifier information
+                - creation_timestamp: When template was created
+                - package_author, package_description, package_repository: Package metadata
             - total: Total count of workflows found
-            - error: None if no error occurred, otherwise the error message
 
     Examples:
         # Get Snowflake workflows
@@ -1010,11 +984,11 @@ def get_workflows_by_type_tool(workflow_package_name: str, max_results: int = 10
 @mcp.tool()
 def get_workflow_by_id_tool(id: str) -> Dict[str, Any]:
     """
-    Retrieve a specific workflow by its ID.
+    Retrieve a specific workflow (WorkflowTemplate) by its ID.
 
     Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what users see as "Workflow" in UI)
-    - "Workflow" (kind="Workflow") = Executed instance/run (what users see as "WorkflowRun" in UI)
+    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
+    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
     IMPORTANT: This is the ONLY tool that returns full workflow instructions with all steps and transformations.
     All other workflow tools (get_workflows_by_type_tool, get_workflow_runs_tool, etc.) return only metadata
@@ -1023,55 +997,42 @@ def get_workflow_by_id_tool(id: str) -> Dict[str, Any]:
     This tool uses include_dag=True internally, which means it returns the complete workflow specification
     including the workflow DAG (directed acyclic graph), all steps, transformations, and execution details.
 
-    Note: Only workflows that have been run will be found (Workflow instances with kind="Workflow", not WorkflowTemplates).
+    Note: This tool only returns workflows (WorkflowTemplate), not workflow_runs.
+    To get workflow_run information, use functions that start with get_workflow_run.
 
     When to use this tool:
     - Use when you need the COMPLETE workflow definition with all steps and transformations
     - Use when you need to understand the full workflow execution flow
     - Use when you need workflow_spec and workflow_steps data
     - Do NOT use if you only need basic metadata (use other workflow tools instead)
+    - Do NOT use if you need workflow_run (execution) information
 
     Args:
         id (str): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflow: The workflow dictionary with comprehensive metadata, or None if not found.
+            - workflow: The workflow (WorkflowTemplate) dictionary with comprehensive metadata, or None if not found.
                 The workflow dictionary contains:
-                    Run Metadata:
-                    - run_id: Unique identifier for this workflow run
-                    - run_phase: Execution phase (Succeeded, Running, Failed, etc.)
-                    - run_started_at: When the workflow run started (ISO timestamp)
-                    - run_finished_at: When the workflow run finished (ISO timestamp)
-                    - run_estimated_duration: Estimated execution duration
-                    - run_progress: Progress indicator (e.g., "1/3")
-                    - run_cpu_usage: CPU resource usage duration
-                    - run_memory_usage: Memory resource usage duration
-                    
-                    Workflow Metadata:
-                    - workflow_id: Reference to the workflow template used
-                    - workflow_package_name: Package identifier
-                    - workflow_cron_schedule: Cron schedule if scheduled
-                    - workflow_cron_timezone: Timezone for cron schedule
-                    - workflow_creator_id, workflow_creator_email, workflow_creator_username: Creator information
-                    - workflow_modifier_id, workflow_modifier_email, workflow_modifier_username: Last modifier information
-                    - workflow_creation_timestamp: When the workflow was created
-                    - workflow_archiving_status: Archiving status
-                    
-                    - Full workflow specification including all steps, transformations, and execution details
+                    - template_name: Name of the template
+                    - package_name, package_version: Package information
+                    - source_system, source_category, workflow_type: Source information
+                    - certified, verified: Certification status
+                    - creator_email, creator_username: Creator information
+                    - modifier_email, modifier_username: Last modifier information
+                    - creation_timestamp: When template was created
+                    - package_author, package_description, package_repository: Package metadata
+                    - workflow_steps: Workflow steps (when include_dag=True)
+                    - workflow_spec: Full workflow specification (when include_dag=True)
             - error: None if no error occurred, otherwise the error message
 
     Examples:
         # Get a specific workflow by ID to see full workflow instructions
         result = get_workflow_by_id_tool("atlan-snowflake-miner-1714638976")
         
-        # Check if workflow succeeded
-        if result.get("workflow", {}).get("run_phase") == "Succeeded":
-            print("Workflow completed successfully")
-        
         # Access full workflow steps and transformations
         workflow = result.get("workflow")
-        # The workflow object contains complete workflow definition
+        # The workflow object contains complete workflow definition with workflow_steps and workflow_spec
     """
     return get_workflow_by_id(id=id)
 
@@ -1084,48 +1045,48 @@ def get_workflow_runs_tool(
     size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Retrieve all workflow runs for a specific workflow and phase.
+    Retrieve all workflow_runs for a specific workflow and phase.
 
     Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what users see as "Workflow" in UI)
-    - "Workflow" (kind="Workflow") = Executed instance/run (what users see as "WorkflowRun" in UI)
+    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
+    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
-    This tool returns workflow run instances (kind="Workflow") that match the specified workflow template name and phase.
-    Each run contains execution details, timing, resource usage, and status information.
+    This tool returns workflow_run instances (kind="Workflow") that match the specified workflow name and phase.
+    Each workflow_run contains execution details, timing, resource usage, and status information.
 
     IMPORTANT: This tool returns only metadata and execution status. It does NOT return full workflow
     instructions, steps, or transformations. To get complete workflow details including all steps and
     transformations, use get_workflow_by_id_tool instead.
 
     When to use this tool:
-    - Use when you need to find all runs of a specific workflow template by execution phase
-    - Use when you need execution metadata (status, timing, resource usage) for multiple runs
-    - Use when you need to filter runs by phase (Succeeded, Failed, Running, etc.)
+    - Use when you need to find all workflow_runs of a specific workflow by execution phase
+    - Use when you need execution metadata (status, timing, resource usage) for multiple workflow_runs
+    - Use when you need to filter workflow_runs by phase (Succeeded, Failed, Running, etc.)
     - Do NOT use if you need the complete workflow specification (use get_workflow_by_id_tool instead)
 
     Args:
-        workflow_name (str): Name of the workflow template as displayed in the UI (e.g., 'atlan-snowflake-miner-1714638976').
-            This refers to the WorkflowTemplate name, not individual run IDs.
-        workflow_phase (str): Phase of the workflow. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
+        workflow_name (str): Name of the workflow (template) as displayed in the UI (e.g., 'atlan-snowflake-miner-1714638976').
+            This refers to the workflow name, not individual workflow_run IDs.
+        workflow_phase (str): Phase of the workflow_run. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
             Case-insensitive matching is supported.
         from_ (int, optional): Starting index of the search results for pagination. Defaults to 0.
         size (int, optional): Maximum number of search results to return. Defaults to 100.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - runs: List of workflow run dictionaries. Each run contains:
+            - runs: List of workflow_run dictionaries. Each workflow_run contains:
                 Run Metadata:
-                - run_id: Unique identifier for this workflow run
+                - run_id: Unique identifier for this workflow_run
                 - run_phase: Execution phase (Succeeded, Running, Failed, etc.)
-                - run_started_at: When the workflow run started (ISO timestamp)
-                - run_finished_at: When the workflow run finished (ISO timestamp, None if still running)
+                - run_started_at: When the workflow_run started (ISO timestamp)
+                - run_finished_at: When the workflow_run finished (ISO timestamp, None if still running)
                 - run_estimated_duration: Estimated execution duration
                 - run_progress: Progress indicator (e.g., "1/3")
                 - run_cpu_usage: CPU resource usage duration
                 - run_memory_usage: Memory resource usage duration
                 
                 Workflow Metadata:
-                - workflow_id: Reference to the workflow template used
+                - workflow_id: Reference to the workflow (template) used
                 - workflow_package_name: Package identifier
                 - workflow_cron_schedule: Cron schedule if scheduled
                 - workflow_cron_timezone: Timezone for cron schedule
@@ -1133,24 +1094,24 @@ def get_workflow_runs_tool(
                 - workflow_modifier_id, workflow_modifier_email, workflow_modifier_username: Last modifier information
                 - workflow_creation_timestamp: When the workflow was created
                 - workflow_archiving_status: Archiving status
-            - total: Total count of runs matching the criteria
+            - total: Total count of workflow_runs matching the criteria
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded workflow runs
+        # Get succeeded workflow_runs
         result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", "Succeeded")
 
-        # Get running workflows
+        # Get running workflow_runs
         result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", "Running")
 
-        # Get failed workflows with pagination
+        # Get failed workflow_runs with pagination
         result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", "Failed", from_=0, size=50)
         
-        # Analyze run durations
+        # Analyze workflow_run durations
         runs = result.get("runs", [])
         for run in runs:
             if run.get("run_finished_at") and run.get("run_started_at"):
-                print(f"Run {run['run_id']} took {run.get('run_estimated_duration')}")
+                print(f"Workflow run {run['run_id']} took {run.get('run_estimated_duration')}")
     """
     return get_workflow_runs(
         workflow_name=workflow_name,
@@ -1158,71 +1119,6 @@ def get_workflow_runs_tool(
         from_=from_,
         size=size,
     )
-
-
-@mcp.tool()
-def get_workflow_run_by_id_tool(id: str) -> Dict[str, Any]:
-    """
-    Find a workflow run by its ID.
-
-    Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what users see as "Workflow" in UI)
-    - "Workflow" (kind="Workflow") = Executed instance/run (what users see as "WorkflowRun" in UI)
-
-    This tool retrieves a specific workflow run instance (kind="Workflow") by its unique run ID.
-    Note: Only workflow runs (executed instances) will be found, not templates.
-
-    IMPORTANT: This tool returns only metadata and execution status. It does NOT return full workflow
-    instructions, steps, or transformations. To get complete workflow details including all steps and
-    transformations, use get_workflow_by_id_tool instead.
-
-    When to use this tool:
-    - Use when you have a specific workflow run ID and need its execution details
-    - Use when you need metadata for a single run (status, timing, resource usage)
-    - Do NOT use if you need the complete workflow specification (use get_workflow_by_id_tool instead)
-
-    Args:
-        id (str): The ID of the workflow run to find (e.g., 'atlan-snowflake-miner-1714638976-t7s8b').
-            Workflow run IDs typically include the workflow name followed by a unique suffix.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - run: The workflow run dictionary with comprehensive execution details, or None if not found.
-                The run dictionary contains:
-                    Run Metadata:
-                    - run_id: Unique identifier for this workflow run
-                    - run_phase: Execution phase (Succeeded, Running, Failed, Error, etc.)
-                    - run_started_at: When the workflow run started (ISO timestamp)
-                    - run_finished_at: When the workflow run finished (ISO timestamp, None if still running)
-                    - run_estimated_duration: Estimated execution duration
-                    - run_progress: Progress indicator showing completed steps (e.g., "1/3")
-                    - run_cpu_usage: CPU resource usage duration
-                    - run_memory_usage: Memory resource usage duration
-                    
-                    Workflow Metadata:
-                    - workflow_id: Reference to the workflow template that was used
-                    - workflow_package_name: Package identifier
-                    - workflow_cron_schedule: Cron schedule if scheduled
-                    - workflow_cron_timezone: Timezone for cron schedule
-                    - workflow_creator_id, workflow_creator_email, workflow_creator_username: Creator information
-                    - workflow_modifier_id, workflow_modifier_email, workflow_modifier_username: Last modifier information
-                    - workflow_creation_timestamp: When the workflow was created
-                    - workflow_archiving_status: Whether the workflow is archived
-            - error: None if no error occurred, otherwise the error message
-
-    Examples:
-        # Get a specific workflow run
-        result = get_workflow_run_by_id_tool("atlan-snowflake-miner-1714638976-t7s8b")
-        
-        # Check run status
-        run = result.get("run")
-        if run:
-            print(f"Status: {run.get('run_phase')}")
-            print(f"Duration: {run.get('run_estimated_duration')}")
-            if run.get('run_phase') == 'Failed':
-                print(f"Run ID: {run.get('run_id')}")
-    """
-    return get_workflow_run_by_id(id=id)
 
 
 @mcp.tool()
@@ -1234,13 +1130,13 @@ def get_workflow_runs_by_status_and_time_range_tool(
     size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Retrieve workflow runs based on their status and time range.
+    Retrieve workflow_runs based on their status and time range.
 
     Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = Template definition (what users see as "Workflow" in UI)
-    - "Workflow" (kind="Workflow") = Executed instance/run (what users see as "WorkflowRun" in UI)
+    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
+    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
-    This tool allows you to search for workflow run instances (kind="Workflow") by filtering on their execution status
+    This tool allows you to search for workflow_run instances (kind="Workflow") by filtering on their execution status
     (e.g., Succeeded, Failed, Running) and optionally by time ranges. This is useful for
     monitoring, debugging, and analyzing workflow execution patterns.
 
@@ -1249,45 +1145,45 @@ def get_workflow_runs_by_status_and_time_range_tool(
     transformations, use get_workflow_by_id_tool instead.
 
     When to use this tool:
-    - Use when you need to find runs across multiple workflows filtered by status and time
+    - Use when you need to find workflow_runs across multiple workflows filtered by status and time
     - Use when monitoring workflow execution patterns or analyzing failures
-    - Use when you need execution metadata for runs within a specific time window
+    - Use when you need execution metadata for workflow_runs within a specific time window
     - Do NOT use if you need the complete workflow specification (use get_workflow_by_id_tool instead)
 
     Args:
-        status (List[str]): List of workflow phases to filter by. Common values:
-            - 'Succeeded': Successfully completed workflows
-            - 'Failed': Workflows that failed
-            - 'Running': Currently executing workflows
-            - 'Error': Workflows that encountered errors
-            - 'Pending': Workflows waiting to start
+        status (List[str]): List of workflow_run phases to filter by. Common values:
+            - 'Succeeded': Successfully completed workflow_runs
+            - 'Failed': Workflow_runs that failed
+            - 'Running': Currently executing workflow_runs
+            - 'Error': Workflow_runs that encountered errors
+            - 'Pending': Workflow_runs waiting to start
             Case-insensitive matching is supported. Example: ['Succeeded', 'Failed']
         started_at (str, optional): Lower bound on 'status.startedAt' timestamp. Accepts:
             - Relative time format: 'now-2h', 'now-24h', 'now-7d', 'now-30d'
             - ISO 8601 format: '2024-01-01T00:00:00Z'
-            Filters workflows that started at or after this time.
+            Filters workflow_runs that started at or after this time.
         finished_at (str, optional): Lower bound on 'status.finishedAt' timestamp. Accepts:
             - Relative time format: 'now-1h', 'now-12h'
             - ISO 8601 format: '2024-01-01T00:00:00Z'
-            Filters workflows that finished at or after this time.
+            Filters workflow_runs that finished at or after this time.
         from_ (int, optional): Starting index of the search results for pagination. Defaults to 0.
         size (int, optional): Maximum number of search results to return. Defaults to 100.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - runs: List of workflow run dictionaries matching the criteria. Each run contains:
+            - runs: List of workflow_run dictionaries matching the criteria. Each workflow_run contains:
                 Run Metadata:
-                - run_id: Unique identifier for this workflow run
+                - run_id: Unique identifier for this workflow_run
                 - run_phase: Execution phase (Succeeded, Running, Failed, etc.)
-                - run_started_at: When the workflow run started (ISO timestamp)
-                - run_finished_at: When the workflow run finished (ISO timestamp, None if still running)
+                - run_started_at: When the workflow_run started (ISO timestamp)
+                - run_finished_at: When the workflow_run finished (ISO timestamp, None if still running)
                 - run_estimated_duration: Estimated execution duration
                 - run_progress: Progress indicator (e.g., "1/3")
                 - run_cpu_usage: CPU resource usage duration
                 - run_memory_usage: Memory resource usage duration
                 
                 Workflow Metadata:
-                - workflow_id: Reference to the workflow template used
+                - workflow_id: Reference to the workflow (template) used
                 - workflow_package_name: Package identifier
                 - workflow_cron_schedule: Cron schedule if scheduled
                 - workflow_cron_timezone: Timezone for cron schedule
@@ -1295,17 +1191,17 @@ def get_workflow_runs_by_status_and_time_range_tool(
                 - workflow_modifier_id, workflow_modifier_email, workflow_modifier_username: Last modifier information
                 - workflow_creation_timestamp: When the workflow was created
                 - workflow_archiving_status: Archiving status
-            - total: Total count of runs matching the criteria (may be larger than the returned list if paginated)
+            - total: Total count of workflow_runs matching the criteria (may be larger than the returned list if paginated)
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded runs from the last 2 hours
+        # Get succeeded workflow_runs from the last 2 hours
         result = get_workflow_runs_by_status_and_time_range_tool(
             status=["Succeeded"],
             started_at="now-2h"
         )
 
-        # Get failed runs from the last 24 hours
+        # Get failed workflow_runs from the last 24 hours
         result = get_workflow_runs_by_status_and_time_range_tool(
             status=["Failed"],
             started_at="now-24h"
@@ -1318,14 +1214,14 @@ def get_workflow_runs_by_status_and_time_range_tool(
             finished_at="now-1h"
         )
 
-        # Get running workflows
+        # Get running workflow_runs
         result = get_workflow_runs_by_status_and_time_range_tool(
             status=["Running"]
         )
         
         # Analyze failure rates
         failed_runs = [r for r in result.get("runs", []) if r.get("run_phase") == "Failed"]
-        print(f"Found {len(failed_runs)} failed runs in the time range")
+        print(f"Found {len(failed_runs)} failed workflow_runs in the time range")
     """
     return get_workflow_runs_by_status_and_time_range(
         status=status,
