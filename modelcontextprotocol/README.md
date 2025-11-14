@@ -23,12 +23,14 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 
 ## Available Tools
 
-| Tool                      | Description                                                       |
-| ------------------------- | ----------------------------------------------------------------- |
-| `search_assets`           | Search for assets based on conditions                             |
-| `get_assets_by_dsl`       | Retrieve assets using a DSL query                                 |
-| `traverse_lineage`        | Retrieve lineage for an asset                                     |
-| `update_assets`           | Update asset attributes (user description and certificate status) |
+| Tool                      | Description                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `search_assets`           | Search for assets based on conditions                                       |
+| `get_assets_by_dsl`       | Retrieve assets using a DSL query                                           |
+| `traverse_lineage`        | Retrieve lineage for an asset                                               |
+| `update_assets`           | Update asset attributes (user description and certificate status)           |
+| `create_unstructured_asset` | Create a File asset (PDF, Excel, etc.) and optionally set custom metadata |
+| `read_custom_metadata`    | Retrieve one or more custom metadata sets for any asset                     |
 
 ## Running the MCP server
 - There are 2 different ways to run the Atlan MCP server locally
@@ -209,6 +211,62 @@ Want to develop locally? Check out our [Local Build](./docs/LOCAL_BUILD.md) Guid
 - You can also directly create a [GitHub issue](https://github.com/atlanhq/agent-toolkit/issues) and we will answer it for you
 
 ## Troubleshooting
+## Working with unstructured assets
+
+The new `create_unstructured_asset` tool lets your MCP client register documents like PDFs or Excel workbooks as Atlan `File` assets.
+
+Minimum inputs:
+
+```json
+{
+  "name": "Quarterly Financials",
+  "connection_qualified_name": "default/s3",
+  "file_type": "excel"
+}
+```
+
+Optional fields:
+
+- `file_path`: Provide a local path or object storage URI so teammates can locate the document.
+- `description`: Human friendly summary.
+- `custom_metadata`: Map of custom metadata set names to attribute/value pairs. Example:
+
+```json
+{
+  "custom_metadata": {
+    "Document Details": {
+      "Owner": "finance@acme.com",
+      "Quarter": "Q1 FY26"
+    }
+  }
+}
+```
+
+The response contains the Atlan GUID and qualified name so you can link follow-up actions (add terms, tag, etc.).
+
+## Reading custom metadata
+
+Use the `read_custom_metadata` tool to pull template values for any asset:
+
+```json
+{
+  "guid": "12345678-90ab-cdef-1234-567890abcdef",
+  "custom_metadata_sets": [
+    "Document Details",
+    "Data Sensitivity"
+  ],
+  "include_unset": true
+}
+```
+
+Parameters:
+
+- Supply either `guid` **or** `qualified_name`.
+- `asset_type` defaults to `Asset`, but you can pass a concrete type like `"File"` or `"Table"` for stricter validation.
+- When `custom_metadata_sets` is omitted, all custom metadata on the asset is returned.
+- `include_unset` fills in attributes defined on the template but currently blank so you can see everything that is expected.
+
+These additions make it easy for MCP clients to create unstructured documents and inspect their governance metadata without leaving your IDE or chat workflow.
 1. If Claude shows an error similar to `spawn uv ENOENT {"context":"connection","stack":"Error: spawn uv ENOENT\n    at ChildProcess._handle.onexit`, it is most likely [this](https://github.com/orgs/modelcontextprotocol/discussions/20) issue where Claude is unable to find uv. To fix it:
    - Make sure uv is installed and available in your PATH
    - Run `which uv` to verify the installation path

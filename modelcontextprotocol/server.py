@@ -5,6 +5,8 @@ from tools import (
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
+    create_unstructured_asset,
+    read_custom_metadata,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -388,6 +390,90 @@ def update_assets_tool(
         )
     except ValueError as e:
         return {"updated_count": 0, "errors": [str(e)]}
+
+
+@mcp.tool()
+def create_unstructured_asset_tool(
+    name,
+    connection_qualified_name,
+    file_type,
+    file_path=None,
+    description=None,
+    custom_metadata=None,
+):
+    """
+    Create a File asset for an unstructured document such as a PDF or Excel workbook.
+
+    Args:
+        name (str): Display name for the file asset (for example, "Customer Playbook.pdf").
+        connection_qualified_name (str): Qualified name of the connection that should own the asset.
+        file_type (str): Supported values include "pdf", "excel", "xls", "xlsx", "xlsm".
+        file_path (str, optional): Optional file system path or object storage URI for reference.
+        description (str, optional): Optional human-readable description.
+        custom_metadata (dict, optional): Mapping of custom metadata set names to attribute/value pairs.
+
+    Returns:
+        Dict[str, Any]: Information about the created asset including the assigned GUID.
+
+    Example:
+        create_unstructured_asset_tool(
+            name="Quarterly Financials",
+            connection_qualified_name="default/s3",
+            file_type="excel",
+            file_path="s3://corp-data/finance/q1.xlsx",
+            custom_metadata={
+                "Document Details": {"Owner": "finance@acme.com", "Quarter": "Q1"}
+            }
+        )
+    """
+
+    return create_unstructured_asset(
+        name=name,
+        connection_qualified_name=connection_qualified_name,
+        file_type=file_type,
+        file_path=file_path,
+        description=description,
+        custom_metadata=custom_metadata,
+    )
+
+
+@mcp.tool()
+def read_custom_metadata_tool(
+    guid=None,
+    qualified_name=None,
+    asset_type="Asset",
+    custom_metadata_sets=None,
+    include_unset=False,
+):
+    """
+    Retrieve custom metadata values for an asset.
+
+    Args:
+        guid (str, optional): GUID of the asset.
+        qualified_name (str, optional): Qualified name of the asset (required if GUID is not provided).
+        asset_type (str): Atlan asset type name (e.g., "File", "Table"). Defaults to "Asset".
+        custom_metadata_sets (Union[str, List[str]], optional): Specific custom metadata set names to read.
+            When omitted, all custom metadata sets on the asset are returned.
+        include_unset (bool): Include attributes that exist on the template but do not yet have values.
+
+    Returns:
+        Dict[str, Any]: Asset identifiers and the requested custom metadata.
+
+    Example:
+        read_custom_metadata_tool(
+            guid="12345678-90ab-cdef-1234-567890abcdef",
+            custom_metadata_sets=["Document Details", "Data Sensitivity"],
+            include_unset=True,
+        )
+    """
+
+    return read_custom_metadata(
+        guid=guid,
+        qualified_name=qualified_name,
+        asset_type=asset_type,
+        custom_metadata_sets=custom_metadata_sets,
+        include_unset=include_unset,
+    )
 
 
 def main():
