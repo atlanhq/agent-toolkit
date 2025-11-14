@@ -146,6 +146,7 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossaries` | Create glossaries                                                 |
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
+| `create_dq_rules`   | Create data quality rules (column-level, table-level, custom SQL) |
 | `query_asset`       | Execute SQL queries on table/view assets                          |
 
 ## Tool Access Control
@@ -212,13 +213,14 @@ You can restrict any of the following tools:
 - `create_glossaries` - Glossary creation
 - `create_glossary_categories` - Category creation
 - `create_glossary_terms` - Term creation
+- `create_dq_rules_tool` - Data quality rule creation
 
 ### Common Use Cases
 
 #### Read-Only Access
 Restrict all write operations:
 ```
-RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms
+RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool
 ```
 
 #### Disable DSL Queries
@@ -230,7 +232,7 @@ RESTRICTED_TOOLS=get_assets_by_dsl_tool
 #### Minimal Access
 Allow only basic search:
 ```
-RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms
+RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool
 ```
 
 ### How It Works
