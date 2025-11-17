@@ -17,6 +17,7 @@ from .models import (
     GlossaryCategory,
     GlossaryTerm,
 )
+from .tags import retrieve_tag_by_name
 
 __all__ = [
     "search_assets",
@@ -34,4 +35,5 @@ __all__ = [
     "Glossary",
     "GlossaryCategory",
     "GlossaryTerm",
+    "retrieve_tag_by_name",
 ]
