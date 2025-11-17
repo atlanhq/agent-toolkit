@@ -23,60 +23,10 @@ from client import get_atlan_client
 from .models import (
     DQRuleSpecification,
     DQRuleType,
-    DQAlertPriority,
-    DQThresholdCompareOperator,
-    DQDimension,
-    DQThresholdUnit,
     DQRuleConditionType,
 )
 
 logger = logging.getLogger(__name__)
-
-
-# Mapping dictionaries to convert our enums to PyAtlan enums
-ALERT_PRIORITY_MAP = {
-    DQAlertPriority.LOW: DataQualityRuleAlertPriority.LOW,
-    DQAlertPriority.NORMAL: DataQualityRuleAlertPriority.NORMAL,
-    DQAlertPriority.URGENT: DataQualityRuleAlertPriority.URGENT,
-}
-
-THRESHOLD_OPERATOR_MAP = {
-    DQThresholdCompareOperator.EQUAL: DataQualityRuleThresholdCompareOperator.EQUAL,
-    DQThresholdCompareOperator.GREATER_THAN: DataQualityRuleThresholdCompareOperator.GREATER_THAN,
-    DQThresholdCompareOperator.GREATER_THAN_EQUAL: DataQualityRuleThresholdCompareOperator.GREATER_THAN_EQUAL,
-    DQThresholdCompareOperator.LESS_THAN: DataQualityRuleThresholdCompareOperator.LESS_THAN,
-    DQThresholdCompareOperator.LESS_THAN_EQUAL: DataQualityRuleThresholdCompareOperator.LESS_THAN_EQUAL,
-    DQThresholdCompareOperator.BETWEEN: DataQualityRuleThresholdCompareOperator.BETWEEN,
-}
-
-DIMENSION_MAP = {
-    DQDimension.COMPLETENESS: DataQualityDimension.COMPLETENESS,
-    DQDimension.VALIDITY: DataQualityDimension.VALIDITY,
-    DQDimension.UNIQUENESS: DataQualityDimension.UNIQUENESS,
-    DQDimension.TIMELINESS: DataQualityDimension.TIMELINESS,
-    DQDimension.VOLUME: DataQualityDimension.VOLUME,
-    DQDimension.ACCURACY: DataQualityDimension.ACCURACY,
-    DQDimension.CONSISTENCY: DataQualityDimension.CONSISTENCY,
-}
-
-THRESHOLD_UNIT_MAP = {
-    DQThresholdUnit.DAYS: DataQualityRuleThresholdUnit.DAYS,
-    DQThresholdUnit.HOURS: DataQualityRuleThresholdUnit.HOURS,
-    DQThresholdUnit.MINUTES: DataQualityRuleThresholdUnit.MINUTES,
-}
-
-CONDITION_TYPE_MAP = {
-    DQRuleConditionType.STRING_LENGTH_EQUALS: DataQualityRuleTemplateConfigRuleConditions.STRING_LENGTH_EQUALS,
-    DQRuleConditionType.STRING_LENGTH_BETWEEN: DataQualityRuleTemplateConfigRuleConditions.STRING_LENGTH_BETWEEN,
-    DQRuleConditionType.STRING_LENGTH_GREATER_THAN: DataQualityRuleTemplateConfigRuleConditions.STRING_LENGTH_GREATER_THAN,
-    DQRuleConditionType.STRING_LENGTH_GREATER_THAN_EQUALS: DataQualityRuleTemplateConfigRuleConditions.STRING_LENGTH_GREATER_THAN_EQUALS,
-    DQRuleConditionType.STRING_LENGTH_LESS_THAN: DataQualityRuleTemplateConfigRuleConditions.STRING_LENGTH_LESS_THAN,
-    DQRuleConditionType.STRING_LENGTH_LESS_THAN_EQUALS: DataQualityRuleTemplateConfigRuleConditions.STRING_LENGTH_LESS_THAN_EQUALS,
-    DQRuleConditionType.REGEX_MATCH: DataQualityRuleTemplateConfigRuleConditions.REGEX_MATCH,
-    DQRuleConditionType.REGEX_NOT_MATCH: DataQualityRuleTemplateConfigRuleConditions.REGEX_NOT_MATCH,
-    DQRuleConditionType.IN_LIST: DataQualityRuleTemplateConfigRuleConditions.IN_LIST,
-    DQRuleConditionType.NOT_IN_LIST: DataQualityRuleTemplateConfigRuleConditions.NOT_IN_LIST,
-}
 
 # Rule types that require column_qualified_name
 COLUMN_LEVEL_RULES = {
@@ -185,7 +135,6 @@ def create_dq_rules(
                 error_msg = f"Error creating {spec.rule_type.value} rule: {str(e)}"
                 result["errors"].append(error_msg)
                 logger.error(error_msg)
-                logger.exception("Exception details:")
 
         # Bulk save all created rules
         if created_assets:
@@ -214,7 +163,6 @@ def create_dq_rules(
     except Exception as e:
         error_msg = f"Error in bulk rule creation: {str(e)}"
         logger.error(error_msg)
-        logger.exception("Exception details:")
         result["errors"].append(error_msg)
         return result
 
@@ -283,17 +231,19 @@ def _create_column_level_rule(spec: DQRuleSpecification, client) -> DataQualityR
             qualified_name=spec.column_qualified_name
         ),
         "threshold_value": spec.threshold_value,
-        "alert_priority": ALERT_PRIORITY_MAP[spec.alert_priority],
+        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority.name],
     }
 
     # Add optional parameters
     if spec.threshold_compare_operator:
-        params["threshold_compare_operator"] = THRESHOLD_OPERATOR_MAP[
-            spec.threshold_compare_operator
+        params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
+            spec.threshold_compare_operator.name
         ]
 
     if spec.threshold_unit:
-        params["threshold_unit"] = THRESHOLD_UNIT_MAP[spec.threshold_unit]
+        params["threshold_unit"] = DataQualityRuleThresholdUnit[
+            spec.threshold_unit.name
+        ]
 
     if spec.row_scope_filtering_enabled:
         params["row_scope_filtering_enabled"] = spec.row_scope_filtering_enabled
@@ -332,13 +282,13 @@ def _create_table_level_rule(spec: DQRuleSpecification, client) -> DataQualityRu
         "rule_type": spec.rule_type.value,
         "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
         "threshold_value": spec.threshold_value,
-        "alert_priority": ALERT_PRIORITY_MAP[spec.alert_priority],
+        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority.name],
     }
 
     # Add optional parameters
     if spec.threshold_compare_operator:
-        params["threshold_compare_operator"] = THRESHOLD_OPERATOR_MAP[
-            spec.threshold_compare_operator
+        params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
+            spec.threshold_compare_operator.name
         ]
 
     # Create the rule
@@ -371,14 +321,14 @@ def _create_custom_sql_rule(spec: DQRuleSpecification, client) -> DataQualityRul
         "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
         "custom_sql": spec.custom_sql,
         "threshold_value": spec.threshold_value,
-        "alert_priority": ALERT_PRIORITY_MAP[spec.alert_priority],
-        "dimension": DIMENSION_MAP[spec.dimension],
+        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority.name],
+        "dimension": DataQualityDimension[spec.dimension.name],
     }
 
     # Add optional parameters
     if spec.threshold_compare_operator:
-        params["threshold_compare_operator"] = THRESHOLD_OPERATOR_MAP[
-            spec.threshold_compare_operator
+        params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
+            spec.threshold_compare_operator.name
         ]
 
     if spec.description:
@@ -407,12 +357,16 @@ def _build_rule_conditions(conditions: List) -> Any:
     for condition in conditions:
         # Handle both dict and object formats
         if isinstance(condition, dict):
-            condition_type = CONDITION_TYPE_MAP[DQRuleConditionType(condition["type"])]
+            condition_type = DataQualityRuleTemplateConfigRuleConditions[
+                DQRuleConditionType(condition["type"]).name
+            ]
             value = condition.get("value")
             min_value = condition.get("min_value")
             max_value = condition.get("max_value")
         else:
-            condition_type = CONDITION_TYPE_MAP[condition.type]
+            condition_type = DataQualityRuleTemplateConfigRuleConditions[
+                condition.type.name
+            ]
             value = condition.value
             min_value = condition.min_value
             max_value = condition.max_value

@@ -31,12 +31,14 @@ source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
     { name = "pyatlan" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", specifier = "==2.13.0.2" },
     { name = "pyatlan", specifier = ">=6.0.1" },
+    { name = "uvicorn", specifier = ">=0.35.0" },
 ]
 
 [[package]]
