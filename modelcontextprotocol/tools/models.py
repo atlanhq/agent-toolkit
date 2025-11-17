@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
 from pydantic import BaseModel
 
@@ -110,74 +110,6 @@ class DQRuleType(str, Enum):
     CUSTOM_SQL = "Custom SQL"
 
 
-class DQAlertPriority(str, Enum):
-    """Enum for data quality alert priority levels."""
-
-    LOW = "LOW"
-    NORMAL = "NORMAL"
-    URGENT = "URGENT"
-
-
-class DQDimension(str, Enum):
-    """Enum for data quality dimensions."""
-
-    COMPLETENESS = "COMPLETENESS"
-    VALIDITY = "VALIDITY"
-    UNIQUENESS = "UNIQUENESS"
-    TIMELINESS = "TIMELINESS"
-    VOLUME = "VOLUME"
-    ACCURACY = "ACCURACY"
-    CONSISTENCY = "CONSISTENCY"
-
-
-class DQThresholdCompareOperator(str, Enum):
-    """Enum for threshold comparison operators."""
-
-    EQUAL = "EQUAL"
-    GREATER_THAN = "GREATER_THAN"
-    GREATER_THAN_EQUAL = "GREATER_THAN_EQUAL"
-    LESS_THAN = "LESS_THAN"
-    LESS_THAN_EQUAL = "LESS_THAN_EQUAL"
-    BETWEEN = "BETWEEN"
-
-
-class DQThresholdUnit(str, Enum):
-    """Enum for threshold units (used in Freshness rules)."""
-
-    DAYS = "DAYS"
-    HOURS = "HOURS"
-    MINUTES = "MINUTES"
-
-
-class DQRuleConditionType(str, Enum):
-    """Enum for rule condition types."""
-
-    # String Length conditions
-    STRING_LENGTH_EQUALS = "STRING_LENGTH_EQUALS"
-    STRING_LENGTH_BETWEEN = "STRING_LENGTH_BETWEEN"
-    STRING_LENGTH_GREATER_THAN = "STRING_LENGTH_GREATER_THAN"
-    STRING_LENGTH_GREATER_THAN_EQUALS = "STRING_LENGTH_GREATER_THAN_EQUALS"
-    STRING_LENGTH_LESS_THAN = "STRING_LENGTH_LESS_THAN"
-    STRING_LENGTH_LESS_THAN_EQUALS = "STRING_LENGTH_LESS_THAN_EQUALS"
-
-    # Regex conditions
-    REGEX_MATCH = "REGEX_MATCH"
-    REGEX_NOT_MATCH = "REGEX_NOT_MATCH"
-
-    # Valid Values conditions
-    IN_LIST = "IN_LIST"
-    NOT_IN_LIST = "NOT_IN_LIST"
-
-
-class DQRuleCondition(BaseModel):
-    """Model for data quality rule conditions."""
-
-    type: DQRuleConditionType
-    value: Optional[Union[str, List[str]]] = None
-    min_value: Optional[Union[int, float]] = None
-    max_value: Optional[Union[int, float]] = None
-
-
 class DQRuleSpecification(BaseModel):
     """
     Comprehensive model for creating any type of data quality rule.
@@ -198,18 +130,18 @@ class DQRuleSpecification(BaseModel):
 
     # Threshold configuration
     threshold_value: Optional[Union[int, float]] = None
-    threshold_compare_operator: Optional[DQThresholdCompareOperator] = None
-    threshold_unit: Optional[DQThresholdUnit] = None
+    threshold_compare_operator: Optional[str] = None  # "EQUAL", "GREATER_THAN", etc.
+    threshold_unit: Optional[str] = None  # "DAYS", "HOURS", "MINUTES"
 
     # Alert configuration
-    alert_priority: Optional[DQAlertPriority] = DQAlertPriority.NORMAL
+    alert_priority: Optional[str] = "NORMAL"  # "LOW", "NORMAL", "URGENT"
 
     # Custom SQL specific
     custom_sql: Optional[str] = None
     rule_name: Optional[str] = None
-    dimension: Optional[DQDimension] = None
+    dimension: Optional[str] = None  # "COMPLETENESS", "VALIDITY", etc.
 
     # Advanced configuration
-    rule_conditions: Optional[List[DQRuleCondition]] = None
+    rule_conditions: Optional[List[Dict[str, Any]]] = None
     row_scope_filtering_enabled: Optional[bool] = False
     description: Optional[str] = None

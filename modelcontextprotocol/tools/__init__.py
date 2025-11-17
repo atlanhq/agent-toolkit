@@ -19,12 +19,6 @@ from .models import (
     GlossaryTerm,
     DQRuleType,
     DQRuleSpecification,
-    DQAlertPriority,
-    DQDimension,
-    DQThresholdCompareOperator,
-    DQThresholdUnit,
-    DQRuleConditionType,
-    DQRuleCondition,
 )
 
 __all__ = [
@@ -46,10 +40,4 @@ __all__ = [
     "create_dq_rules",
     "DQRuleType",
     "DQRuleSpecification",
-    "DQAlertPriority",
-    "DQDimension",
-    "DQThresholdCompareOperator",
-    "DQThresholdUnit",
-    "DQRuleConditionType",
-    "DQRuleCondition",
 ]

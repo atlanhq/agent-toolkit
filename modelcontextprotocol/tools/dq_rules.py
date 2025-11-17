@@ -23,7 +23,6 @@ from client import get_atlan_client
 from .models import (
     DQRuleSpecification,
     DQRuleType,
-    DQRuleConditionType,
 )
 
 logger = logging.getLogger(__name__)
@@ -231,19 +230,17 @@ def _create_column_level_rule(spec: DQRuleSpecification, client) -> DataQualityR
             qualified_name=spec.column_qualified_name
         ),
         "threshold_value": spec.threshold_value,
-        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority.name],
+        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
     }
 
     # Add optional parameters
     if spec.threshold_compare_operator:
         params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
-            spec.threshold_compare_operator.name
+            spec.threshold_compare_operator
         ]
 
     if spec.threshold_unit:
-        params["threshold_unit"] = DataQualityRuleThresholdUnit[
-            spec.threshold_unit.name
-        ]
+        params["threshold_unit"] = DataQualityRuleThresholdUnit[spec.threshold_unit]
 
     if spec.row_scope_filtering_enabled:
         params["row_scope_filtering_enabled"] = spec.row_scope_filtering_enabled
@@ -282,13 +279,13 @@ def _create_table_level_rule(spec: DQRuleSpecification, client) -> DataQualityRu
         "rule_type": spec.rule_type.value,
         "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
         "threshold_value": spec.threshold_value,
-        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority.name],
+        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
     }
 
     # Add optional parameters
     if spec.threshold_compare_operator:
         params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
-            spec.threshold_compare_operator.name
+            spec.threshold_compare_operator
         ]
 
     # Create the rule
@@ -321,14 +318,14 @@ def _create_custom_sql_rule(spec: DQRuleSpecification, client) -> DataQualityRul
         "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
         "custom_sql": spec.custom_sql,
         "threshold_value": spec.threshold_value,
-        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority.name],
-        "dimension": DataQualityDimension[spec.dimension.name],
+        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
+        "dimension": DataQualityDimension[spec.dimension],
     }
 
     # Add optional parameters
     if spec.threshold_compare_operator:
         params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
-            spec.threshold_compare_operator.name
+            spec.threshold_compare_operator
         ]
 
     if spec.description:
@@ -355,21 +352,11 @@ def _build_rule_conditions(conditions: List) -> Any:
     builder = DQRuleConditionsBuilder()
 
     for condition in conditions:
-        # Handle both dict and object formats
-        if isinstance(condition, dict):
-            condition_type = DataQualityRuleTemplateConfigRuleConditions[
-                DQRuleConditionType(condition["type"]).name
-            ]
-            value = condition.get("value")
-            min_value = condition.get("min_value")
-            max_value = condition.get("max_value")
-        else:
-            condition_type = DataQualityRuleTemplateConfigRuleConditions[
-                condition.type.name
-            ]
-            value = condition.value
-            min_value = condition.min_value
-            max_value = condition.max_value
+        # Handle dict format (now the only format)
+        condition_type = DataQualityRuleTemplateConfigRuleConditions[condition["type"]]
+        value = condition.get("value")
+        min_value = condition.get("min_value")
+        max_value = condition.get("max_value")
 
         # Build condition based on type
         condition_params = {"type": condition_type}
