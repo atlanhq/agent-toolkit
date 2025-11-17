@@ -16,6 +16,7 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    retrieve_tag_by_name,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -903,6 +904,42 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
+
+
+@mcp.tool()
+def retrieve_tag_by_name(display_name: str | None = None):
+    """
+    Retrieve Atlan tag definitions.
+
+    Usage:
+        - If `display_name` is provided:
+            Returns all tag definitions whose displayName exactly matches it.
+        - If `display_name` is omitted or null:
+            Returns all existing Atlan tags.
+
+    Args:
+        display_name (str | None, optional): Human-readable display name of the tag.
+            If None, all tags are returned.
+
+    Returns:
+        Dict[str, Any]:
+            {
+                "tags": [
+                    {
+                        "display_name": str,
+                        "internal_name": str | None,
+                        "guid": str | None,
+                        "description": str | None,
+                        "options": dict,
+                    },
+                    ...
+                ],
+                "count": int,
+                "error": None | str,
+            }
+    """
+    # No JSON parsing needed here, it's a simple optional string
+    return retrieve_tag_by_name(display_name=display_name)
 
 
 def main():
