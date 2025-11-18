@@ -17,6 +17,13 @@ from .models import (
     GlossaryCategory,
     GlossaryTerm,
 )
+from .workflows import (
+    get_workflow_package_names,
+    get_workflows_by_type,
+    get_workflow_by_id,
+    get_workflow_runs,
+    get_workflow_runs_by_status_and_time_range,
+)
 
 __all__ = [
     "search_assets",
@@ -27,6 +34,11 @@ __all__ = [
     "create_glossary_category_assets",
     "create_glossary_assets",
     "create_glossary_term_assets",
+    "get_workflow_package_names",
+    "get_workflows_by_type",
+    "get_workflow_by_id",
+    "get_workflow_runs",
+    "get_workflow_runs_by_status_and_time_range",
     "CertificateStatus",
     "UpdatableAttribute",
     "UpdatableAsset",
