@@ -12,6 +12,7 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
+    create_domain_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -903,6 +904,115 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for categories parameter: {str(e)}"}
 
     return create_glossary_category_assets(categories)
+
+
+@mcp.tool()
+def create_domains(items) -> List[Dict[str, Any]]:
+    """
+    Create Data Domains, Sub Domains, or Data Products in Atlan.
+
+    This unified tool automatically determines the type based on the presence of
+    specific fields in the specification:
+    - If 'parent_domain_qualified_name' is present -> Sub Domain
+    - If 'domain_qualified_name' is present (and no parent) -> Data Product
+    - Otherwise -> Data Domain
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Before creating a domain/subdomain/product, you may want to search for existing
+      domains to avoid duplicates or to get the qualified_name for parent relationships
+    - Domain names must be unique at the top level
+    - Subdomain names must be unique within the same parent domain
+    - Product names must be unique within the same domain
+
+    Args:
+        items (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single item
+            specification (dict) or a list of item specifications.
+
+    For Data Domain:
+        - name (str): Name of the domain (required)
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+
+    For Sub Domain:
+        - name (str): Name of the subdomain (required)
+        - parent_domain_qualified_name (str): Qualified name of parent domain (required)
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+
+    For Data Product:
+        - name (str): Name of the product (required)
+        - domain_qualified_name (str): Qualified name of the domain (required)
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+        - asset_selection (dict, optional): Asset selection query dictionary.
+          This should be a FluentSearch request that defines which assets to link.
+          Example structure: {"where": {...}, "select": [...]}
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created asset:
+            - guid: The GUID of the created asset
+            - name: The name of the asset
+            - qualified_name: The qualified name of the created asset
+
+    Examples:
+        # Create a single Data Domain
+        create_domains({
+            "name": "Marketing",
+            "user_description": "Marketing data domain",
+            "certificate_status": "VERIFIED"
+        })
+
+        # Create a Sub Domain under an existing domain
+        create_domains({
+            "name": "Social Marketing",
+            "parent_domain_qualified_name": "default/domain/marketing",
+            "user_description": "Social media marketing subdomain",
+            "certificate_status": "DRAFT"
+        })
+
+        # Create a Data Product with asset selection
+        create_domains({
+            "name": "Marketing Influence",
+            "domain_qualified_name": "default/domain/marketing",
+            "user_description": "Product for marketing influence analysis",
+            "asset_selection": {
+                "where": {
+                    "bool": {
+                        "must": [
+                            {"term": {"__typeName.keyword": "Table"}},
+                            {"term": {"certificateStatus": "VERIFIED"}},
+                            {"term": {"__atlanTags": "Marketing"}}
+                        ]
+                    }
+                }
+            }
+        })
+
+        # Create multiple items of different types in one call
+        create_domains([
+            {
+                "name": "Sales",
+                "user_description": "Sales data domain"
+            },
+            {
+                "name": "E-commerce Sales",
+                "parent_domain_qualified_name": "default/domain/sales",
+                "user_description": "E-commerce sales subdomain"
+            },
+            {
+                "name": "Sales Analytics",
+                "domain_qualified_name": "default/domain/sales",
+                "user_description": "Sales analytics product"
+            }
+        ])
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        items = parse_json_parameter(items)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for items parameter: {str(e)}"}
+
+    return create_domain_assets(items)
 
 
 def main():

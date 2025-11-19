@@ -8,6 +8,7 @@ from .glossary import (
     create_glossary_assets,
     create_glossary_term_assets,
 )
+from .domain import create_domain_assets
 from .models import (
     CertificateStatus,
     UpdatableAttribute,
@@ -27,6 +28,7 @@ __all__ = [
     "create_glossary_category_assets",
     "create_glossary_assets",
     "create_glossary_term_assets",
+    "create_domain_assets",
     "CertificateStatus",
     "UpdatableAttribute",
     "UpdatableAsset",
