@@ -17,7 +17,7 @@ from .models import (
     GlossaryCategory,
     GlossaryTerm,
 )
-from .tags import retrieve_tag_by_name
+from .tags import retrieve_atlan_tag_by_name, create_atlan_tag, update_atlan_tag
 
 __all__ = [
     "search_assets",
@@ -35,5 +35,7 @@ __all__ = [
     "Glossary",
     "GlossaryCategory",
     "GlossaryTerm",
-    "retrieve_tag_by_name",
+    "retrieve_atlan_tag_by_name",
+    "create_atlan_tag",
+    "update_atlan_tag",
 ]
