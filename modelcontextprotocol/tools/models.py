@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Union, Dict, Any
 
 from pydantic import BaseModel
 
@@ -74,3 +74,119 @@ class GlossaryTerm(BaseModel):
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
     category_guids: Optional[List[str]] = None
+
+
+class DQRuleType(str, Enum):
+    """Enum for supported data quality rule types."""
+
+    # Completeness checks
+    NULL_COUNT = "Null Count"
+    NULL_PERCENTAGE = "Null Percentage"
+    BLANK_COUNT = "Blank Count"
+    BLANK_PERCENTAGE = "Blank Percentage"
+
+    # Statistical checks
+    MIN_VALUE = "Min Value"
+    MAX_VALUE = "Max Value"
+    AVERAGE = "Average"
+    STANDARD_DEVIATION = "Standard Deviation"
+
+    # Uniqueness checks
+    UNIQUE_COUNT = "Unique Count"
+    DUPLICATE_COUNT = "Duplicate Count"
+
+    # Validity checks
+    REGEX = "Regex"
+    STRING_LENGTH = "String Length"
+    VALID_VALUES = "Valid Values"
+
+    # Timeliness checks
+    FRESHNESS = "Freshness"
+
+    # Volume checks
+    ROW_COUNT = "Row Count"
+
+    # Custom checks
+    CUSTOM_SQL = "Custom SQL"
+
+    def get_rule_config(self) -> Dict[str, Any]:
+        """
+        Get complete configuration for this rule type.
+
+        Returns:
+            Dict containing:
+                - creator_method: Name of the DataQualityRule creator method to use
+                - requires_column: Whether this rule requires column_qualified_name
+                - supports_conditions: Whether this rule supports conditional logic
+        """
+        # Custom SQL rules
+        if self == DQRuleType.CUSTOM_SQL:
+            return {
+                "creator_method": "custom_sql_creator",
+                "requires_column": False,
+                "supports_conditions": False,
+            }
+
+        # Table-level rules
+        if self == DQRuleType.ROW_COUNT:
+            return {
+                "creator_method": "table_level_rule_creator",
+                "requires_column": False,
+                "supports_conditions": False,
+            }
+
+        # Column-level rules with conditions
+        if self in {
+            DQRuleType.STRING_LENGTH,
+            DQRuleType.REGEX,
+            DQRuleType.VALID_VALUES,
+        }:
+            return {
+                "creator_method": "column_level_rule_creator",
+                "requires_column": True,
+                "supports_conditions": True,
+            }
+
+        # Standard column-level rules
+        return {
+            "creator_method": "column_level_rule_creator",
+            "requires_column": True,
+            "supports_conditions": False,
+        }
+
+
+class DQRuleSpecification(BaseModel):
+    """
+    Comprehensive model for creating any type of data quality rule.
+
+    Different rule types require different fields:
+    - Column-level rules: require column_qualified_name
+    - Table-level rules: only require asset_qualified_name
+    - Custom SQL rules: require custom_sql, rule_name, dimension
+    - Rules with conditions: require rule_conditions (String Length, Regex, Valid Values)
+    """
+
+    # Core identification
+    rule_type: DQRuleType
+    asset_qualified_name: str
+
+    # Column-level specific (required for most rule types except Row Count and Custom SQL)
+    column_qualified_name: Optional[str] = None
+
+    # Threshold configuration
+    threshold_value: Optional[Union[int, float]] = None
+    threshold_compare_operator: Optional[str] = None  # "EQUAL", "GREATER_THAN", etc.
+    threshold_unit: Optional[str] = None  # "DAYS", "HOURS", "MINUTES"
+
+    # Alert configuration
+    alert_priority: Optional[str] = "NORMAL"  # "LOW", "NORMAL", "URGENT"
+
+    # Custom SQL specific
+    custom_sql: Optional[str] = None
+    rule_name: Optional[str] = None
+    dimension: Optional[str] = None  # "COMPLETENESS", "VALIDITY", etc.
+
+    # Advanced configuration
+    rule_conditions: Optional[List[Dict[str, Any]]] = None
+    row_scope_filtering_enabled: Optional[bool] = False
+    description: Optional[str] = None
