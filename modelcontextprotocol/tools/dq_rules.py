@@ -20,42 +20,9 @@ from pyatlan.model.enums import (
 from pyatlan.model.dq_rule_conditions import DQRuleConditionsBuilder
 
 from client import get_atlan_client
-from .models import (
-    DQRuleSpecification,
-    DQRuleType,
-)
+from .models import DQRuleSpecification, DQRuleType
 
 logger = logging.getLogger(__name__)
-
-# Rule types that require column_qualified_name
-COLUMN_LEVEL_RULES = {
-    DQRuleType.NULL_COUNT,
-    DQRuleType.NULL_PERCENTAGE,
-    DQRuleType.BLANK_COUNT,
-    DQRuleType.BLANK_PERCENTAGE,
-    DQRuleType.MIN_VALUE,
-    DQRuleType.MAX_VALUE,
-    DQRuleType.AVERAGE,
-    DQRuleType.STANDARD_DEVIATION,
-    DQRuleType.UNIQUE_COUNT,
-    DQRuleType.DUPLICATE_COUNT,
-    DQRuleType.REGEX,
-    DQRuleType.STRING_LENGTH,
-    DQRuleType.VALID_VALUES,
-    DQRuleType.FRESHNESS,
-}
-
-# Rule types that work at table level
-TABLE_LEVEL_RULES = {
-    DQRuleType.ROW_COUNT,
-}
-
-# Rule types that support conditions
-CONDITIONAL_RULES = {
-    DQRuleType.STRING_LENGTH,
-    DQRuleType.REGEX,
-    DQRuleType.VALID_VALUES,
-}
 
 
 def create_dq_rules(
@@ -114,20 +81,7 @@ def create_dq_rules(
                 logger.debug(
                     f"Creating {spec.rule_type.value} rule for {spec.asset_qualified_name}"
                 )
-
-                # Route to appropriate creator based on rule type
-                if spec.rule_type == DQRuleType.CUSTOM_SQL:
-                    rule = _create_custom_sql_rule(spec, client)
-                elif spec.rule_type in TABLE_LEVEL_RULES:
-                    rule = _create_table_level_rule(spec, client)
-                elif spec.rule_type in COLUMN_LEVEL_RULES:
-                    rule = _create_column_level_rule(spec, client)
-                else:
-                    result["errors"].append(
-                        f"Unsupported rule type: {spec.rule_type.value}"
-                    )
-                    continue
-
+                rule = _create_dq_rule(spec, client)
                 created_assets.append(rule)
 
             except Exception as e:
@@ -177,9 +131,10 @@ def _validate_rule_specification(spec: DQRuleSpecification) -> List[str]:
         List[str]: List of validation error messages (empty if valid)
     """
     errors = []
+    config = spec.rule_type.get_rule_config()
 
-    # Column-level rules require column_qualified_name
-    if spec.rule_type in COLUMN_LEVEL_RULES and not spec.column_qualified_name:
+    # Check if column is required but missing
+    if config["requires_column"] and not spec.column_qualified_name:
         errors.append(f"{spec.rule_type.value} requires column_qualified_name")
 
     # Custom SQL rules require specific fields
@@ -192,7 +147,7 @@ def _validate_rule_specification(spec: DQRuleSpecification) -> List[str]:
             errors.append("Custom SQL rules require dimension field")
 
     # Conditional rules should have conditions
-    if spec.rule_type in CONDITIONAL_RULES and not spec.rule_conditions:
+    if config["supports_conditions"] and not spec.rule_conditions:
         logger.warning(f"{spec.rule_type.value} rule created without conditions")
 
     # Freshness rules require threshold_unit
@@ -208,9 +163,12 @@ def _validate_rule_specification(spec: DQRuleSpecification) -> List[str]:
     return errors
 
 
-def _create_column_level_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
+def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
     """
-    Create a column-level data quality rule.
+    Create a data quality rule based on specification.
+
+    This unified method handles all rule types by using the rule's configuration
+    to determine the appropriate creator method and required parameters.
 
     Args:
         spec (DQRuleSpecification): Rule specification
@@ -219,19 +177,36 @@ def _create_column_level_rule(spec: DQRuleSpecification, client) -> DataQualityR
     Returns:
         DataQualityRule: Created rule asset
     """
-    logger.debug(f"Creating column-level rule: {spec.rule_type.value}")
+    logger.debug(f"Creating {spec.rule_type.value} rule")
 
-    # Prepare parameters
+    # Get rule configuration
+    config = spec.rule_type.get_rule_config()
+
+    # Base parameters common to all rule types
     params = {
         "client": client,
-        "rule_type": spec.rule_type.value,
         "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
-        "column": Column.ref_by_qualified_name(
-            qualified_name=spec.column_qualified_name
-        ),
         "threshold_value": spec.threshold_value,
         "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
     }
+
+    # Add rule-type specific parameters based on config
+    if spec.rule_type == DQRuleType.CUSTOM_SQL:
+        params.update(
+            {
+                "rule_name": spec.rule_name,
+                "custom_sql": spec.custom_sql,
+                "dimension": DataQualityDimension[spec.dimension],
+            }
+        )
+    else:
+        params["rule_type"] = spec.rule_type.value
+
+        # Add column reference if required
+        if config["requires_column"]:
+            params["column"] = Column.ref_by_qualified_name(
+                qualified_name=spec.column_qualified_name
+            )
 
     # Add optional parameters
     if spec.threshold_compare_operator:
@@ -245,51 +220,13 @@ def _create_column_level_rule(spec: DQRuleSpecification, client) -> DataQualityR
     if spec.row_scope_filtering_enabled:
         params["row_scope_filtering_enabled"] = spec.row_scope_filtering_enabled
 
-    # Handle rule conditions for conditional rules
-    if spec.rule_conditions and spec.rule_type in CONDITIONAL_RULES:
-        rule_conditions = _build_rule_conditions(spec.rule_conditions)
-        params["rule_conditions"] = rule_conditions
+    # Add rule conditions if supported and provided
+    if config["supports_conditions"] and spec.rule_conditions:
+        params["rule_conditions"] = _build_rule_conditions(spec.rule_conditions)
 
-    # Create the rule
-    dq_rule = DataQualityRule.column_level_rule_creator(**params)
-
-    # Add description if provided
-    if spec.description:
-        dq_rule.description = spec.description
-
-    return dq_rule
-
-
-def _create_table_level_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
-    """
-    Create a table-level data quality rule.
-
-    Args:
-        spec (DQRuleSpecification): Rule specification
-        client: Atlan client instance
-
-    Returns:
-        DataQualityRule: Created rule asset
-    """
-    logger.debug(f"Creating table-level rule: {spec.rule_type.value}")
-
-    # Prepare parameters
-    params = {
-        "client": client,
-        "rule_type": spec.rule_type.value,
-        "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
-        "threshold_value": spec.threshold_value,
-        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
-    }
-
-    # Add optional parameters
-    if spec.threshold_compare_operator:
-        params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
-            spec.threshold_compare_operator
-        ]
-
-    # Create the rule
-    dq_rule = DataQualityRule.table_level_rule_creator(**params)
+    # Get the creator method from DataQualityRule and invoke it
+    creator_method = getattr(DataQualityRule, config["creator_method"])
+    dq_rule = creator_method(**params)
 
     # Add description if provided
     if spec.description:
@@ -298,51 +235,12 @@ def _create_table_level_rule(spec: DQRuleSpecification, client) -> DataQualityRu
     return dq_rule
 
 
-def _create_custom_sql_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
-    """
-    Create a custom SQL data quality rule.
-
-    Args:
-        spec (DQRuleSpecification): Rule specification
-        client: Atlan client instance
-
-    Returns:
-        DataQualityRule: Created rule asset
-    """
-    logger.debug(f"Creating custom SQL rule: {spec.rule_name}")
-
-    # Prepare parameters
-    params = {
-        "client": client,
-        "rule_name": spec.rule_name,
-        "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
-        "custom_sql": spec.custom_sql,
-        "threshold_value": spec.threshold_value,
-        "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
-        "dimension": DataQualityDimension[spec.dimension],
-    }
-
-    # Add optional parameters
-    if spec.threshold_compare_operator:
-        params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
-            spec.threshold_compare_operator
-        ]
-
-    if spec.description:
-        params["description"] = spec.description
-
-    # Create the rule
-    dq_rule = DataQualityRule.custom_sql_creator(**params)
-
-    return dq_rule
-
-
-def _build_rule_conditions(conditions: List) -> Any:
+def _build_rule_conditions(conditions: List[Dict[str, Any]]) -> Any:
     """
     Build DQRuleConditionsBuilder from condition specifications.
 
     Args:
-        conditions (List): List of DQRuleCondition objects or dicts
+        conditions (List[Dict[str, Any]]): List of condition dictionaries
 
     Returns:
         Built rule conditions object
@@ -352,23 +250,14 @@ def _build_rule_conditions(conditions: List) -> Any:
     builder = DQRuleConditionsBuilder()
 
     for condition in conditions:
-        # Handle dict format (now the only format)
         condition_type = DataQualityRuleTemplateConfigRuleConditions[condition["type"]]
-        value = condition.get("value")
-        min_value = condition.get("min_value")
-        max_value = condition.get("max_value")
 
-        # Build condition based on type
+        # Build condition parameters dynamically
         condition_params = {"type": condition_type}
 
-        if value is not None:
-            condition_params["value"] = value
-
-        if min_value is not None:
-            condition_params["min_value"] = min_value
-
-        if max_value is not None:
-            condition_params["max_value"] = max_value
+        for key in ["value", "min_value", "max_value"]:
+            if key in condition and condition[key] is not None:
+                condition_params[key] = condition[key]
 
         builder.add_condition(**condition_params)
 

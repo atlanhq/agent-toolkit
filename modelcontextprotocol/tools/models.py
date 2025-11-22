@@ -109,6 +109,51 @@ class DQRuleType(str, Enum):
     # Custom checks
     CUSTOM_SQL = "Custom SQL"
 
+    def get_rule_config(self) -> Dict[str, Any]:
+        """
+        Get complete configuration for this rule type.
+
+        Returns:
+            Dict containing:
+                - creator_method: Name of the DataQualityRule creator method to use
+                - requires_column: Whether this rule requires column_qualified_name
+                - supports_conditions: Whether this rule supports conditional logic
+        """
+        # Custom SQL rules
+        if self == DQRuleType.CUSTOM_SQL:
+            return {
+                "creator_method": "custom_sql_creator",
+                "requires_column": False,
+                "supports_conditions": False,
+            }
+
+        # Table-level rules
+        if self == DQRuleType.ROW_COUNT:
+            return {
+                "creator_method": "table_level_rule_creator",
+                "requires_column": False,
+                "supports_conditions": False,
+            }
+
+        # Column-level rules with conditions
+        if self in {
+            DQRuleType.STRING_LENGTH,
+            DQRuleType.REGEX,
+            DQRuleType.VALID_VALUES,
+        }:
+            return {
+                "creator_method": "column_level_rule_creator",
+                "requires_column": True,
+                "supports_conditions": True,
+            }
+
+        # Standard column-level rules
+        return {
+            "creator_method": "column_level_rule_creator",
+            "requires_column": True,
+            "supports_conditions": False,
+        }
+
 
 class DQRuleSpecification(BaseModel):
     """
