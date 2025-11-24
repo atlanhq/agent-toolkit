@@ -47,7 +47,6 @@ def create_dq_rules(
     # Convert single rule to list for consistent handling
     data = rules if isinstance(rules, list) else [rules]
     logger.info(f"Creating {len(data)} data quality rule(s)")
-    logger.debug(f"Rule specifications: {data}")
 
     result = {"created_count": 0, "created_rules": [], "errors": []}
 
@@ -59,10 +58,11 @@ def create_dq_rules(
                 spec = DQRuleSpecification(**item)
                 validation_errors = _validate_rule_specification(spec)
                 if validation_errors:
-                    for error in validation_errors:
-                        result["errors"].append(f"Rule {idx + 1}: {error}")
-                    continue
-                specs.append(spec)
+                    result["errors"].extend(
+                        [f"Rule {idx + 1}: {error}" for error in validation_errors]
+                    )
+                else:
+                    specs.append(spec)
             except Exception as e:
                 result["errors"].append(f"Rule {idx + 1} validation error: {str(e)}")
                 logger.error(f"Error parsing rule specification {idx + 1}: {e}")
@@ -78,9 +78,6 @@ def create_dq_rules(
         created_assets = []
         for spec in specs:
             try:
-                logger.debug(
-                    f"Creating {spec.rule_type.value} rule for {spec.asset_qualified_name}"
-                )
                 rule = _create_dq_rule(spec, client)
                 created_assets.append(rule)
 
@@ -177,8 +174,6 @@ def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
     Returns:
         DataQualityRule: Created rule asset
     """
-    logger.debug(f"Creating {spec.rule_type.value} rule")
-
     # Get rule configuration
     config = spec.rule_type.get_rule_config()
 
@@ -245,8 +240,6 @@ def _build_rule_conditions(conditions: List[Dict[str, Any]]) -> Any:
     Returns:
         Built rule conditions object
     """
-    logger.debug(f"Building rule conditions for {len(conditions)} condition(s)")
-
     builder = DQRuleConditionsBuilder()
 
     for condition in conditions:

@@ -918,9 +918,19 @@ def create_dq_rules_tool(rules):
         rules (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single rule
             specification or a list of rule specifications. Each specification
             must include:
-            - rule_type (str): Type of rule (see Supported Rule Types)
-            - asset_qualified_name (str): Qualified name of the table/view
-            - Additional fields based on rule type (see examples)
+            - rule_type (str): Type of rule (see Supported Rule Types) [REQUIRED]
+            - asset_qualified_name (str): Qualified name of the table/view [REQUIRED]
+            - threshold_value (int/float): Threshold value for comparison [REQUIRED]
+            - column_qualified_name (str): Column qualified name [REQUIRED for column-level rules, NOT for Row Count/Custom SQL]
+            - threshold_compare_operator (str): Comparison operator (EQUAL, GREATER_THAN, etc.) [OPTIONAL, default varies by rule]
+            - threshold_unit (str): Time unit for Freshness rules (DAYS, HOURS, MINUTES) [REQUIRED for Freshness, N/A for others]
+            - alert_priority (str): Alert priority level (LOW, NORMAL, URGENT) [OPTIONAL, default: NORMAL]
+            - row_scope_filtering_enabled (bool): Enable row-level filtering [OPTIONAL]
+            - rule_conditions (List[Dict]): Conditions for String Length/Regex/Valid Values [REQUIRED for conditional rules]
+            - custom_sql (str): SQL query [REQUIRED for Custom SQL rules]
+            - rule_name (str): Name for the rule [REQUIRED for Custom SQL rules]
+            - dimension (str): DQ dimension [REQUIRED for Custom SQL rules]
+            - description (str): Rule description [OPTIONAL]
 
     Returns:
         Dict[str, Any]: Dictionary containing:
