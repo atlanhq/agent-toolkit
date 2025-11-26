@@ -1035,7 +1035,9 @@ def get_workflow_runs_tool(
 
     When to use this tool:
     - Use when you need to find all workflow_runs of a specific workflow by execution phase
+        → Provide workflow_name AND workflow_phase (do NOT use status)
     - Use when you need to find workflow_runs across multiple workflows filtered by status and time
+        → Provide status (and optionally started_at/finished_at), do NOT provide workflow_name or workflow_phase
     - Use when monitoring workflow execution patterns or analyzing failures
     - Use when you need execution metadata (status, timing, resource usage) for multiple workflow_runs
     - Do NOT use if you need the complete workflow specification (use get_workflows_tool with id instead)
@@ -1045,16 +1047,22 @@ def get_workflow_runs_tool(
             (e.g., 'atlan-snowflake-miner-1714638976'). If provided, filters runs for that specific workflow.
             This refers to the workflow name, not individual workflow_run IDs.
         workflow_phase (str, optional): Phase of the workflow_run. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
-            Case-insensitive matching is supported. Required if workflow_name is provided and status is not.
+            Case-insensitive matching is supported. 
+            REQUIRED when workflow_name is provided. DO NOT use status when workflow_name is provided.
         status (List[str], optional): List of workflow_run phases to filter by. Common values:
             - 'Succeeded': Successfully completed workflow_runs
             - 'Failed': Workflow_runs that failed
             - 'Running': Currently executing workflow_runs
             - 'Error': Workflow_runs that encountered errors
             - 'Pending': Workflow_runs waiting to start
-            Case-insensitive matching is supported. Required if workflow_name is not provided. 
-            Can also be used with workflow_name (will use first item from list as workflow_phase).
+            Case-insensitive matching is supported. 
+            REQUIRED when workflow_name is NOT provided. DO NOT use status when workflow_name is provided - use workflow_phase instead.
             Example: ['Succeeded', 'Failed']
+        
+    Parameter Usage Rules:
+        - If workflow_name is provided: MUST use workflow_phase (single phase string). Do NOT use status.
+        - If workflow_name is NOT provided: MUST use status (list of phases). Do NOT use workflow_phase.
+        - These are mutually exclusive usage patterns - do not mix them.
         started_at (str, optional): Lower bound on 'status.startedAt' timestamp. Accepts:
             - Relative time format: 'now-2h', 'now-24h', 'now-7d', 'now-30d'
             - ISO 8601 format: '2024-01-01T00:00:00Z'
@@ -1094,29 +1102,29 @@ def get_workflow_runs_tool(
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded workflow_runs for a specific workflow
-        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", workflow_phase="Succeeded")
+        # CORRECT: Get succeeded workflow_runs for a specific workflow (use workflow_phase, NOT status)
+        result = get_workflow_runs_tool(workflow_name="atlan-snowflake-miner-1714638976", workflow_phase="Succeeded")
 
-        # Get running workflow_runs for a specific workflow
-        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", workflow_phase="Running")
+        # CORRECT: Get running workflow_runs for a specific workflow (use workflow_phase, NOT status)
+        result = get_workflow_runs_tool(workflow_name="atlan-snowflake-miner-1714638976", workflow_phase="Running")
 
-        # Get failed workflow_runs with pagination
-        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", workflow_phase="Failed", from_=0, size=50)
+        # CORRECT: Get failed workflow_runs with pagination (use workflow_phase, NOT status)
+        result = get_workflow_runs_tool(workflow_name="atlan-snowflake-miner-1714638976", workflow_phase="Failed", from_=0, size=50)
 
-        # Get succeeded workflow_runs from the last 2 hours (across all workflows)
+        # CORRECT: Get succeeded workflow_runs from the last 2 hours (across all workflows - use status, NOT workflow_phase)
         result = get_workflow_runs_tool(status=["Succeeded"], started_at="now-2h")
 
-        # Get failed workflow_runs from the last 24 hours (across all workflows)
+        # CORRECT: Get failed workflow_runs from the last 24 hours (across all workflows - use status, NOT workflow_phase)
         result = get_workflow_runs_tool(status=["Failed"], started_at="now-24h")
 
-        # Get multiple statuses with both time filters (across all workflows)
+        # CORRECT: Get multiple statuses with both time filters (across all workflows - use status, NOT workflow_phase)
         result = get_workflow_runs_tool(
             status=["Succeeded", "Failed"],
             started_at="now-7d",
             finished_at="now-1h"
         )
 
-        # Get running workflow_runs (across all workflows)
+        # CORRECT: Get running workflow_runs (across all workflows - use status, NOT workflow_phase)
         result = get_workflow_runs_tool(status=["Running"])
         
         # Analyze workflow_run durations
