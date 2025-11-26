@@ -19,8 +19,7 @@ from .models import (
 )
 from .workflows import (
     get_workflow_package_names,
-    get_workflows_by_type,
-    get_workflow_by_id,
+    get_workflows,
     get_workflow_runs,
 )
 
@@ -34,8 +33,7 @@ __all__ = [
     "create_glossary_assets",
     "create_glossary_term_assets",
     "get_workflow_package_names",
-    "get_workflows_by_type",
-    "get_workflow_by_id",
+    "get_workflows",
     "get_workflow_runs",
     "CertificateStatus",
     "UpdatableAttribute",

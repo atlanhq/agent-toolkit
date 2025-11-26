@@ -189,51 +189,103 @@ def get_workflow_package_names() -> List[str]:
     """
     return [pkg.value for pkg in WorkflowPackage]
 
-def get_workflows_by_type(workflow_package_name: Union[WorkflowPackage, str], max_results: int = 10) -> Dict[str, Any]:
+def get_workflows(
+    id: Optional[str] = None,
+    workflow_package_name: Optional[Union[WorkflowPackage, str]] = None,
+    max_results: int = 10,
+) -> Dict[str, Any]:
     """
-    Retrieve workflows (WorkflowTemplate) by type (workflow package name).
+    Retrieve workflows (WorkflowTemplate) by ID or by package type.
+
+    This function supports two main use cases:
+    1. Get a specific workflow by ID (returns full workflow details including steps and spec)
+    2. Get multiple workflows by package type (returns metadata only, no full details)
 
     Args:
-        workflow_package_name (Union[WorkflowPackage, str]): Workflow package type (e.g., WorkflowPackage.SNOWFLAKE or "atlan-snowflake").
-        max_results (int, optional): Maximum number of workflows to return. Defaults to 10.
+        id (str, optional): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
+            If provided, returns a single workflow with full details (workflow_steps and workflow_spec).
+        workflow_package_name (Union[WorkflowPackage, str], optional): Workflow package type 
+            (e.g., WorkflowPackage.SNOWFLAKE or "atlan-snowflake"). If provided, returns list of workflows 
+            with metadata only (no workflow_steps or workflow_spec).
+        max_results (int, optional): Maximum number of workflows to return when getting by type. Defaults to 10.
+            Only used when workflow_package_name is provided.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflows: List of workflows (WorkflowTemplate) with their configurations
-            - total: Total count of workflows
+            - workflows: List of workflow (WorkflowTemplate) dictionaries. When getting by ID, contains single item.
+            - total: Total count of workflows (1 when getting by ID, actual count when getting by type)
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get Snowflake workflows
+        # Get a specific workflow by ID (full details)
+        result = get_workflows(id="atlan-snowflake-miner-1714638976")
+        # Returns: {"workflows": [{...full details with workflow_steps and workflow_spec...}], "total": 1, "error": None}
+
+        # Get Snowflake workflows by type (metadata only)
         from pyatlan.model.enums import WorkflowPackage
-        result = get_workflows_by_type(WorkflowPackage.SNOWFLAKE)
+        result = get_workflows(workflow_package_name=WorkflowPackage.SNOWFLAKE)
 
         # Get workflows with custom limit
-        result = get_workflows_by_type(WorkflowPackage.BIGQUERY, max_results=50)
+        result = get_workflows(workflow_package_name="atlan-bigquery", max_results=50)
     """
-    logger.info(f"Starting workflow retrieval with workflow_package_name={workflow_package_name}, max_results={max_results}")
+    # Validate exactly one parameter is provided
+    if not id and not workflow_package_name:
+        raise ValueError("Either id or workflow_package_name must be provided")
+    if id and workflow_package_name:
+        raise ValueError("Cannot provide both id and workflow_package_name")
 
     try:
         client = get_atlan_client()
 
-        # Retrieve workflows using the pyatlan SDK
-        logger.debug(f"Calling client.workflow.find_by_type() with workflow_package_name={workflow_package_name}")
-        results = client.workflow.find_by_type(prefix=workflow_package_name, max_results=max_results)
+        if id is not None:
+            # Get single workflow by ID - always include full details
+            logger.info(f"Retrieving workflow with ID: {id}")
+            
+            if not id:
+                raise ValueError("id cannot be empty")
 
-        logger.info(f"Successfully retrieved workflows")
+            logger.debug(f"Calling client.workflow.find_by_id() with id={id}")
+            workflow = client.workflow.find_by_id(id=id)
 
-        # Process the response
-        workflows = results if results else []
-        total = len(workflows) if workflows else 0
+            if workflow is None:
+                logger.warning(f"Workflow with ID '{id}' not found")
+                return {
+                    "workflows": [],
+                    "total": 0,
+                    "error": f"Workflow with ID '{id}' not found",
+                }
 
-        # Extract key workflow information
-        processed_workflows = [_result_to_dict(workflow) for workflow in workflows]
+            logger.info(f"Successfully retrieved workflow with ID: {id}")
+            # Always include full details (include_dag=True) when getting by ID
+            processed_workflow = _result_to_dict(workflow, include_dag=True)
 
-        return {
-            "workflows": processed_workflows,
-            "total": total,
-            "error": None,
-        }
+            return {
+                "workflows": [processed_workflow] if processed_workflow else [],
+                "total": 1 if processed_workflow else 0,
+                "error": None,
+            }
+
+        elif workflow_package_name is not None:
+            # Get workflows by type - always metadata only
+            logger.info(f"Retrieving workflows with workflow_package_name={workflow_package_name}, max_results={max_results}")
+
+            logger.debug(f"Calling client.workflow.find_by_type() with workflow_package_name={workflow_package_name}")
+            results = client.workflow.find_by_type(prefix=workflow_package_name, max_results=max_results)
+
+            logger.info(f"Successfully retrieved workflows")
+
+            # Process the response
+            workflows = results if results else []
+            total = len(workflows) if workflows else 0
+
+            # Always metadata only (include_dag=False) when getting by type
+            processed_workflows = [_result_to_dict(workflow, include_dag=False) for workflow in workflows]
+
+            return {
+                "workflows": processed_workflows,
+                "total": total,
+                "error": None,
+            }
 
     except Exception as e:
         error_msg = f"Failed to retrieve workflows: {str(e)}"
@@ -241,58 +293,6 @@ def get_workflows_by_type(workflow_package_name: Union[WorkflowPackage, str], ma
         return {
             "workflows": [],
             "total": 0,
-            "error": error_msg,
-        }
-
-
-def get_workflow_by_id(id: str) -> Dict[str, Any]:
-    """
-    Retrieve a specific workflow (WorkflowTemplate) by its ID.
-
-    Args:
-        id (str): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - workflow: The workflow (WorkflowTemplate) object with its configuration, or None if not found
-            - error: None if no error occurred, otherwise the error message
-
-    Examples:
-        # Get a specific workflow by ID
-        result = get_workflow_by_id("atlan-snowflake-miner-1714638976")
-    """
-    logger.info(f"Retrieving workflow with ID: {id}")
-
-    try:
-        if not id:
-            raise ValueError("id cannot be empty")
-
-        client = get_atlan_client()
-
-        # Retrieve workflow using the pyatlan SDK
-        logger.debug(f"Calling client.workflow.find_by_id() with id={id}")
-        workflow = client.workflow.find_by_id(id=id)
-
-        if workflow is None:
-            logger.warning(f"Workflow with ID '{id}' not found")
-            return {
-                "workflow": None,
-                "error": f"Workflow with ID '{id}' not found",
-            }
-
-        logger.info(f"Successfully retrieved workflow with ID: {id}")
-        processed_workflow = _result_to_dict(workflow, include_dag=True)
-
-        return {
-            "workflow": processed_workflow,
-            "error": None,
-        }
-
-    except Exception as e:
-        error_msg = f"Failed to retrieve workflow with ID '{id}': {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return {
-            "workflow": None,
             "error": error_msg,
         }
 

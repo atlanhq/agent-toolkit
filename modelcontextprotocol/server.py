@@ -13,8 +13,7 @@ from tools import (
     create_glossary_assets,
     create_glossary_term_assets,
     get_workflow_package_names,
-    get_workflows_by_type,
-    get_workflow_by_id,
+    get_workflows,
     get_workflow_runs,
     UpdatableAttribute,
     CertificateStatus,
@@ -928,91 +927,49 @@ def get_workflow_package_names_tool() -> List[str]:
 
 
 @mcp.tool()
-def get_workflows_by_type_tool(workflow_package_name: str, max_results: int = 10) -> Dict[str, Any]:
+def get_workflows_tool(
+    id: str | None = None,
+    workflow_package_name: str | None = None,
+    max_results: int = 10,
+) -> Dict[str, Any]:
     """
-    Retrieve workflows (WorkflowTemplate) by workflow package name.
+    Retrieve workflows (WorkflowTemplate) by ID or by package type.
 
     Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
     - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
     - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
-    IMPORTANT: This tool returns only basic metadata. It does NOT return full workflow
-    instructions, steps, or transformations. To get complete workflow details including all steps and
-    transformations, use get_workflow_by_id_tool instead.
+    This tool supports two main use cases:
+    1. Get a specific workflow by ID (returns full workflow details including steps and spec)
+    2. Get multiple workflows by package type (returns metadata only, no full details)
 
-    Note: This tool only returns workflows (WorkflowTemplate), not workflow_runs. 
-    To get workflow_run information, use functions that start with get_workflow_run.
-
-    When to use this tool:
-    - Use when you need to list multiple workflows by package type
-    - Use when you only need metadata (package info, certification status) without full workflow details
-    - Do NOT use if you need the complete workflow specification with all steps and transformations
-    - Do NOT use if you need workflow_run (execution) information
-
-    Args:
-        workflow_package_name (str): The workflow package name (e.g., 'atlan-snowflake', 'atlan-bigquery', 'SNOWFLAKE').
-            Can be the full package name like 'atlan-snowflake' or the enum name like 'SNOWFLAKE'.
-        max_results (int, optional): Maximum number of workflows to return. Defaults to 10.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - workflows: List of workflow (WorkflowTemplate) dictionaries. Each workflow contains:
-                - template_name: Name of the template
-                - package_name, package_version: Package information
-                - source_system, source_category, workflow_type: Source information
-                - certified, verified: Certification status
-                - creator_email, creator_username: Creator information
-                - modifier_email, modifier_username: Last modifier information
-                - creation_timestamp: When template was created
-                - package_author, package_description, package_repository: Package metadata
-            - total: Total count of workflows found
-
-    Examples:
-        # Get Snowflake workflows
-        result = get_workflows_by_type_tool("atlan-snowflake")
-
-        # Get BigQuery workflows with custom limit
-        result = get_workflows_by_type_tool("atlan-bigquery", max_results=50)
-
-        # Get workflows using enum name
-        result = get_workflows_by_type_tool("SNOWFLAKE")
-    """
-    return get_workflows_by_type(workflow_package_name=workflow_package_name, max_results=max_results)
-
-
-@mcp.tool()
-def get_workflow_by_id_tool(id: str) -> Dict[str, Any]:
-    """
-    Retrieve a specific workflow (WorkflowTemplate) by its ID.
-
-    Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
-    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
-
-    IMPORTANT: This is the ONLY tool that returns full workflow instructions with all steps and transformations.
-    All other workflow tools (get_workflows_by_type_tool, get_workflow_runs_tool, etc.) return only metadata
-    and execution status, but NOT the complete workflow definition, steps, or transformation details.
-
-    This tool uses include_dag=True internally, which means it returns the complete workflow specification
-    including the workflow DAG (directed acyclic graph), all steps, transformations, and execution details.
+    IMPORTANT: When getting by ID, this tool returns full workflow instructions with all steps and transformations.
+    When getting by type, this tool returns only basic metadata to avoid large responses.
 
     Note: This tool only returns workflows (WorkflowTemplate), not workflow_runs.
-    To get workflow_run information, use functions that start with get_workflow_run.
+    To get workflow_run information, use get_workflow_runs_tool.
 
     When to use this tool:
-    - Use when you need the COMPLETE workflow definition with all steps and transformations
-    - Use when you need to understand the full workflow execution flow
-    - Use when you need workflow_spec and workflow_steps data
-    - Do NOT use if you only need basic metadata (use other workflow tools instead)
+    - Use when you need to get a specific workflow by ID with full details (steps, spec, transformations)
+    - Use when you need to list multiple workflows by package type (metadata only)
+    - Use when you need to understand the full workflow execution flow (by ID only)
     - Do NOT use if you need workflow_run (execution) information
 
     Args:
-        id (str): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
+        id (str, optional): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
+            If provided, returns a single workflow with full details (workflow_steps and workflow_spec).
+            Either id or workflow_package_name must be provided, but not both.
+        workflow_package_name (str, optional): The workflow package name (e.g., 'atlan-snowflake', 'atlan-bigquery', 'SNOWFLAKE').
+            Can be the full package name like 'atlan-snowflake' or the enum name like 'SNOWFLAKE'.
+            If provided, returns list of workflows with metadata only (no workflow_steps or workflow_spec).
+            Either id or workflow_package_name must be provided, but not both.
+        max_results (int, optional): Maximum number of workflows to return when getting by type. Defaults to 10.
+            Only used when workflow_package_name is provided.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflow: The workflow (WorkflowTemplate) dictionary with comprehensive metadata, or None if not found.
-                The workflow dictionary contains:
+            - workflows: List of workflow (WorkflowTemplate) dictionaries. When getting by ID, contains single item.
+                Each workflow contains:
                     - template_name: Name of the template
                     - package_name, package_version: Package information
                     - source_system, source_category, workflow_type: Source information
@@ -1021,19 +978,32 @@ def get_workflow_by_id_tool(id: str) -> Dict[str, Any]:
                     - modifier_email, modifier_username: Last modifier information
                     - creation_timestamp: When template was created
                     - package_author, package_description, package_repository: Package metadata
-                    - workflow_steps: Workflow steps (when include_dag=True)
-                    - workflow_spec: Full workflow specification (when include_dag=True)
+                    - workflow_steps: Workflow steps (only when getting by ID)
+                    - workflow_spec: Full workflow specification (only when getting by ID)
+            - total: Total count of workflows (1 when getting by ID, actual count when getting by type)
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get a specific workflow by ID to see full workflow instructions
-        result = get_workflow_by_id_tool("atlan-snowflake-miner-1714638976")
-        
-        # Access full workflow steps and transformations
-        workflow = result.get("workflow")
-        # The workflow object contains complete workflow definition with workflow_steps and workflow_spec
+        # Get a specific workflow by ID (full details with steps and spec)
+        result = get_workflows_tool(id="atlan-snowflake-miner-1714638976")
+        workflow = result.get("workflows", [])[0]  # Single workflow in list
+        # workflow contains complete workflow definition with workflow_steps and workflow_spec
+
+        # Get Snowflake workflows by type (metadata only)
+        result = get_workflows_tool(workflow_package_name="atlan-snowflake")
+        workflows = result.get("workflows", [])  # List of workflows
+
+        # Get BigQuery workflows with custom limit
+        result = get_workflows_tool(workflow_package_name="atlan-bigquery", max_results=50)
+
+        # Get workflows using enum name
+        result = get_workflows_tool(workflow_package_name="SNOWFLAKE")
     """
-    return get_workflow_by_id(id=id)
+    return get_workflows(
+        id=id,
+        workflow_package_name=workflow_package_name,
+        max_results=max_results,
+    )
 
 
 @mcp.tool()
@@ -1061,14 +1031,14 @@ def get_workflow_runs_tool(
 
     IMPORTANT: This tool returns only metadata and execution status. It does NOT return full workflow
     instructions, steps, or transformations. To get complete workflow details including all steps and
-    transformations, use get_workflow_by_id_tool instead.
+    transformations, use get_workflows_tool with an id parameter instead.
 
     When to use this tool:
     - Use when you need to find all workflow_runs of a specific workflow by execution phase
     - Use when you need to find workflow_runs across multiple workflows filtered by status and time
     - Use when monitoring workflow execution patterns or analyzing failures
     - Use when you need execution metadata (status, timing, resource usage) for multiple workflow_runs
-    - Do NOT use if you need the complete workflow specification (use get_workflow_by_id_tool instead)
+    - Do NOT use if you need the complete workflow specification (use get_workflows_tool with id instead)
 
     Args:
         workflow_name (str, optional): Name of the workflow (template) as displayed in the UI 
