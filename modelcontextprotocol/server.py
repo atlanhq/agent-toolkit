@@ -16,7 +16,6 @@ from tools import (
     get_workflows_by_type,
     get_workflow_by_id,
     get_workflow_runs,
-    get_workflow_runs_by_status_and_time_range,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -1039,19 +1038,25 @@ def get_workflow_by_id_tool(id: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def get_workflow_runs_tool(
-    workflow_name: str,
-    workflow_phase: str,
+    workflow_name: str | None = None,
+    workflow_phase: str | None = None,
+    status: List[str] | None = None,
+    started_at: str | None = None,
+    finished_at: str | None = None,
     from_: int = 0,
     size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Retrieve all workflow_runs for a specific workflow and phase.
+    Retrieve workflow_runs with flexible filtering options.
 
     Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
     - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
     - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
-    This tool returns workflow_run instances (kind="Workflow") that match the specified workflow name and phase.
+    This tool supports two main use cases:
+    1. Filter by specific workflow name and phase (single workflow)
+    2. Filter across all workflows by status list and optional time ranges
+
     Each workflow_run contains execution details, timing, resource usage, and status information.
 
     IMPORTANT: This tool returns only metadata and execution status. It does NOT return full workflow
@@ -1060,15 +1065,36 @@ def get_workflow_runs_tool(
 
     When to use this tool:
     - Use when you need to find all workflow_runs of a specific workflow by execution phase
+    - Use when you need to find workflow_runs across multiple workflows filtered by status and time
+    - Use when monitoring workflow execution patterns or analyzing failures
     - Use when you need execution metadata (status, timing, resource usage) for multiple workflow_runs
-    - Use when you need to filter workflow_runs by phase (Succeeded, Failed, Running, etc.)
     - Do NOT use if you need the complete workflow specification (use get_workflow_by_id_tool instead)
 
     Args:
-        workflow_name (str): Name of the workflow (template) as displayed in the UI (e.g., 'atlan-snowflake-miner-1714638976').
+        workflow_name (str, optional): Name of the workflow (template) as displayed in the UI 
+            (e.g., 'atlan-snowflake-miner-1714638976'). If provided, filters runs for that specific workflow.
             This refers to the workflow name, not individual workflow_run IDs.
-        workflow_phase (str): Phase of the workflow_run. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
-            Case-insensitive matching is supported.
+        workflow_phase (str, optional): Phase of the workflow_run. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
+            Case-insensitive matching is supported. Required if workflow_name is provided and status is not.
+        status (List[str], optional): List of workflow_run phases to filter by. Common values:
+            - 'Succeeded': Successfully completed workflow_runs
+            - 'Failed': Workflow_runs that failed
+            - 'Running': Currently executing workflow_runs
+            - 'Error': Workflow_runs that encountered errors
+            - 'Pending': Workflow_runs waiting to start
+            Case-insensitive matching is supported. Required if workflow_name is not provided. 
+            Can also be used with workflow_name (will use first item from list as workflow_phase).
+            Example: ['Succeeded', 'Failed']
+        started_at (str, optional): Lower bound on 'status.startedAt' timestamp. Accepts:
+            - Relative time format: 'now-2h', 'now-24h', 'now-7d', 'now-30d'
+            - ISO 8601 format: '2024-01-01T00:00:00Z'
+            Filters workflow_runs that started at or after this time.
+            Only used when workflow_name is not provided.
+        finished_at (str, optional): Lower bound on 'status.finishedAt' timestamp. Accepts:
+            - Relative time format: 'now-1h', 'now-12h'
+            - ISO 8601 format: '2024-01-01T00:00:00Z'
+            Filters workflow_runs that finished at or after this time.
+            Only used when workflow_name is not provided.
         from_ (int, optional): Starting index of the search results for pagination. Defaults to 0.
         size (int, optional): Maximum number of search results to return. Defaults to 100.
 
@@ -1094,136 +1120,48 @@ def get_workflow_runs_tool(
                 - workflow_modifier_id, workflow_modifier_email, workflow_modifier_username: Last modifier information
                 - workflow_creation_timestamp: When the workflow was created
                 - workflow_archiving_status: Archiving status
-            - total: Total count of workflow_runs matching the criteria
+            - total: Total count of workflow_runs matching the criteria (may be larger than the returned list if paginated)
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded workflow_runs
-        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", "Succeeded")
+        # Get succeeded workflow_runs for a specific workflow
+        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", workflow_phase="Succeeded")
 
-        # Get running workflow_runs
-        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", "Running")
+        # Get running workflow_runs for a specific workflow
+        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", workflow_phase="Running")
 
         # Get failed workflow_runs with pagination
-        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", "Failed", from_=0, size=50)
+        result = get_workflow_runs_tool("atlan-snowflake-miner-1714638976", workflow_phase="Failed", from_=0, size=50)
+
+        # Get succeeded workflow_runs from the last 2 hours (across all workflows)
+        result = get_workflow_runs_tool(status=["Succeeded"], started_at="now-2h")
+
+        # Get failed workflow_runs from the last 24 hours (across all workflows)
+        result = get_workflow_runs_tool(status=["Failed"], started_at="now-24h")
+
+        # Get multiple statuses with both time filters (across all workflows)
+        result = get_workflow_runs_tool(
+            status=["Succeeded", "Failed"],
+            started_at="now-7d",
+            finished_at="now-1h"
+        )
+
+        # Get running workflow_runs (across all workflows)
+        result = get_workflow_runs_tool(status=["Running"])
         
         # Analyze workflow_run durations
         runs = result.get("runs", [])
         for run in runs:
             if run.get("run_finished_at") and run.get("run_started_at"):
                 print(f"Workflow run {run['run_id']} took {run.get('run_estimated_duration')}")
-    """
-    return get_workflow_runs(
-        workflow_name=workflow_name,
-        workflow_phase=workflow_phase,
-        from_=from_,
-        size=size,
-    )
-
-
-@mcp.tool()
-def get_workflow_runs_by_status_and_time_range_tool(
-    status: List[str],
-    started_at: str | None = None,
-    finished_at: str | None = None,
-    from_: int = 0,
-    size: int = 100,
-) -> Dict[str, Any]:
-    """
-    Retrieve workflow_runs based on their status and time range.
-
-    Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
-    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
-
-    This tool allows you to search for workflow_run instances (kind="Workflow") by filtering on their execution status
-    (e.g., Succeeded, Failed, Running) and optionally by time ranges. This is useful for
-    monitoring, debugging, and analyzing workflow execution patterns.
-
-    IMPORTANT: This tool returns only metadata and execution status. It does NOT return full workflow
-    instructions, steps, or transformations. To get complete workflow details including all steps and
-    transformations, use get_workflow_by_id_tool instead.
-
-    When to use this tool:
-    - Use when you need to find workflow_runs across multiple workflows filtered by status and time
-    - Use when monitoring workflow execution patterns or analyzing failures
-    - Use when you need execution metadata for workflow_runs within a specific time window
-    - Do NOT use if you need the complete workflow specification (use get_workflow_by_id_tool instead)
-
-    Args:
-        status (List[str]): List of workflow_run phases to filter by. Common values:
-            - 'Succeeded': Successfully completed workflow_runs
-            - 'Failed': Workflow_runs that failed
-            - 'Running': Currently executing workflow_runs
-            - 'Error': Workflow_runs that encountered errors
-            - 'Pending': Workflow_runs waiting to start
-            Case-insensitive matching is supported. Example: ['Succeeded', 'Failed']
-        started_at (str, optional): Lower bound on 'status.startedAt' timestamp. Accepts:
-            - Relative time format: 'now-2h', 'now-24h', 'now-7d', 'now-30d'
-            - ISO 8601 format: '2024-01-01T00:00:00Z'
-            Filters workflow_runs that started at or after this time.
-        finished_at (str, optional): Lower bound on 'status.finishedAt' timestamp. Accepts:
-            - Relative time format: 'now-1h', 'now-12h'
-            - ISO 8601 format: '2024-01-01T00:00:00Z'
-            Filters workflow_runs that finished at or after this time.
-        from_ (int, optional): Starting index of the search results for pagination. Defaults to 0.
-        size (int, optional): Maximum number of search results to return. Defaults to 100.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - runs: List of workflow_run dictionaries matching the criteria. Each workflow_run contains:
-                Run Metadata:
-                - run_id: Unique identifier for this workflow_run
-                - run_phase: Execution phase (Succeeded, Running, Failed, etc.)
-                - run_started_at: When the workflow_run started (ISO timestamp)
-                - run_finished_at: When the workflow_run finished (ISO timestamp, None if still running)
-                - run_estimated_duration: Estimated execution duration
-                - run_progress: Progress indicator (e.g., "1/3")
-                - run_cpu_usage: CPU resource usage duration
-                - run_memory_usage: Memory resource usage duration
-                
-                Workflow Metadata:
-                - workflow_id: Reference to the workflow (template) used
-                - workflow_package_name: Package identifier
-                - workflow_cron_schedule: Cron schedule if scheduled
-                - workflow_cron_timezone: Timezone for cron schedule
-                - workflow_creator_id, workflow_creator_email, workflow_creator_username: Creator information
-                - workflow_modifier_id, workflow_modifier_email, workflow_modifier_username: Last modifier information
-                - workflow_creation_timestamp: When the workflow was created
-                - workflow_archiving_status: Archiving status
-            - total: Total count of workflow_runs matching the criteria (may be larger than the returned list if paginated)
-            - error: None if no error occurred, otherwise the error message
-
-    Examples:
-        # Get succeeded workflow_runs from the last 2 hours
-        result = get_workflow_runs_by_status_and_time_range_tool(
-            status=["Succeeded"],
-            started_at="now-2h"
-        )
-
-        # Get failed workflow_runs from the last 24 hours
-        result = get_workflow_runs_by_status_and_time_range_tool(
-            status=["Failed"],
-            started_at="now-24h"
-        )
-
-        # Get multiple statuses with both time filters
-        result = get_workflow_runs_by_status_and_time_range_tool(
-            status=["Succeeded", "Failed"],
-            started_at="now-7d",
-            finished_at="now-1h"
-        )
-
-        # Get running workflow_runs
-        result = get_workflow_runs_by_status_and_time_range_tool(
-            status=["Running"]
-        )
         
         # Analyze failure rates
         failed_runs = [r for r in result.get("runs", []) if r.get("run_phase") == "Failed"]
         print(f"Found {len(failed_runs)} failed workflow_runs in the time range")
     """
-    return get_workflow_runs_by_status_and_time_range(
+    return get_workflow_runs(
+        workflow_name=workflow_name,
+        workflow_phase=workflow_phase,
         status=status,
         started_at=started_at,
         finished_at=finished_at,

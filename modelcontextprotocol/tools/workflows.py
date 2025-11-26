@@ -298,17 +298,37 @@ def get_workflow_by_id(id: str) -> Dict[str, Any]:
 
 
 def get_workflow_runs(
-    workflow_name: str,
-    workflow_phase: Union[AtlanWorkflowPhase, str],
+    workflow_name: Optional[str] = None,
+    workflow_phase: Optional[Union[AtlanWorkflowPhase, str]] = None,
+    status: Optional[Union[List[AtlanWorkflowPhase], List[str]]] = None,
+    started_at: Optional[str] = None,
+    finished_at: Optional[str] = None,
     from_: int = 0,
     size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Retrieve all workflow_runs for a specific workflow and phase.
+    Retrieve workflow_runs with flexible filtering options.
+
+    This function supports two main use cases:
+    1. Filter by specific workflow name and phase (single workflow)
+    2. Filter across all workflows by status list and optional time ranges
 
     Args:
-        workflow_name (str): Name of the workflow (template) as displayed in the UI (e.g., 'atlan-snowflake-miner-1714638976').
-        workflow_phase (Union[AtlanWorkflowPhase, str]): Phase of the workflow_run (e.g., Succeeded, Running, Failed).
+        workflow_name (str, optional): Name of the workflow (template) as displayed in the UI 
+            (e.g., 'atlan-snowflake-miner-1714638976'). If provided, filters runs for that specific workflow.
+        workflow_phase (Union[AtlanWorkflowPhase, str], optional): Phase of the workflow_run 
+            (e.g., Succeeded, Running, Failed). Required if workflow_name is provided and status is not.
+        status (Union[List[AtlanWorkflowPhase], List[str]], optional): List of workflow_run phases to filter by
+            (e.g., ['Succeeded', 'Failed']). Required if workflow_name is not provided. Can also be used 
+            with workflow_name (will use first item from list as workflow_phase).
+        started_at (str, optional): Lower bound on 'status.startedAt' timestamp. Accepts:
+            - Relative time format: 'now-2h', 'now-24h', 'now-7d', 'now-30d'
+            - ISO 8601 format: '2024-01-01T00:00:00Z'
+            Only used when workflow_name is not provided.
+        finished_at (str, optional): Lower bound on 'status.finishedAt' timestamp. Accepts:
+            - Relative time format: 'now-1h', 'now-12h'
+            - ISO 8601 format: '2024-01-01T00:00:00Z'
+            Only used when workflow_name is not provided.
         from_ (int, optional): Starting index of the search results. Defaults to 0.
         size (int, optional): Maximum number of search results to return. Defaults to 100.
 
@@ -319,46 +339,107 @@ def get_workflow_runs(
             - error: None if no error occurred, otherwise the error message
 
     Examples:
-        # Get succeeded workflow_runs
+        # Get succeeded workflow_runs for a specific workflow
         from pyatlan.model.enums import AtlanWorkflowPhase
-        result = get_workflow_runs("atlan-snowflake-miner-1714638976", AtlanWorkflowPhase.SUCCESS)
+        result = get_workflow_runs("atlan-snowflake-miner-1714638976", workflow_phase=AtlanWorkflowPhase.SUCCESS)
 
-        # Get running workflow_runs
-        result = get_workflow_runs("atlan-snowflake-miner-1714638976", "Running")
-    """
-    logger.info(f"Retrieving workflow runs: workflow_name={workflow_name}, phase={workflow_phase}, from_={from_}, size={size}")
+        # Get running workflow_runs for a specific workflow
+        result = get_workflow_runs("atlan-snowflake-miner-1714638976", workflow_phase="Running")
 
-    try:
-        if not workflow_name:
-            raise ValueError("workflow_name cannot be empty")
-        if not workflow_phase:
-            raise ValueError("workflow_phase cannot be empty")
+        # Get succeeded workflow_runs from the last 2 hours (across all workflows)
+        result = get_workflow_runs(status=["Succeeded"], started_at="now-2h")
 
-        # Convert string to AtlanWorkflowPhase enum if needed
-        if isinstance(workflow_phase, str):
-            try:
-                workflow_phase = AtlanWorkflowPhase(workflow_phase)
-            except ValueError:
-                # Try case-insensitive match
-                for phase in AtlanWorkflowPhase:
-                    if phase.value.upper() == workflow_phase.upper():
-                        workflow_phase = phase
-                        break
-                else:
-                    raise ValueError(f"Invalid workflow phase: {workflow_phase}")
-
-        client = get_atlan_client()
-
-        # Retrieve workflow runs using the pyatlan SDK
-        logger.debug(f"Calling client.workflow.get_runs() with workflow_name={workflow_name}, workflow_phase={workflow_phase}")
-        response = client.workflow.get_runs(
-            workflow_name=workflow_name,
-            workflow_phase=workflow_phase,
-            from_=from_,
-            size=size,
+        # Get failed workflow_runs with both time filters (across all workflows)
+        result = get_workflow_runs(
+            status=["Failed"],
+            started_at="now-24h",
+            finished_at="now-1h"
         )
 
-        logger.info("Successfully retrieved workflow runs")
+        # Get multiple statuses (across all workflows)
+        result = get_workflow_runs(status=["Succeeded", "Failed"], started_at="now-7d")
+    """
+    logger.info(
+        f"Retrieving workflow runs: workflow_name={workflow_name}, workflow_phase={workflow_phase}, "
+        f"status={status}, started_at={started_at}, finished_at={finished_at}, from_={from_}, size={size}"
+    )
+
+    try:
+        client = get_atlan_client()
+
+        # Route based on whether workflow_name is provided
+        if workflow_name:
+            # Use get_runs() API - single workflow, single phase
+            if not workflow_phase and not status:
+                raise ValueError("Either workflow_phase or status must be provided when workflow_name is specified")
+            
+            # Use workflow_phase if provided, otherwise use first item from status list
+            phase_to_use = workflow_phase
+            if not phase_to_use and status:
+                phase_to_use = status[0] if isinstance(status, list) and len(status) > 0 else None
+            
+            if not phase_to_use:
+                raise ValueError("workflow_phase or status must be provided when workflow_name is specified")
+
+            # Convert string to AtlanWorkflowPhase enum if needed
+            if isinstance(phase_to_use, str):
+                try:
+                    phase_to_use = AtlanWorkflowPhase(phase_to_use)
+                except ValueError:
+                    # Try case-insensitive match
+                    for phase in AtlanWorkflowPhase:
+                        if phase.value.upper() == phase_to_use.upper():
+                            phase_to_use = phase
+                            break
+                    else:
+                        raise ValueError(f"Invalid workflow phase: {phase_to_use}")
+
+            # Retrieve workflow runs using the pyatlan SDK
+            logger.debug(f"Calling client.workflow.get_runs() with workflow_name={workflow_name}, workflow_phase={phase_to_use}")
+            response = client.workflow.get_runs(
+                workflow_name=workflow_name,
+                workflow_phase=phase_to_use,
+                from_=from_,
+                size=size,
+            )
+
+            logger.info("Successfully retrieved workflow runs")
+        else:
+            # Use find_runs_by_status_and_time_range() API - all workflows, status list, time ranges
+            if not status:
+                raise ValueError("status must be provided when workflow_name is not specified")
+
+            # Convert string statuses to AtlanWorkflowPhase enums if needed
+            status_list = []
+            for s in status:
+                if isinstance(s, str):
+                    try:
+                        status_list.append(AtlanWorkflowPhase(s))
+                    except ValueError:
+                        # Try case-insensitive match
+                        for phase in AtlanWorkflowPhase:
+                            if phase.value.upper() == s.upper():
+                                status_list.append(phase)
+                                break
+                        else:
+                            raise ValueError(f"Invalid workflow phase: {s}")
+                else:
+                    status_list.append(s)
+
+            # Retrieve workflow runs using the pyatlan SDK
+            logger.debug(
+                f"Calling client.workflow.find_runs_by_status_and_time_range() with "
+                f"status={status_list}, started_at={started_at}, finished_at={finished_at}"
+            )
+            response = client.workflow.find_runs_by_status_and_time_range(
+                status=status_list,
+                started_at=started_at,
+                finished_at=finished_at,
+                from_=from_,
+                size=size,
+            )
+
+            logger.info("Successfully retrieved workflow runs by status and time range")
 
         # Process the response
         runs = []
@@ -398,129 +479,3 @@ def get_workflow_runs(
             "error": error_msg,
         }
 
-
-def get_workflow_runs_by_status_and_time_range(
-    status: Union[List[AtlanWorkflowPhase], List[str]],
-    started_at: Optional[str] = None,
-    finished_at: Optional[str] = None,
-    from_: int = 0,
-    size: int = 100,
-) -> Dict[str, Any]:
-    """
-    Retrieve workflow_runs based on their status and time range.
-
-    Args:
-        status (Union[List[AtlanWorkflowPhase], List[str]]): List of workflow_run phases to filter by
-            (e.g., ['Succeeded', 'Failed'] or [AtlanWorkflowPhase.SUCCESS, AtlanWorkflowPhase.FAILED]).
-        started_at (str, optional): Lower bound on 'status.startedAt' (e.g., 'now-2h', '2024-01-01T00:00:00Z').
-        finished_at (str, optional): Lower bound on 'status.finishedAt' (e.g., 'now-1h', '2024-01-01T00:00:00Z').
-        from_ (int, optional): Starting index of the search results. Defaults to 0.
-        size (int, optional): Maximum number of search results to return. Defaults to 100.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - runs: List of workflow_runs with their details
-            - total: Total count of workflow_runs
-            - error: None if no error occurred, otherwise the error message
-
-    Examples:
-        # Get succeeded workflow_runs from the last 2 hours
-        from pyatlan.model.enums import AtlanWorkflowPhase
-        result = get_workflow_runs_by_status_and_time_range(
-            status=[AtlanWorkflowPhase.SUCCESS],
-            started_at="now-2h"
-        )
-
-        # Get failed workflow_runs with both time filters
-        result = get_workflow_runs_by_status_and_time_range(
-            status=["Failed"],
-            started_at="now-24h",
-            finished_at="now-1h"
-        )
-
-        # Get multiple statuses
-        result = get_workflow_runs_by_status_and_time_range(
-            status=["Succeeded", "Failed"],
-            started_at="now-7d"
-        )
-    """
-    logger.info(
-        f"Retrieving workflow runs by status and time range: status={status}, "
-        f"started_at={started_at}, finished_at={finished_at}, from_={from_}, size={size}"
-    )
-
-    try:
-        if not status:
-            raise ValueError("status cannot be empty")
-
-        # Convert string statuses to AtlanWorkflowPhase enums if needed
-        status_list = []
-        for s in status:
-            if isinstance(s, str):
-                try:
-                    status_list.append(AtlanWorkflowPhase(s))
-                except ValueError:
-                    # Try case-insensitive match
-                    for phase in AtlanWorkflowPhase:
-                        if phase.value.upper() == s.upper():
-                            status_list.append(phase)
-                            break
-                    else:
-                        raise ValueError(f"Invalid workflow phase: {s}")
-            else:
-                status_list.append(s)
-
-        client = get_atlan_client()
-
-        # Retrieve workflow runs using the pyatlan SDK
-        logger.debug(
-            f"Calling client.workflow.find_runs_by_status_and_time_range() with "
-            f"status={status_list}, started_at={started_at}, finished_at={finished_at}"
-        )
-        response = client.workflow.find_runs_by_status_and_time_range(
-            status=status_list,
-            started_at=started_at,
-            finished_at=finished_at,
-            from_=from_,
-            size=size,
-        )
-
-        logger.info("Successfully retrieved workflow runs by status and time range")
-
-        # Process the response
-        runs = []
-        total = 0
-        if response and response.hits and response.hits.hits:
-            runs = response.hits.hits
-            # Handle total - it can be a dict with 'value' key or an object with .value attribute
-            total_obj = response.hits.total
-            if total_obj:
-                if isinstance(total_obj, dict):
-                    total = total_obj.get("value", len(runs))
-                elif hasattr(total_obj, "value"):
-                    total = total_obj.value
-                else:
-                    total = len(runs)
-            else:
-                total = len(runs)
-
-        # Extract key run information using _result_to_dict for proper serialization
-        processed_runs = []
-        for run in runs:
-            processed_run = _result_to_dict(run)
-            processed_runs.append(processed_run)
-
-        return {
-            "runs": processed_runs,
-            "total": total,
-            "error": None,
-        }
-
-    except Exception as e:
-        error_msg = f"Failed to retrieve workflow runs by status and time range: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return {
-            "runs": [],
-            "total": 0,
-            "error": error_msg,
-        }

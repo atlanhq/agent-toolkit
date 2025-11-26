@@ -22,7 +22,6 @@ from .workflows import (
     get_workflows_by_type,
     get_workflow_by_id,
     get_workflow_runs,
-    get_workflow_runs_by_status_and_time_range,
 )
 
 __all__ = [
@@ -38,7 +37,6 @@ __all__ = [
     "get_workflows_by_type",
     "get_workflow_by_id",
     "get_workflow_runs",
-    "get_workflow_runs_by_status_and_time_range",
     "CertificateStatus",
     "UpdatableAttribute",
     "UpdatableAsset",
