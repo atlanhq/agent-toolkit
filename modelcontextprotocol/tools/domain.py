@@ -2,68 +2,28 @@ from __future__ import annotations
 import logging
 from typing import Dict, Any, List, Union
 
-from pyatlan.model.assets import DataDomain, DataProduct, Asset
-from pyatlan.model.search import IndexSearchRequest
-from client import get_atlan_client
-from .models import (
-    CertificateStatus,
-    DataDomainSpec,
-    DataSubDomainSpec,
-    DataProductSpec,
-)
+from pyatlan.model.assets import Asset, DataDomain, DataProduct
+from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
+
+from utils import save_assets
+from .models import DataDomainSpec, DataProductSpec
 
 logger = logging.getLogger(__name__)
-
-
-def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
-    """
-    Common bulk save and response processing for any asset type.
-
-    Args:
-        assets (List[Asset]): List of Asset objects to save.
-
-    Returns:
-        List[Dict[str, Any]]: List of dictionaries with details for each created asset.
-
-    Raises:
-        Exception: If there's an error saving the assets.
-    """
-    logger.info("Starting bulk save operation")
-    client = get_atlan_client()
-    try:
-        response = client.asset.save(assets)
-    except Exception as e:
-        logger.error(f"Error saving assets: {e}")
-        raise e
-    results: List[Dict[str, Any]] = []
-    created_assets = response.mutated_entities.CREATE
-
-    logger.info(f"Save operation completed, processing {len(created_assets)} results")
-
-    results = [
-        {
-            "guid": created_asset.guid,
-            "name": created_asset.name,
-            "qualified_name": created_asset.qualified_name,
-        }
-        for created_asset in created_assets
-    ]
-
-    logger.info(f"Bulk save completed successfully for {len(results)} assets")
-    return results
 
 
 def create_data_domain_assets(
     domains: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> List[Dict[str, Any]]:
     """
-    Create one or multiple Data Domain assets in Atlan.
+    Create one or multiple Data Domain or Sub Domain assets in Atlan.
 
     Args:
         domains (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single domain
             specification (dict) or a list of domain specifications. Each specification
             can be a dictionary containing:
             - name (str): Name of the domain (required)
+            - parent_domain_qualified_name (str, optional): Qualified name of the parent
+              domain. If provided, creates a Sub Domain under that parent.
             - user_description (str, optional): Detailed description of the domain
             - certificate_status (str, optional): Certification status
               ("VERIFIED", "DRAFT", or "DEPRECATED")
@@ -85,76 +45,27 @@ def create_data_domain_assets(
 
     assets: List[DataDomain] = []
     for spec in specs:
-        logger.debug(f"Creating DataDomain for: {spec.name}")
-        domain = DataDomain.creator(name=spec.name)
+        if spec.parent_domain_qualified_name:
+            logger.debug(
+                f"Creating Sub Domain: {spec.name} under {spec.parent_domain_qualified_name}"
+            )
+            domain = DataDomain.creator(
+                name=spec.name,
+                parent_domain_qualified_name=spec.parent_domain_qualified_name,
+            )
+        else:
+            logger.debug(f"Creating DataDomain: {spec.name}")
+            domain = DataDomain.creator(name=spec.name)
+
         domain.user_description = spec.user_description
 
-        if spec.certificate_status is not None:
-            cs = (
-                CertificateStatus(spec.certificate_status)
-                if isinstance(spec.certificate_status, str)
-                else spec.certificate_status
+        if spec.certificate_status:
+            domain.certificate_status = spec.certificate_status.value
+            logger.debug(
+                f"Set certificate status for {spec.name}: {spec.certificate_status.value}"
             )
-            domain.certificate_status = cs.value
-            logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
 
         assets.append(domain)
-
-    return save_assets(assets)
-
-
-def create_data_subdomain_assets(
-    subdomains: Union[Dict[str, Any], List[Dict[str, Any]]],
-) -> List[Dict[str, Any]]:
-    """
-    Create one or multiple Sub Domain (Data Domain with parent) assets in Atlan.
-
-    Args:
-        subdomains (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single subdomain
-            specification (dict) or a list of subdomain specifications. Each specification
-            can be a dictionary containing:
-            - name (str): Name of the subdomain (required)
-            - parent_domain_qualified_name (str): Qualified name of the parent domain (required)
-            - user_description (str, optional): Detailed description of the subdomain
-            - certificate_status (str, optional): Certification status
-              ("VERIFIED", "DRAFT", or "DEPRECATED")
-
-    Returns:
-        List[Dict[str, Any]]: List of dictionaries, each with details for a created subdomain:
-            - guid: The GUID of the created subdomain
-            - name: The name of the subdomain
-            - qualified_name: The qualified name of the created subdomain
-
-    Raises:
-        Exception: If there's an error creating the subdomain assets.
-    """
-    data = subdomains if isinstance(subdomains, list) else [subdomains]
-    logger.info(f"Creating {len(data)} data subdomain asset(s)")
-    logger.debug(f"Subdomain specifications: {data}")
-
-    specs = [DataSubDomainSpec(**item) for item in data]
-
-    assets: List[DataDomain] = []
-    for spec in specs:
-        logger.debug(
-            f"Creating DataDomain (subdomain) for: {spec.name} under {spec.parent_domain_qualified_name}"
-        )
-        subdomain = DataDomain.creator(
-            name=spec.name,
-            parent_domain_qualified_name=spec.parent_domain_qualified_name,
-        )
-        subdomain.user_description = spec.user_description
-
-        if spec.certificate_status is not None:
-            cs = (
-                CertificateStatus(spec.certificate_status)
-                if isinstance(spec.certificate_status, str)
-                else spec.certificate_status
-            )
-            subdomain.certificate_status = cs.value
-            logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
-
-        assets.append(subdomain)
 
     return save_assets(assets)
 
@@ -171,12 +82,10 @@ def create_data_product_assets(
             can be a dictionary containing:
             - name (str): Name of the product (required)
             - domain_qualified_name (str): Qualified name of the domain this product belongs to (required)
+            - asset_guids (List[str]): List of asset GUIDs to link to this product (required, at least one)
             - user_description (str, optional): Detailed description of the product
             - certificate_status (str, optional): Certification status
               ("VERIFIED", "DRAFT", or "DEPRECATED")
-            - asset_selection (dict, optional): Asset selection query as a dictionary.
-              This should be a FluentSearch request dictionary that defines which assets
-              to link to the product.
 
     Returns:
         List[Dict[str, Any]]: List of dictionaries, each with details for a created product:
@@ -186,6 +95,7 @@ def create_data_product_assets(
 
     Raises:
         Exception: If there's an error creating the product assets.
+        ValueError: If no asset_guids are provided.
     """
     data = products if isinstance(products, list) else [products]
     logger.info(f"Creating {len(data)} data product asset(s)")
@@ -195,21 +105,24 @@ def create_data_product_assets(
 
     assets: List[DataProduct] = []
     for spec in specs:
-        logger.debug(
-            f"Creating DataProduct for: {spec.name} under {spec.domain_qualified_name}"
-        )
+        # Validate that asset_guids is provided and not empty
+        if not spec.asset_guids:
+            raise ValueError(
+                f"Data product '{spec.name}' requires at least one asset GUID. "
+                "Please provide asset_guids to link assets to this product."
+            )
 
-        # Handle asset selection if provided
-        asset_selection = None
-        if spec.asset_selection is not None:
-            try:
-                # Convert dict to IndexSearchRequest if needed
-                asset_selection = IndexSearchRequest(**spec.asset_selection)
-                logger.debug(f"Set asset selection for {spec.name}")
-            except Exception as e:
-                logger.warning(
-                    f"Invalid asset_selection format for {spec.name}: {e}. Creating product without asset selection."
-                )
+        logger.debug(
+            f"Creating DataProduct: {spec.name} under {spec.domain_qualified_name}"
+        )
+        logger.debug(f"Linking {len(spec.asset_guids)} asset(s) to product")
+
+        # Build FluentSearch to select assets by their GUIDs
+        asset_selection = (
+            FluentSearch()
+            .where(CompoundQuery.active_assets())
+            .where(Asset.GUID.within(spec.asset_guids))
+        ).to_request()
 
         product = DataProduct.creator(
             name=spec.name,
@@ -218,14 +131,11 @@ def create_data_product_assets(
         )
         product.user_description = spec.user_description
 
-        if spec.certificate_status is not None:
-            cs = (
-                CertificateStatus(spec.certificate_status)
-                if isinstance(spec.certificate_status, str)
-                else spec.certificate_status
+        if spec.certificate_status:
+            product.certificate_status = spec.certificate_status.value
+            logger.debug(
+                f"Set certificate status for {spec.name}: {spec.certificate_status.value}"
             )
-            product.certificate_status = cs.value
-            logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
 
         assets.append(product)
 
@@ -240,9 +150,8 @@ def create_domain_assets(
 
     This is a unified function that determines the type based on the presence of
     specific fields in the specification:
-    - If 'parent_domain_qualified_name' is present -> Sub Domain
-    - If 'domain_qualified_name' is present (and no parent) -> Data Product
-    - Otherwise -> Data Domain
+    - If 'domain_qualified_name' is present -> Data Product
+    - Otherwise -> Data Domain (or Sub Domain if 'parent_domain_qualified_name' is present)
 
     Args:
         items (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single item
@@ -261,32 +170,22 @@ def create_domain_assets(
     data = items if isinstance(items, list) else [items]
     logger.info(f"Creating {len(data)} domain-related asset(s)")
 
-    # Separate items by type
+    # Separate items by type: products vs domains (including subdomains)
     domains = []
-    subdomains = []
     products = []
 
     for item in data:
-        if "parent_domain_qualified_name" in item:
-            subdomains.append(item)
-        elif "domain_qualified_name" in item:
+        if "domain_qualified_name" in item:
             products.append(item)
         else:
             domains.append(item)
 
     results = []
 
-    # Create domains
     if domains:
-        logger.info(f"Creating {len(domains)} data domain(s)")
+        logger.info(f"Creating {len(domains)} data domain/subdomain(s)")
         results.extend(create_data_domain_assets(domains))
 
-    # Create subdomains
-    if subdomains:
-        logger.info(f"Creating {len(subdomains)} data subdomain(s)")
-        results.extend(create_data_subdomain_assets(subdomains))
-
-    # Create products
     if products:
         logger.info(f"Creating {len(products)} data product(s)")
         results.extend(create_data_product_assets(products))

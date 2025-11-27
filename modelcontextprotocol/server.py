@@ -942,11 +942,10 @@ def create_domains(items) -> List[Dict[str, Any]]:
     For Data Product:
         - name (str): Name of the product (required)
         - domain_qualified_name (str): Qualified name of the domain (required)
+        - asset_guids (List[str]): List of asset GUIDs to link to this product (required).
+          At least one asset GUID must be provided. Use search_assets_tool to find asset GUIDs.
         - user_description (str, optional): Detailed description
         - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
-        - asset_selection (dict, optional): Asset selection query dictionary.
-          This should be a FluentSearch request that defines which assets to link.
-          Example structure: {"where": {...}, "select": [...]}
 
     Returns:
         List[Dict[str, Any]]: List of dictionaries, each with details for a created asset:
@@ -970,22 +969,13 @@ def create_domains(items) -> List[Dict[str, Any]]:
             "certificate_status": "DRAFT"
         })
 
-        # Create a Data Product with asset selection
+        # Create a Data Product with linked assets (asset_guids required)
+        # First, search for assets to get their GUIDs using search_assets_tool
         create_domains({
             "name": "Marketing Influence",
             "domain_qualified_name": "default/domain/marketing",
             "user_description": "Product for marketing influence analysis",
-            "asset_selection": {
-                "where": {
-                    "bool": {
-                        "must": [
-                            {"term": {"__typeName.keyword": "Table"}},
-                            {"term": {"certificateStatus": "VERIFIED"}},
-                            {"term": {"__atlanTags": "Marketing"}}
-                        ]
-                    }
-                }
-            }
+            "asset_guids": ["asset-guid-1", "asset-guid-2"]  # GUIDs from search_assets_tool
         })
 
         # Create multiple items of different types in one call
@@ -1002,7 +992,8 @@ def create_domains(items) -> List[Dict[str, Any]]:
             {
                 "name": "Sales Analytics",
                 "domain_qualified_name": "default/domain/sales",
-                "user_description": "Sales analytics product"
+                "user_description": "Sales analytics product",
+                "asset_guids": ["table-guid-1", "table-guid-2"]  # Required for data products
             }
         ])
     """

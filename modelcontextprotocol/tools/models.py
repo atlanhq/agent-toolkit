@@ -77,18 +77,12 @@ class GlossaryTerm(BaseModel):
 
 
 class DataDomainSpec(BaseModel):
-    """Payload model for creating a Data Domain asset."""
+    """Payload model for creating a Data Domain or Sub Domain asset."""
 
     name: str
-    user_description: Optional[str] = None
-    certificate_status: Optional[CertificateStatus] = None
-
-
-class DataSubDomainSpec(BaseModel):
-    """Payload model for creating a Sub Domain (Data Domain with parent) asset."""
-
-    name: str
-    parent_domain_qualified_name: str
+    parent_domain_qualified_name: Optional[str] = (
+        None  # if passed, will be created as a sub domain
+    )
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
 
@@ -98,6 +92,6 @@ class DataProductSpec(BaseModel):
 
     name: str
     domain_qualified_name: str
+    asset_guids: List[str]  # Required: at least one asset GUID for data products
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
-    asset_selection: Optional[dict] = None
