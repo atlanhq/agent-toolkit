@@ -1,7 +1,10 @@
+import logging
 from enum import Enum
 from typing import Optional, List, Union, Dict, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+
+logger = logging.getLogger(__name__)
 
 
 class CertificateStatus(str, Enum):
@@ -190,6 +193,49 @@ class DQRuleSpecification(BaseModel):
     rule_conditions: Optional[List[Dict[str, Any]]] = None
     row_scope_filtering_enabled: Optional[bool] = False
     description: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_rule_requirements(self) -> "DQRuleSpecification":
+        """
+        Validate rule specification based on rule type requirements.
+
+        Raises:
+            ValueError: If required fields are missing for the rule type
+        """
+        errors = []
+        config = self.rule_type.get_rule_config()
+
+        # Check if column is required but missing
+        if config["requires_column"] and not self.column_qualified_name:
+            errors.append(f"{self.rule_type.value} requires column_qualified_name")
+
+        # Custom SQL rules require specific fields
+        if self.rule_type == DQRuleType.CUSTOM_SQL:
+            if not self.custom_sql:
+                errors.append("Custom SQL rules require custom_sql field")
+            if not self.rule_name:
+                errors.append("Custom SQL rules require rule_name field")
+            if not self.dimension:
+                errors.append("Custom SQL rules require dimension field")
+
+        # Conditional rules should have conditions (warning only)
+        if config["supports_conditions"] and not self.rule_conditions:
+            logger.warning(f"{self.rule_type.value} rule created without conditions")
+
+        # Freshness rules require threshold_unit
+        if self.rule_type == DQRuleType.FRESHNESS and not self.threshold_unit:
+            errors.append(
+                "Freshness rules require threshold_unit (DAYS, HOURS, or MINUTES)"
+            )
+
+        # All rules require threshold_value
+        if self.threshold_value is None:
+            errors.append(f"{self.rule_type.value} requires threshold_value")
+
+        if errors:
+            raise ValueError("; ".join(errors))
+
+        return self
 
 
 class CreatedRuleInfo(BaseModel):

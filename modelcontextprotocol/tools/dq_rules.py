@@ -60,16 +60,15 @@ def create_dq_rules(
         specs = []
         for idx, item in enumerate(data):
             try:
+                # Pydantic model validation happens automatically
                 spec = DQRuleSpecification(**item)
-                validation_errors = _validate_rule_specification(spec)
-                if validation_errors:
-                    result.errors.extend(
-                        [f"Rule {idx + 1}: {error}" for error in validation_errors]
-                    )
-                else:
-                    specs.append(spec)
-            except Exception as e:
+                specs.append(spec)
+            except ValueError as e:
+                # Pydantic validation errors
                 result.errors.append(f"Rule {idx + 1} validation error: {str(e)}")
+                logger.error(f"Error validating rule specification {idx + 1}: {e}")
+            except Exception as e:
+                result.errors.append(f"Rule {idx + 1} error: {str(e)}")
                 logger.error(f"Error parsing rule specification {idx + 1}: {e}")
 
         if not specs:
@@ -120,49 +119,6 @@ def create_dq_rules(
         logger.error(error_msg)
         result.errors.append(error_msg)
         return result
-
-
-def _validate_rule_specification(spec: DQRuleSpecification) -> List[str]:
-    """
-    Validate a rule specification based on rule type requirements.
-
-    Args:
-        spec (DQRuleSpecification): The rule specification to validate
-
-    Returns:
-        List[str]: List of validation error messages (empty if valid)
-    """
-    errors = []
-    config = spec.rule_type.get_rule_config()
-
-    # Check if column is required but missing
-    if config["requires_column"] and not spec.column_qualified_name:
-        errors.append(f"{spec.rule_type.value} requires column_qualified_name")
-
-    # Custom SQL rules require specific fields
-    if spec.rule_type == DQRuleType.CUSTOM_SQL:
-        if not spec.custom_sql:
-            errors.append("Custom SQL rules require custom_sql field")
-        if not spec.rule_name:
-            errors.append("Custom SQL rules require rule_name field")
-        if not spec.dimension:
-            errors.append("Custom SQL rules require dimension field")
-
-    # Conditional rules should have conditions
-    if config["supports_conditions"] and not spec.rule_conditions:
-        logger.warning(f"{spec.rule_type.value} rule created without conditions")
-
-    # Freshness rules require threshold_unit
-    if spec.rule_type == DQRuleType.FRESHNESS and not spec.threshold_unit:
-        errors.append(
-            "Freshness rules require threshold_unit (DAYS, HOURS, or MINUTES)"
-        )
-
-    # All rules require threshold_value
-    if spec.threshold_value is None:
-        errors.append(f"{spec.rule_type.value} requires threshold_value")
-
-    return errors
 
 
 def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
