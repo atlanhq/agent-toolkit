@@ -190,3 +190,19 @@ class DQRuleSpecification(BaseModel):
     rule_conditions: Optional[List[Dict[str, Any]]] = None
     row_scope_filtering_enabled: Optional[bool] = False
     description: Optional[str] = None
+
+
+class CreatedRuleInfo(BaseModel):
+    """Model representing information about a created data quality rule."""
+
+    guid: str
+    qualified_name: str
+    rule_type: Optional[str] = None
+
+
+class DQRuleCreationResponse(BaseModel):
+    """Response model for data quality rule creation operations."""
+
+    created_count: int = 0
+    created_rules: List[CreatedRuleInfo] = []
+    errors: List[str] = []

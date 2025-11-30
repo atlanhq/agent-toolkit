@@ -20,14 +20,19 @@ from pyatlan.model.enums import (
 from pyatlan.model.dq_rule_conditions import DQRuleConditionsBuilder
 
 from client import get_atlan_client
-from .models import DQRuleSpecification, DQRuleType
+from .models import (
+    DQRuleSpecification,
+    DQRuleType,
+    DQRuleCreationResponse,
+    CreatedRuleInfo,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def create_dq_rules(
     rules: Union[Dict[str, Any], List[Dict[str, Any]]],
-) -> Dict[str, Any]:
+) -> DQRuleCreationResponse:
     """
     Create one or multiple data quality rules in Atlan.
 
@@ -36,7 +41,7 @@ def create_dq_rules(
             specification or a list of rule specifications.
 
     Returns:
-        Dict[str, Any]: Dictionary containing:
+        DQRuleCreationResponse: Response containing:
             - created_count: Number of rules successfully created
             - created_rules: List of created rule details (guid, qualified_name, rule_type)
             - errors: List of any errors encountered
@@ -48,7 +53,7 @@ def create_dq_rules(
     data = rules if isinstance(rules, list) else [rules]
     logger.info(f"Creating {len(data)} data quality rule(s)")
 
-    result = {"created_count": 0, "created_rules": [], "errors": []}
+    result = DQRuleCreationResponse()
 
     try:
         # Validate and parse specifications
@@ -58,13 +63,13 @@ def create_dq_rules(
                 spec = DQRuleSpecification(**item)
                 validation_errors = _validate_rule_specification(spec)
                 if validation_errors:
-                    result["errors"].extend(
+                    result.errors.extend(
                         [f"Rule {idx + 1}: {error}" for error in validation_errors]
                     )
                 else:
                     specs.append(spec)
             except Exception as e:
-                result["errors"].append(f"Rule {idx + 1} validation error: {str(e)}")
+                result.errors.append(f"Rule {idx + 1} validation error: {str(e)}")
                 logger.error(f"Error parsing rule specification {idx + 1}: {e}")
 
         if not specs:
@@ -83,37 +88,37 @@ def create_dq_rules(
 
             except Exception as e:
                 error_msg = f"Error creating {spec.rule_type.value} rule: {str(e)}"
-                result["errors"].append(error_msg)
+                result.errors.append(error_msg)
                 logger.error(error_msg)
 
+        if not created_assets:
+            return result
+
         # Bulk save all created rules
-        if created_assets:
-            logger.info(f"Saving {len(created_assets)} data quality rules")
-            response = client.asset.save(created_assets)
+        logger.info(f"Saving {len(created_assets)} data quality rules")
+        response = client.asset.save(created_assets)
 
-            # Process response
-            for created_rule in response.mutated_entities.CREATE:
-                result["created_rules"].append(
-                    {
-                        "guid": created_rule.guid,
-                        "qualified_name": created_rule.qualified_name,
-                        "rule_type": created_rule.dq_rule_type
-                        if hasattr(created_rule, "dq_rule_type")
-                        else None,
-                    }
+        # Process response
+        for created_rule in response.mutated_entities.CREATE:
+            result.created_rules.append(
+                CreatedRuleInfo(
+                    guid=created_rule.guid,
+                    qualified_name=created_rule.qualified_name,
+                    rule_type=created_rule.dq_rule_type
+                    if hasattr(created_rule, "dq_rule_type")
+                    else None,
                 )
-
-            result["created_count"] = len(result["created_rules"])
-            logger.info(
-                f"Successfully created {result['created_count']} data quality rules"
             )
+
+        result.created_count = len(result.created_rules)
+        logger.info(f"Successfully created {result.created_count} data quality rules")
 
         return result
 
     except Exception as e:
         error_msg = f"Error in bulk rule creation: {str(e)}"
         logger.error(error_msg)
-        result["errors"].append(error_msg)
+        result.errors.append(error_msg)
         return result
 
 
