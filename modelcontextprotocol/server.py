@@ -911,53 +911,59 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 @mcp.tool()
 def retrieve_atlan_tag_by_name_tool(display_name: str | None = None, color: str | None = None, description_filter: str | None = None):
     """
-    Retrieve Atlan tag definitions.
+    Retrieve Atlan tag definitions by various criteria or list all existing tags.
+
+    This tool queries the Atlan typedef API to retrieve tag definitions (classifications).
+    Filters can be combined - if multiple filters are provided, tags must match all criteria.
 
     Usage:
         - If `display_name` is provided:
-            Returns all tag definitions whose displayName exactly matches it.
+            Returns all tag definitions whose displayName exactly matches it (case-sensitive).
         - If `color` is provided:
             Returns all tag definitions with the specified color (case-insensitive).
+            Valid colors: GRAY, GREEN, YELLOW, RED
         - If `description_filter` is provided:
             Returns tags filtered by description status ("empty" or "not_empty").
         - If multiple filters are provided:
-            Returns tags matching all criteria.
+            Returns tags matching all criteria (AND logic).
         - If all are omitted or null:
-            Returns all existing Atlan tags.
+            Returns all existing Atlan tags in the instance.
 
     Args:
-        display_name (str | None, optional): Human-readable display name of the tag.
+        display_name (str | None, optional): Exact display name to filter by (case-sensitive).
+            If provided, returns tags whose displayName exactly matches this value.
             If None, no display name filter is applied.
-        color (str | None, optional): Color to filter by (e.g., "Red", "Blue", "Gray").
+        color (str | None, optional): Color to filter by (case-insensitive).
+            Valid values: "GRAY", "GREEN", "YELLOW", "RED" (or any case variation).
+            If provided, returns tags with the specified color.
             If None, no color filter is applied.
         description_filter (str | None, optional): Filter by description status.
-            - "empty": Returns tags with empty or None descriptions.
-            - "not_empty": Returns tags with non-empty descriptions.
-            If None, no description filter is applied.
+            - "empty": Returns only tags with empty or None descriptions.
+            - "not_empty": Returns only tags with non-empty descriptions.
+            - If None, no description filter is applied.
+            Note: Invalid values are logged as warnings and ignored.
 
     Returns:
-        Dict[str, Any]:
-            {
-                "tags": [
-                    {
-                        "display_name": str,
-                        "internal_name": str | None,
-                        "guid": str | None,
-                        "description": str | None,
-                        "options": dict,
-                    },
-                    ...
-                ],
-                "count": int,
-                "error": None | str,
-            }
+        Dict[str, Any]: A dictionary containing:
+            - "tags" (List[Dict[str, Any]]): List of tag objects matching the criteria.
+                Each tag object contains:
+                    - "display_name" (str): Human-readable tag name
+                    - "internal_name" (str | None): Internal Atlan name (auto-generated)
+                    - "guid" (str | None): Unique identifier for the tag
+                    - "description" (str | None): Tag description if set
+                    - "options" (dict): Tag options including color, icon, etc.
+            - "count" (int): Number of tags found matching the criteria
+            - "error" (str | None): Error message if an error occurred, None otherwise
 
     Examples:
         # Retrieve a specific tag by display name
         result = retrieve_atlan_tag_by_name_tool(display_name="PII")
+        if result["error"] is None:
+            print(f"Found {result['count']} tag(s)")
 
-        # Retrieve all tags with red color
-        result = retrieve_atlan_tag_by_name_tool(color="Red")
+        # Retrieve all tags with red color (case-insensitive)
+        result = retrieve_atlan_tag_by_name_tool(color="red")
+        # Works with "red", "RED", "Red", etc.
 
         # Retrieve all tags with empty descriptions
         result = retrieve_atlan_tag_by_name_tool(description_filter="empty")
@@ -965,8 +971,15 @@ def retrieve_atlan_tag_by_name_tool(display_name: str | None = None, color: str 
         # Retrieve all tags with non-empty descriptions
         result = retrieve_atlan_tag_by_name_tool(description_filter="not_empty")
 
-        # Retrieve all tags
+        # Retrieve all tags (no filters)
         result = retrieve_atlan_tag_by_name_tool()
+        print(f"Total tags in Atlan: {result['count']}")
+
+        # Combine filters: tags with specific name and color
+        result = retrieve_atlan_tag_by_name_tool(
+            display_name="Production",
+            color="GREEN"
+        )
     """
     # Call the imported function from tools module (imported at top of file)
     return retrieve_atlan_tag_by_name(display_name=display_name, color=color, description_filter=description_filter)
@@ -975,41 +988,94 @@ def retrieve_atlan_tag_by_name_tool(display_name: str | None = None, color: str 
 @mcp.tool()
 def create_atlan_tag_tool(name: str, color: str | None = None, description: str | None = None):
     """
-    Create a new Atlan tag.
+    Create a new Atlan tag definition.
+
+    This tool creates a new tag (classification) in Atlan. Before creating,
+    it checks if a tag with the same display name already exists to prevent duplicates.
 
     Process:
-    1. Check if a tag with the same name already exists
-    2. If it exists, inform the customer that the tag already exists
-    3. If it doesn't exist, create the tag
+    1. Validates that the tag name is provided and not empty
+    2. Checks if a tag with the same display name already exists
+    3. If it exists, returns information about the existing tag
+    4. If it doesn't exist, validates the color (if provided) and creates the tag
+    5. Returns the created tag definition with its GUID and internal name
 
     Args:
         name (str): Human-readable display name of the tag (required).
-        color (str, optional): Color for the tag. Defaults to BLACK if not provided.
-            Valid colors: BLACK, BLUE, BROWN, CYAN, GREEN, GREY, MAGENTA, ORANGE, PINK, PURPLE, RED, YELLOW
+            Must be a non-empty string. Whitespace-only strings are rejected.
+        color (str, optional): Color for the tag (case-insensitive).
+            Only the following colors are allowed: GRAY, GREEN, YELLOW, RED
+            Defaults to GRAY if not provided.
+            Invalid colors will result in an error response.
         description (str, optional): Description of the tag.
+            Can be any string or None. Empty strings are allowed.
 
     Returns:
-        Dict[str, Any]:
-            - If tag exists: {"exists": True, "created": False, "tag": {...}, "message": "..."}
-            - If created: {"exists": False, "created": True, "tag": {...}, "message": "..."}
-            - If error: {"error": "error message"}
+        Dict[str, Any]: Response dictionary with different structures based on outcome:
+        
+        If tag already exists:
+            {
+                "exists": True,
+                "created": False,
+                "tag": {
+                    "display_name": str,
+                    "internal_name": str,
+                    "guid": str,
+                    "description": str | None,
+                    "options": dict
+                },
+                "message": str  # Informative message about existing tag
+            }
+        
+        If tag created successfully:
+            {
+                "exists": False,
+                "created": True,
+                "tag": {
+                    "display_name": str,
+                    "internal_name": str,  # Auto-generated by Atlan
+                    "guid": str,  # Auto-generated by Atlan
+                    "color": str,  # One of: GRAY, GREEN, YELLOW, RED
+                    "description": str | None,
+                    "options": dict
+                },
+                "message": str  # Success message
+            }
+        
+        If error occurred:
+            {
+                "error": str  # Error message describing what went wrong
+            }
 
     Examples:
-        # Create a simple tag with default color
+        # Create a tag with default color (GRAY)
         result = create_atlan_tag_tool(name="PII")
+        if result.get("created"):
+            print(f"Created tag: {result['tag']['display_name']}")
+            print(f"GUID: {result['tag']['guid']}")
 
         # Create a tag with specific color and description
         result = create_atlan_tag_tool(
             name="Customer Data",
-            color="BLUE",
+            color="GREEN",
             description="Tag for customer-related data assets"
         )
 
-        # Create a tag with description only
+        # Create a tag with description only (uses default GRAY color)
         result = create_atlan_tag_tool(
             name="Production",
             description="Tag for production environment assets"
         )
+
+        # Attempt to create duplicate tag
+        result = create_atlan_tag_tool(name="PII")
+        if result.get("exists"):
+            print(f"Tag already exists: {result['tag']['guid']}")
+
+        # Invalid color will return error
+        result = create_atlan_tag_tool(name="Test", color="BLUE")
+        if "error" in result:
+            print(result["error"])  # "Invalid color 'BLUE'..."
     """
     # Call the imported function from tools module (imported at top of file)
     return create_atlan_tag(name=name, color=color, description=description)
@@ -1018,33 +1084,71 @@ def create_atlan_tag_tool(name: str, color: str | None = None, description: str 
 @mcp.tool()
 def update_atlan_tag_tool(name: str, color: str | None = None, description: str | None = None):
     """
-    Update an existing Atlan tag.
+    Update an existing Atlan tag definition.
+
+    This tool updates the color and/or description of an existing tag.
+    The tag is identified by its display name. Only color and description can be updated;
+    the tag name itself cannot be changed (create a new tag if you need a different name).
 
     Process:
-    1. Check if a tag with the given name exists
-    2. If it doesn't exist, return an error
-    3. If it exists, update the specified properties (color and/or description)
+    1. Validates that the tag name is provided and not empty
+    2. Validates that at least one property (color or description) is provided for update
+    3. Checks if a tag with the given display name exists
+    4. If it doesn't exist, returns an error
+    5. If it exists, retrieves the full tag definition
+    6. Updates the specified properties (color and/or description)
+    7. Saves the updated tag definition back to Atlan
+    8. Returns the updated tag information
 
     Args:
         name (str): Human-readable display name of the tag to update (required).
-        color (str, optional): New color for the tag.
-            Valid colors: BLACK, BLUE, BROWN, CYAN, GREEN, GREY, MAGENTA, ORANGE, PINK, PURPLE, RED, YELLOW
+            Must match the exact display name of an existing tag (case-sensitive).
+            Must be a non-empty string.
+        color (str, optional): New color for the tag (case-insensitive).
+            Only the following colors are allowed: GRAY, GREEN, YELLOW, RED
+            Invalid colors will result in an error response.
+            If not provided, the color remains unchanged.
         description (str, optional): New description for the tag.
+            Can be any string, including empty string or None.
+            If None is explicitly passed, the description will be cleared.
+            If not provided (omitted), the description remains unchanged.
+            Note: To clear a description, pass an empty string "" or None.
 
     Returns:
-        Dict[str, Any]:
-            - If tag doesn't exist: {"error": "error message"}
-            - If updated: {"updated": True, "tag": {...}, "message": "..."}
-            - If error: {"error": "error message"}
+        Dict[str, Any]: Response dictionary with different structures based on outcome:
+        
+        If tag updated successfully:
+            {
+                "updated": True,
+                "tag": {
+                    "display_name": str,
+                    "internal_name": str,
+                    "guid": str,
+                    "color": str,  # One of: GRAY, GREEN, YELLOW, RED
+                    "description": str | None,
+                    "options": dict
+                },
+                "message": str  # Success message
+            }
+        
+        If error occurred:
+            {
+                "error": str  # Error message describing what went wrong
+            }
+            
+        Common error scenarios:
+            - Tag doesn't exist: "Tag with name 'X' does not exist..."
+            - No properties provided: "At least one property (color or description)..."
+            - Invalid color: "Invalid color 'X'. Only the following colors..."
+            - Empty name: "Tag name is required and cannot be empty."
 
     Examples:
-        # Update only the color of a tag
-        result = update_atlan_tag_tool(
-            name="PII",
-            color="RED"
-        )
+        # Update only the color
+        result = update_atlan_tag_tool(name="PII", color="RED")
+        if result.get("updated"):
+            print(f"Updated tag color to {result['tag']['color']}")
 
-        # Update only the description of a tag
+        # Update only the description
         result = update_atlan_tag_tool(
             name="Customer Data",
             description="Updated description for customer-related data assets"
@@ -1054,8 +1158,21 @@ def update_atlan_tag_tool(name: str, color: str | None = None, description: str 
         result = update_atlan_tag_tool(
             name="Production",
             color="GREEN",
-            description="Tag for production environment assets with updated info"
+            description="Tag for production environment assets"
         )
+
+        # Clear description by setting to empty string
+        result = update_atlan_tag_tool(name="Test Tag", description="")
+
+        # Error: tag doesn't exist
+        result = update_atlan_tag_tool(name="NonExistent", color="RED")
+        if "error" in result:
+            print(result["error"])  # "Tag with name 'NonExistent' does not exist..."
+
+        # Error: no properties provided
+        result = update_atlan_tag_tool(name="PII")
+        if "error" in result:
+            print(result["error"])  # "At least one property..."
     """
     # Call the imported function from tools module (imported at top of file)
     return update_atlan_tag(name=name, color=color, description=description)
