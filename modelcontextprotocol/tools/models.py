@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class CertificateStatus(str, Enum):
@@ -95,3 +95,14 @@ class DataProductSpec(BaseModel):
     asset_guids: List[str]  # Required: at least one asset GUID for data products
     user_description: Optional[str] = None
     certificate_status: Optional[CertificateStatus] = None
+
+    @field_validator("asset_guids")
+    @classmethod
+    def validate_asset_guids(cls, v: List[str]) -> List[str]:
+        """Validate that asset_guids is not empty."""
+        if not v:
+            raise ValueError(
+                "Data products require at least one asset GUID. "
+                "Please provide asset_guids to link assets to this product."
+            )
+        return v

@@ -23,7 +23,8 @@ def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
         assets (List[Asset]): List of Asset objects to save.
 
     Returns:
-        List[Dict[str, Any]]: List of dictionaries with details for each created asset.
+        List[Dict[str, Any]]: List of dictionaries with details for each created
+            or updated asset.
 
     Raises:
         Exception: If there's an error saving the assets.
@@ -36,17 +37,37 @@ def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
         logger.error(f"Error saving assets: {e}")
         raise
 
-    created_assets = response.mutated_entities.CREATE
-    logger.info(f"Save operation completed, processing {len(created_assets)} results")
+    created_assets = response.mutated_entities.CREATE or []
+    updated_assets = response.mutated_entities.UPDATE or []
 
-    results = [
-        {
-            "guid": asset.guid,
-            "name": asset.name,
-            "qualified_name": asset.qualified_name,
-        }
-        for asset in created_assets
-    ]
+    logger.info(
+        f"Save operation completed: {len(created_assets)} created, "
+        f"{len(updated_assets)} updated"
+    )
+
+    results = []
+
+    # Process created assets
+    for asset in created_assets:
+        results.append(
+            {
+                "guid": asset.guid,
+                "name": asset.name,
+                "qualified_name": asset.qualified_name,
+                "operation": "CREATE",
+            }
+        )
+
+    # Process updated assets
+    for asset in updated_assets:
+        results.append(
+            {
+                "guid": asset.guid,
+                "name": asset.name,
+                "qualified_name": asset.qualified_name,
+                "operation": "UPDATE",
+            }
+        )
 
     logger.info(f"Bulk save completed successfully for {len(results)} assets")
     return results
