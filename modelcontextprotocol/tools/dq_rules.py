@@ -181,9 +181,30 @@ def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
     if config["supports_conditions"] and spec.rule_conditions:
         params["rule_conditions"] = _build_rule_conditions(spec.rule_conditions)
 
-    # Get the creator method from DataQualityRule and invoke it
-    creator_method = getattr(DataQualityRule, config["creator_method"])
-    dq_rule = creator_method(**params)
+    # Create rule based on type using explicit creator methods
+    if spec.rule_type == DQRuleType.CUSTOM_SQL:
+        dq_rule = DataQualityRule.custom_sql_creator(**params)
+    elif spec.rule_type == DQRuleType.ROW_COUNT:
+        dq_rule = DataQualityRule.table_level_rule_creator(**params)
+    elif spec.rule_type in {
+        DQRuleType.NULL_COUNT,
+        DQRuleType.NULL_PERCENTAGE,
+        DQRuleType.BLANK_COUNT,
+        DQRuleType.BLANK_PERCENTAGE,
+        DQRuleType.MIN_VALUE,
+        DQRuleType.MAX_VALUE,
+        DQRuleType.AVERAGE,
+        DQRuleType.STANDARD_DEVIATION,
+        DQRuleType.UNIQUE_COUNT,
+        DQRuleType.DUPLICATE_COUNT,
+        DQRuleType.REGEX,
+        DQRuleType.STRING_LENGTH,
+        DQRuleType.VALID_VALUES,
+        DQRuleType.FRESHNESS,
+    }:
+        dq_rule = DataQualityRule.column_level_rule_creator(**params)
+    else:
+        raise ValueError(f"Unsupported rule type: {spec.rule_type}")
 
     # Add description if provided
     if spec.description:
