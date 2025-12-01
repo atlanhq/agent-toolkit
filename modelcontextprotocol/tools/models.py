@@ -79,6 +79,17 @@ class GlossaryTerm(BaseModel):
     category_guids: Optional[List[str]] = None
 
 
+class DQRuleCondition(BaseModel):
+    """Model representing a single data quality rule condition."""
+
+    type: (
+        str  # Condition type (e.g., "STRING_LENGTH_BETWEEN", "REGEX_MATCH", "IN_LIST")
+    )
+    value: Optional[Union[str, List[str]]] = None  # Single value or list of values
+    min_value: Optional[Union[int, float]] = None  # Minimum value for range conditions
+    max_value: Optional[Union[int, float]] = None  # Maximum value for range conditions
+
+
 class DQRuleType(str, Enum):
     """Enum for supported data quality rule types."""
 
@@ -190,7 +201,7 @@ class DQRuleSpecification(BaseModel):
     dimension: Optional[str] = None  # "COMPLETENESS", "VALIDITY", etc.
 
     # Advanced configuration
-    rule_conditions: Optional[List[Dict[str, Any]]] = None
+    rule_conditions: Optional[List[DQRuleCondition]] = None
     row_scope_filtering_enabled: Optional[bool] = False
     description: Optional[str] = None
 

@@ -25,6 +25,7 @@ from .models import (
     DQRuleType,
     DQRuleCreationResponse,
     CreatedRuleInfo,
+    DQRuleCondition,
 )
 
 logger = logging.getLogger(__name__)
@@ -191,12 +192,12 @@ def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
     return dq_rule
 
 
-def _build_rule_conditions(conditions: List[Dict[str, Any]]) -> Any:
+def _build_rule_conditions(conditions: List[DQRuleCondition]) -> Any:
     """
     Build DQRuleConditionsBuilder from condition specifications.
 
     Args:
-        conditions (List[Dict[str, Any]]): List of condition dictionaries
+        conditions (List[DQRuleCondition]): List of rule condition models
 
     Returns:
         Built rule conditions object
@@ -204,14 +205,15 @@ def _build_rule_conditions(conditions: List[Dict[str, Any]]) -> Any:
     builder = DQRuleConditionsBuilder()
 
     for condition in conditions:
-        condition_type = DataQualityRuleTemplateConfigRuleConditions[condition["type"]]
+        condition_type = DataQualityRuleTemplateConfigRuleConditions[condition.type]
 
         # Build condition parameters dynamically
         condition_params = {"type": condition_type}
 
         for key in ["value", "min_value", "max_value"]:
-            if key in condition and condition[key] is not None:
-                condition_params[key] = condition[key]
+            value = getattr(condition, key)
+            if value is not None:
+                condition_params[key] = value
 
         builder.add_condition(**condition_params)
 
