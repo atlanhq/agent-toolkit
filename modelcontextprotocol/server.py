@@ -12,7 +12,8 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
-    create_domain_assets,
+    create_data_domain_assets,
+    create_data_product_assets,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -907,26 +908,19 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def create_domains(items) -> List[Dict[str, Any]]:
+def create_domains(domains) -> List[Dict[str, Any]]:
     """
-    Create Data Domains, Sub Domains, or Data Products in Atlan.
-
-    This unified tool automatically determines the type based on the presence of
-    specific fields in the specification:
-    - If 'parent_domain_qualified_name' is present -> Sub Domain
-    - If 'domain_qualified_name' is present (and no parent) -> Data Product
-    - Otherwise -> Data Domain
+    Create Data Domains or Sub Domains in Atlan.
 
     IMPORTANT BUSINESS RULES & CONSTRAINTS:
-    - Before creating a domain/subdomain/product, you may want to search for existing
+    - Before creating a domain/subdomain, you may want to search for existing
       domains to avoid duplicates or to get the qualified_name for parent relationships
     - Domain names must be unique at the top level
     - Subdomain names must be unique within the same parent domain
-    - Product names must be unique within the same domain
 
     Args:
-        items (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single item
-            specification (dict) or a list of item specifications.
+        domains (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single domain
+            specification (dict) or a list of domain specifications.
 
     For Data Domain:
         - name (str): Name of the domain (required)
@@ -936,14 +930,6 @@ def create_domains(items) -> List[Dict[str, Any]]:
     For Sub Domain:
         - name (str): Name of the subdomain (required)
         - parent_domain_qualified_name (str): Qualified name of parent domain (required)
-        - user_description (str, optional): Detailed description
-        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
-
-    For Data Product:
-        - name (str): Name of the product (required)
-        - domain_qualified_name (str): Qualified name of the domain (required)
-        - asset_guids (List[str]): List of asset GUIDs to link to this product (required).
-          At least one asset GUID must be provided. Use search_assets_tool to find asset GUIDs.
         - user_description (str, optional): Detailed description
         - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
 
@@ -969,16 +955,7 @@ def create_domains(items) -> List[Dict[str, Any]]:
             "certificate_status": "DRAFT"
         })
 
-        # Create a Data Product with linked assets (asset_guids required)
-        # First, search for assets to get their GUIDs using search_assets_tool
-        create_domains({
-            "name": "Marketing Influence",
-            "domain_qualified_name": "default/domain/marketing",
-            "user_description": "Product for marketing influence analysis",
-            "asset_guids": ["asset-guid-1", "asset-guid-2"]  # GUIDs from search_assets_tool
-        })
-
-        # Create multiple items of different types in one call
+        # Create multiple domains in one call
         create_domains([
             {
                 "name": "Sales",
@@ -988,22 +965,80 @@ def create_domains(items) -> List[Dict[str, Any]]:
                 "name": "E-commerce Sales",
                 "parent_domain_qualified_name": "default/domain/sales",
                 "user_description": "E-commerce sales subdomain"
-            },
-            {
-                "name": "Sales Analytics",
-                "domain_qualified_name": "default/domain/sales",
-                "user_description": "Sales analytics product",
-                "asset_guids": ["table-guid-1", "table-guid-2"]  # Required for data products
             }
         ])
     """
     # Parse parameters to handle JSON strings using shared utility
     try:
-        items = parse_json_parameter(items)
+        domains = parse_json_parameter(domains)
     except json.JSONDecodeError as e:
-        return {"error": f"Invalid JSON format for items parameter: {str(e)}"}
+        return {"error": f"Invalid JSON format for domains parameter: {str(e)}"}
 
-    return create_domain_assets(items)
+    return create_data_domain_assets(domains)
+
+
+@mcp.tool()
+def create_data_products(products) -> List[Dict[str, Any]]:
+    """
+    Create Data Products in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Before creating a product, you may want to search for existing domains
+      to get the qualified_name for the domain relationship
+    - Product names must be unique within the same domain
+    - At least one asset GUID must be provided for each product
+
+    Args:
+        products (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single product
+            specification (dict) or a list of product specifications.
+
+    For Data Product:
+        - name (str): Name of the product (required)
+        - domain_qualified_name (str): Qualified name of the domain (required)
+        - asset_guids (List[str]): List of asset GUIDs to link to this product (required).
+          At least one asset GUID must be provided. Use search_assets_tool to find asset GUIDs.
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created asset:
+            - guid: The GUID of the created asset
+            - name: The name of the asset
+            - qualified_name: The qualified name of the created asset
+
+    Examples:
+        # Create a Data Product with linked assets (asset_guids required)
+        # First, search for assets to get their GUIDs using search_assets_tool
+        create_data_products({
+            "name": "Marketing Influence",
+            "domain_qualified_name": "default/domain/marketing",
+            "user_description": "Product for marketing influence analysis",
+            "asset_guids": ["asset-guid-1", "asset-guid-2"]  # GUIDs from search_assets_tool
+        })
+
+        # Create multiple products in one call
+        create_data_products([
+            {
+                "name": "Sales Analytics",
+                "domain_qualified_name": "default/domain/sales",
+                "user_description": "Sales analytics product",
+                "asset_guids": ["table-guid-1", "table-guid-2"]
+            },
+            {
+                "name": "Customer Insights",
+                "domain_qualified_name": "default/domain/marketing",
+                "user_description": "Customer insights product",
+                "asset_guids": ["view-guid-1"]
+            }
+        ])
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        products = parse_json_parameter(products)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for products parameter: {str(e)}"}
+
+    return create_data_product_assets(products)
 
 
 def main():
