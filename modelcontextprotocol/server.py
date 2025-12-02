@@ -14,6 +14,7 @@ from tools import (
     create_glossary_term_assets,
     create_data_domain_assets,
     create_data_product_assets,
+    create_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -1039,6 +1040,136 @@ def create_data_products(products) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for products parameter: {str(e)}"}
 
     return create_data_product_assets(products)
+
+
+@mcp.tool()
+def create_dq_rules_tool(rules):
+    """
+    Create one or multiple data quality rules in Atlan.
+
+    Supports all rule types: column-level, table-level, and custom SQL rules.
+    Rules can be created individually or in bulk for efficient setup.
+
+    Args:
+        rules (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single rule
+            specification or a list of rule specifications. Each specification
+            must include:
+            - rule_type (str): Type of rule (see Supported Rule Types) [REQUIRED]
+            - asset_qualified_name (str): Qualified name of the table/view [REQUIRED]
+            - threshold_value (int/float): Threshold value for comparison [REQUIRED]
+            - column_qualified_name (str): Column qualified name [REQUIRED for column-level rules, NOT for Row Count/Custom SQL]
+            - threshold_compare_operator (str): Comparison operator (EQUAL, GREATER_THAN, etc.) [OPTIONAL, default varies by rule]
+            - threshold_unit (str): Time unit for Freshness rules (DAYS, HOURS, MINUTES) [REQUIRED for Freshness, N/A for others]
+            - alert_priority (str): Alert priority level (LOW, NORMAL, URGENT) [OPTIONAL, default: NORMAL]
+            - row_scope_filtering_enabled (bool): Enable row-level filtering [OPTIONAL]
+            - rule_conditions (List[Dict]): Conditions for String Length/Regex/Valid Values [REQUIRED for conditional rules]
+            - custom_sql (str): SQL query [REQUIRED for Custom SQL rules]
+            - rule_name (str): Name for the rule [REQUIRED for Custom SQL rules]
+            - dimension (str): DQ dimension [REQUIRED for Custom SQL rules]
+            - description (str): Rule description [OPTIONAL]
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - created_count: Number of rules successfully created
+            - created_rules: List of created rules with guid, qualified_name, rule_type
+            - errors: List of any errors encountered
+
+    Examples:
+        # Column-level rules (Null Count, Min/Max Value, Unique/Duplicate Count, etc.)
+        rule = create_dq_rules_tool({
+            "rule_type": "Null Count",  # or "Min Value", "Max Value", "Unique Count", etc.
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/EMAIL",
+            "threshold_compare_operator": "LESS_THAN_EQUAL",  # EQUAL, GREATER_THAN, etc.
+            "threshold_value": 5,
+            "alert_priority": "URGENT",  # LOW, NORMAL, URGENT
+            "row_scope_filtering_enabled": True,
+            "description": "Email column should have minimal nulls"
+        })
+
+        # Conditional rules (String Length, Regex, Valid Values)
+        rule = create_dq_rules_tool({
+            "rule_type": "String Length",  # or "Regex", "Valid Values"
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/PHONE",
+            "threshold_value": 10,
+            "alert_priority": "URGENT",
+            "rule_conditions": [{
+                "type": "STRING_LENGTH_BETWEEN",  # See Rule Condition Types below
+                "min_value": 10,
+                "max_value": 15
+            }],
+            # For Regex: {"type": "REGEX_NOT_MATCH", "value": "pattern"}
+            # For Valid Values: {"type": "IN_LIST", "value": ["ACTIVE", "INACTIVE"]}
+            "row_scope_filtering_enabled": True
+        })
+
+        # Table-level (Row Count) and Time-based (Freshness)
+        rule = create_dq_rules_tool({
+            "rule_type": "Row Count",  # No column_qualified_name needed
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "threshold_compare_operator": "GREATER_THAN_EQUAL",
+            "threshold_value": 1000,
+            "alert_priority": "URGENT"
+        })
+        # For Freshness: Add "column_qualified_name" + "threshold_unit": "DAYS"/"HOURS"/"MINUTES"
+
+        # Custom SQL rule
+        rule = create_dq_rules_tool({
+            "rule_type": "Custom SQL",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "rule_name": "Revenue Consistency Check",
+            "custom_sql": "SELECT COUNT(*) FROM TABLE WHERE revenue < 0 OR revenue > 1000000",
+            "threshold_compare_operator": "EQUAL",
+            "threshold_value": 0,
+            "alert_priority": "URGENT",
+            "dimension": "CONSISTENCY",  # See Data Quality Dimensions below
+            "description": "Ensure revenue values are within expected range"
+        })
+
+        # Bulk creation - Pass array instead of single dict
+        rules = create_dq_rules_tool([
+            {"rule_type": "Null Count", "column_qualified_name": "...EMAIL", ...},
+            {"rule_type": "Duplicate Count", "column_qualified_name": "...USER_ID", ...},
+            {"rule_type": "Row Count", "asset_qualified_name": "...", ...}
+        ])
+
+    Supported Rule Types:
+        Completeness: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage"
+        Statistical: "Min Value", "Max Value", "Average", "Standard Deviation"
+        Uniqueness: "Unique Count", "Duplicate Count"
+        Validity: "Regex", "String Length", "Valid Values"
+        Timeliness: "Freshness"
+        Volume: "Row Count"
+        Custom: "Custom SQL"
+
+    Valid Alert Priority Levels:
+        "LOW", "NORMAL" (default), "URGENT"
+
+    Threshold Operators:
+        "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", "LESS_THAN", "LESS_THAN_EQUAL", "BETWEEN"
+
+    Threshold Units (Freshness only):
+        "DAYS", "HOURS", "MINUTES"
+
+    Data Quality Dimensions (Custom SQL only):
+        "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", "VOLUME", "ACCURACY", "CONSISTENCY"
+
+    Rule Condition Types:
+        String Length: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN",
+                      "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_LESS_THAN"
+        Regex: "REGEX_MATCH", "REGEX_NOT_MATCH"
+        Valid Values: "IN_LIST", "NOT_IN_LIST"
+    """
+    try:
+        parsed_rules = parse_json_parameter(rules)
+        return create_dq_rules(parsed_rules)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "created_count": 0,
+            "created_rules": [],
+            "errors": [f"Parameter parsing error: {str(e)}"],
+        }
 
 
 def main():
