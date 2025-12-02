@@ -6,56 +6,16 @@ from pyatlan.model.assets import (
     AtlasGlossary,
     AtlasGlossaryCategory,
     AtlasGlossaryTerm,
-    Asset,
 )
-from utils.parameters import parse_list_parameter
-from client import get_atlan_client
+
+from utils import parse_list_parameter, save_assets
 from .models import (
-    CertificateStatus,
     Glossary,
     GlossaryCategory,
     GlossaryTerm,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def save_assets(assets: List[Asset]) -> List[Dict[str, Any]]:
-    """
-    Common bulk save and response processing for any asset type.
-
-    Args:
-        assets (List[Asset]): List of Asset objects to save.
-
-    Returns:
-        List[Dict[str, Any]]: List of dictionaries with details for each created asset.
-
-    Raises:
-        Exception: If there's an error saving the assets.
-    """
-    logger.info("Starting bulk save operation")
-    client = get_atlan_client()
-    try:
-        response = client.asset.save(assets)
-    except Exception as e:
-        logger.error(f"Error saving assets: {e}")
-        raise e
-    results: List[Dict[str, Any]] = []
-    created_assets = response.mutated_entities.CREATE
-
-    logger.info(f"Save operation completed, processing {len(created_assets)} results")
-
-    results = [
-        {
-            "guid": created_asset.guid,
-            "name": created_asset.name,
-            "qualified_name": created_asset.qualified_name,
-        }
-        for created_asset in created_assets
-    ]
-
-    logger.info(f"Bulk save completed successfully for {len(results)} assets")
-    return results
 
 
 def create_glossary_assets(
@@ -94,14 +54,11 @@ def create_glossary_assets(
         logger.debug(f"Creating AtlasGlossary for: {spec.name}")
         glossary = AtlasGlossary.creator(name=spec.name)
         glossary.user_description = spec.user_description
-        if spec.certificate_status is not None:
-            cs = (
-                CertificateStatus(spec.certificate_status)
-                if isinstance(spec.certificate_status, str)
-                else spec.certificate_status
+        if spec.certificate_status:
+            glossary.certificate_status = spec.certificate_status.value
+            logger.debug(
+                f"Set certificate status for {spec.name}: {spec.certificate_status.value}"
             )
-            glossary.certificate_status = cs.value
-            logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
         assets.append(glossary)
 
     return save_assets(assets)
@@ -155,14 +112,11 @@ def create_glossary_category_assets(
             ),
         )
         category.user_description = spec.user_description
-        if spec.certificate_status is not None:
-            cs = (
-                CertificateStatus(spec.certificate_status)
-                if isinstance(spec.certificate_status, str)
-                else spec.certificate_status
+        if spec.certificate_status:
+            category.certificate_status = spec.certificate_status.value
+            logger.debug(
+                f"Set certificate status for {spec.name}: {spec.certificate_status.value}"
             )
-            category.certificate_status = cs.value
-            logger.debug(f"Set certificate status for {spec.name}: {cs.value}")
 
         assets.append(category)
 
@@ -213,13 +167,8 @@ def create_glossary_term_assets(
             categories=[AtlasGlossaryCategory.ref_by_guid(g) for g in guids] or None,
         )
         term.user_description = spec.user_description
-        if spec.certificate_status is not None:
-            cs = (
-                CertificateStatus(spec.certificate_status)
-                if isinstance(spec.certificate_status, str)
-                else spec.certificate_status
-            )
-            term.certificate_status = cs.value
+        if spec.certificate_status:
+            term.certificate_status = spec.certificate_status.value
         assets.append(term)
 
     return save_assets(assets)
