@@ -16,9 +16,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastmcp==2.13.0.2",
+    "fastmcp>=2.11.0",
     "pyatlan>=6.0.1",
-    "uvicorn>=0.35.0"
+    "pydantic>=2.10.0",
 ]
 
 [project.scripts]
