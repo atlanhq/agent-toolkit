@@ -9,18 +9,14 @@ from __future__ import annotations
 import logging
 from typing import Dict, Any, List, Union
 
-<<<<<<< HEAD
-from pyatlan.model.assets import DataQualityRule, Table, Column
-=======
 from pyatlan.model.assets import (
     DataQualityRule,
     Table,
+    Column,
     View,
     MaterialisedView,
     SnowflakeDynamicTable,
-    Column,
 )
->>>>>>> feature/add-dq-tools
 from pyatlan.model.enums import (
     DataQualityRuleAlertPriority,
     DataQualityRuleThresholdCompareOperator,
@@ -37,10 +33,7 @@ from .models import (
     DQRuleCreationResponse,
     CreatedRuleInfo,
     DQRuleCondition,
-<<<<<<< HEAD
-=======
     DQAssetType,
->>>>>>> feature/add-dq-tools
 )
 
 logger = logging.getLogger(__name__)
@@ -154,12 +147,6 @@ def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
     # Get rule configuration
     config = spec.rule_type.get_rule_config()
 
-<<<<<<< HEAD
-    # Base parameters common to all rule types
-    params = {
-        "client": client,
-        "asset": Table.ref_by_qualified_name(qualified_name=spec.asset_qualified_name),
-=======
     # Determine asset class based on asset type
     asset_class_map = {
         DQAssetType.TABLE: Table,
@@ -175,7 +162,6 @@ def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
         "asset": asset_class.ref_by_qualified_name(
             qualified_name=spec.asset_qualified_name
         ),
->>>>>>> feature/add-dq-tools
         "threshold_value": spec.threshold_value,
         "alert_priority": DataQualityRuleAlertPriority[spec.alert_priority],
     }

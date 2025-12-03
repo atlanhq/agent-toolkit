@@ -122,6 +122,15 @@ class DQRuleCondition(BaseModel):
     max_value: Optional[Union[int, float]] = None  # Maximum value for range conditions
 
 
+class DQAssetType(str, Enum):
+    """Enum for supported asset types for data quality rules."""
+
+    TABLE = "Table"
+    VIEW = "View"
+    MATERIALIZED_VIEW = "MaterialisedView"
+    SNOWFLAKE_DYNAMIC_TABLE = "SnowflakeDynamicTable"
+
+
 class DQRuleType(str, Enum):
     """Enum for supported data quality rule types."""
 
@@ -215,6 +224,7 @@ class DQRuleSpecification(BaseModel):
     # Core identification
     rule_type: DQRuleType
     asset_qualified_name: str
+    asset_type: Optional[DQAssetType] = DQAssetType.TABLE  # Default to Table
 
     # Column-level specific (required for most rule types except Row Count and Custom SQL)
     column_qualified_name: Optional[str] = None
