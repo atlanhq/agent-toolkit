@@ -1,12 +1,13 @@
-name: Test Docker Hub Push
+name: Docker Hub Push
 
 on:
   pull_request:
     types: [opened, synchronize, labeled]
+    branches:
+      - main
 
 jobs:
-  test-dockerhub-push:
-    # Only run when PR has "test-dockerhub" label
+  publish-dockerhub:
     if: contains(github.event.pull_request.labels.*.name, 'test-dockerhub')
     runs-on: ubuntu-latest
     permissions:
@@ -15,19 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get version or use test tag
-        id: get_tag
+      - name: Get version
+        id: get_version
         run: |
-          if [ -f modelcontextprotocol/version.py ]; then
-            VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2 || echo "test")
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "version=test" >> $GITHUB_OUTPUT
-          fi
-          # Create a test tag with PR number
-          TEST_TAG="test-pr${{ github.event.pull_request.number }}-${{ github.sha }}"
-          echo "test_tag=${TEST_TAG:0:50}" >> $GITHUB_OUTPUT
-          echo "Using test tag: ${TEST_TAG:0:50}"
+          VERSION=$(grep -m 1 "__version__" modelcontextprotocol/version.py | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
 
       - name: Set up QEMU for Cross-Platform Builds
         uses: docker/setup-qemu-action@v3
@@ -41,22 +35,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build and push Docker image (test)
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./modelcontextprotocol/
           push: true
           tags: |
-            atlanhq/atlan-mcp-server:${{ steps.get_tag.outputs.test_tag }}
+            atlanhq/atlan-mcp-server:latest
+            atlanhq/atlan-mcp-server:${{ steps.get_version.outputs.version }}
           platforms: |
             linux/amd64
             linux/arm64
-
-      - name: Output test image tags
-        run: |
-          echo "✅ Successfully pushed test image to Docker Hub:"
-          echo "  - atlanhq/atlan-mcp-server:${{ steps.get_tag.outputs.test_tag }}"
-          echo ""
-          echo "You can test pulling the image with:"
-          echo "  docker pull atlanhq/atlan-mcp-server:${{ steps.get_tag.outputs.test_tag }}"
 
