@@ -79,6 +79,15 @@ class GlossaryTerm(BaseModel):
     category_guids: Optional[List[str]] = None
 
 
+class DQAssetType(str, Enum):
+    """Enum for supported asset types for data quality rules."""
+
+    TABLE = "Table"
+    VIEW = "View"
+    MATERIALIZED_VIEW = "MaterialisedView"
+    SNOWFLAKE_DYNAMIC_TABLE = "SnowflakeDynamicTable"
+
+
 class DQRuleCondition(BaseModel):
     """Model representing a single data quality rule condition."""
 
@@ -183,6 +192,7 @@ class DQRuleSpecification(BaseModel):
     # Core identification
     rule_type: DQRuleType
     asset_qualified_name: str
+    asset_type: DQAssetType = DQAssetType.TABLE
 
     # Column-level specific (required for most rule types except Row Count and Custom SQL)
     column_qualified_name: Optional[str] = None
