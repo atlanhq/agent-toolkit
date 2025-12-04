@@ -1010,7 +1010,7 @@ def get_workflows_tool(
 def get_workflow_runs_tool(
     workflow_name: str | None = None,
     workflow_phase: str | None = None,
-    status: List[str] | None = None,
+    status: str | None = None, # This is technically a list but we get the input as a string so we parse it into a list
     started_at: str | None = None,
     finished_at: str | None = None,
     from_: int = 0,
@@ -1049,15 +1049,19 @@ def get_workflow_runs_tool(
         workflow_phase (str, optional): Phase of the workflow_run. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
             Case-insensitive matching is supported. 
             REQUIRED when workflow_name is provided. DO NOT use status when workflow_name is provided.
-        status (List[str], optional): List of workflow_run phases to filter by. Common values:
-            - 'Succeeded': Successfully completed workflow_runs
-            - 'Failed': Workflow_runs that failed
-            - 'Running': Currently executing workflow_runs
-            - 'Error': Workflow_runs that encountered errors
-            - 'Pending': Workflow_runs waiting to start
+        status (List[str], optional): Array/list of workflow_run phases to filter by. 
+            IMPORTANT: Must be an array/list type, NOT a JSON string. 
+            Correct format: ["Succeeded", "Failed"] (array/list)
+            Incorrect format: '["Succeeded", "Failed"]' (string - will be rejected by schema validation)
+            Common values:
+                - 'Succeeded': Successfully completed workflow_runs
+                - 'Failed': Workflow_runs that failed
+                - 'Running': Currently executing workflow_runs
+                - 'Error': Workflow_runs that encountered errors
+                - 'Pending': Workflow_runs waiting to start
             Case-insensitive matching is supported. 
             REQUIRED when workflow_name is NOT provided. DO NOT use status when workflow_name is provided - use workflow_phase instead.
-            Example: ['Succeeded', 'Failed']
+            Example: ["Succeeded", "Failed"]  # Array/list, not a string
         
     Parameter Usage Rules:
         - If workflow_name is provided: MUST use workflow_phase (single phase string). Do NOT use status.
@@ -1137,6 +1141,16 @@ def get_workflow_runs_tool(
         failed_runs = [r for r in result.get("runs", []) if r.get("run_phase") == "Failed"]
         print(f"Found {len(failed_runs)} failed workflow_runs in the time range")
     """
+    try:
+        # Parse list parameter if it comes as a JSON string (common with MCP clients)
+        status = parse_list_parameter(status)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "runs": [],
+            "total": 0,
+            "error": f"Parameter parsing error for status: {str(e)}"
+        }
+    
     return get_workflow_runs(
         workflow_name=workflow_name,
         workflow_phase=workflow_phase,
