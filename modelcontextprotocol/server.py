@@ -1189,6 +1189,8 @@ def update_atlan_tag_tool(
     """
     # Call the imported function from tools module (imported at top of file)
     return update_atlan_tag(name=name, color=color, description=description)
+
+
 def create_domains(domains) -> List[Dict[str, Any]]:
     """
     Create Data Domains or Sub Domains in Atlan.
