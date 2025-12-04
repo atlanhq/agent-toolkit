@@ -12,6 +12,9 @@ from tools import (
     create_glossary_category_assets,
     create_glossary_assets,
     create_glossary_term_assets,
+    create_data_domain_assets,
+    create_data_product_assets,
+    create_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -1186,6 +1189,267 @@ def update_atlan_tag_tool(
     """
     # Call the imported function from tools module (imported at top of file)
     return update_atlan_tag(name=name, color=color, description=description)
+def create_domains(domains) -> List[Dict[str, Any]]:
+    """
+    Create Data Domains or Sub Domains in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Before creating a domain/subdomain, you may want to search for existing
+      domains to avoid duplicates or to get the qualified_name for parent relationships
+    - Domain names must be unique at the top level
+    - Subdomain names must be unique within the same parent domain
+
+    Args:
+        domains (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single domain
+            specification (dict) or a list of domain specifications.
+
+    For Data Domain:
+        - name (str): Name of the domain (required)
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+
+    For Sub Domain:
+        - name (str): Name of the subdomain (required)
+        - parent_domain_qualified_name (str): Qualified name of parent domain (required)
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created asset:
+            - guid: The GUID of the created asset
+            - name: The name of the asset
+            - qualified_name: The qualified name of the created asset
+
+    Examples:
+        # Create a single Data Domain
+        create_domains({
+            "name": "Marketing",
+            "user_description": "Marketing data domain",
+            "certificate_status": "VERIFIED"
+        })
+
+        # Create a Sub Domain under an existing domain
+        create_domains({
+            "name": "Social Marketing",
+            "parent_domain_qualified_name": "default/domain/marketing",
+            "user_description": "Social media marketing subdomain",
+            "certificate_status": "DRAFT"
+        })
+
+        # Create multiple domains in one call
+        create_domains([
+            {
+                "name": "Sales",
+                "user_description": "Sales data domain"
+            },
+            {
+                "name": "E-commerce Sales",
+                "parent_domain_qualified_name": "default/domain/sales",
+                "user_description": "E-commerce sales subdomain"
+            }
+        ])
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        domains = parse_json_parameter(domains)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for domains parameter: {str(e)}"}
+
+    return create_data_domain_assets(domains)
+
+
+@mcp.tool()
+def create_data_products(products) -> List[Dict[str, Any]]:
+    """
+    Create Data Products in Atlan.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Before creating a product, you may want to search for existing domains
+      to get the qualified_name for the domain relationship
+    - Product names must be unique within the same domain
+    - At least one asset GUID must be provided for each product
+
+    Args:
+        products (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single product
+            specification (dict) or a list of product specifications.
+
+    For Data Product:
+        - name (str): Name of the product (required)
+        - domain_qualified_name (str): Qualified name of the domain (required)
+        - asset_guids (List[str]): List of asset GUIDs to link to this product (required).
+          At least one asset GUID must be provided. Use search_assets_tool to find asset GUIDs.
+        - user_description (str, optional): Detailed description
+        - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries, each with details for a created asset:
+            - guid: The GUID of the created asset
+            - name: The name of the asset
+            - qualified_name: The qualified name of the created asset
+
+    Examples:
+        # Create a Data Product with linked assets (asset_guids required)
+        # First, search for assets to get their GUIDs using search_assets_tool
+        create_data_products({
+            "name": "Marketing Influence",
+            "domain_qualified_name": "default/domain/marketing",
+            "user_description": "Product for marketing influence analysis",
+            "asset_guids": ["asset-guid-1", "asset-guid-2"]  # GUIDs from search_assets_tool
+        })
+
+        # Create multiple products in one call
+        create_data_products([
+            {
+                "name": "Sales Analytics",
+                "domain_qualified_name": "default/domain/sales",
+                "user_description": "Sales analytics product",
+                "asset_guids": ["table-guid-1", "table-guid-2"]
+            },
+            {
+                "name": "Customer Insights",
+                "domain_qualified_name": "default/domain/marketing",
+                "user_description": "Customer insights product",
+                "asset_guids": ["view-guid-1"]
+            }
+        ])
+    """
+    # Parse parameters to handle JSON strings using shared utility
+    try:
+        products = parse_json_parameter(products)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for products parameter: {str(e)}"}
+
+    return create_data_product_assets(products)
+
+
+@mcp.tool()
+def create_dq_rules_tool(rules):
+    """
+    Create one or multiple data quality rules in Atlan.
+
+    Supports all rule types: column-level, table-level, and custom SQL rules.
+    Rules can be created individually or in bulk for efficient setup.
+
+    Args:
+        rules (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single rule
+            specification or a list of rule specifications. Each specification
+            must include:
+            - rule_type (str): Type of rule (see Supported Rule Types) [REQUIRED]
+            - asset_qualified_name (str): Qualified name of the table/view [REQUIRED]
+            - threshold_value (int/float): Threshold value for comparison [REQUIRED]
+            - column_qualified_name (str): Column qualified name [REQUIRED for column-level rules, NOT for Row Count/Custom SQL]
+            - threshold_compare_operator (str): Comparison operator (EQUAL, GREATER_THAN, etc.) [OPTIONAL, default varies by rule]
+            - threshold_unit (str): Time unit for Freshness rules (DAYS, HOURS, MINUTES) [REQUIRED for Freshness, N/A for others]
+            - alert_priority (str): Alert priority level (LOW, NORMAL, URGENT) [OPTIONAL, default: NORMAL]
+            - row_scope_filtering_enabled (bool): Enable row-level filtering [OPTIONAL]
+            - rule_conditions (List[Dict]): Conditions for String Length/Regex/Valid Values [REQUIRED for conditional rules]
+            - custom_sql (str): SQL query [REQUIRED for Custom SQL rules]
+            - rule_name (str): Name for the rule [REQUIRED for Custom SQL rules]
+            - dimension (str): DQ dimension [REQUIRED for Custom SQL rules]
+            - description (str): Rule description [OPTIONAL]
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - created_count: Number of rules successfully created
+            - created_rules: List of created rules with guid, qualified_name, rule_type
+            - errors: List of any errors encountered
+
+    Examples:
+        # Column-level rules (Null Count, Min/Max Value, Unique/Duplicate Count, etc.)
+        rule = create_dq_rules_tool({
+            "rule_type": "Null Count",  # or "Min Value", "Max Value", "Unique Count", etc.
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/EMAIL",
+            "threshold_compare_operator": "LESS_THAN_EQUAL",  # EQUAL, GREATER_THAN, etc.
+            "threshold_value": 5,
+            "alert_priority": "URGENT",  # LOW, NORMAL, URGENT
+            "row_scope_filtering_enabled": True,
+            "description": "Email column should have minimal nulls"
+        })
+
+        # Conditional rules (String Length, Regex, Valid Values)
+        rule = create_dq_rules_tool({
+            "rule_type": "String Length",  # or "Regex", "Valid Values"
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "column_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/PHONE",
+            "threshold_value": 10,
+            "alert_priority": "URGENT",
+            "rule_conditions": [{
+                "type": "STRING_LENGTH_BETWEEN",  # See Rule Condition Types below
+                "min_value": 10,
+                "max_value": 15
+            }],
+            # For Regex: {"type": "REGEX_NOT_MATCH", "value": "pattern"}
+            # For Valid Values: {"type": "IN_LIST", "value": ["ACTIVE", "INACTIVE"]}
+            "row_scope_filtering_enabled": True
+        })
+
+        # Table-level (Row Count) and Time-based (Freshness)
+        rule = create_dq_rules_tool({
+            "rule_type": "Row Count",  # No column_qualified_name needed
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "threshold_compare_operator": "GREATER_THAN_EQUAL",
+            "threshold_value": 1000,
+            "alert_priority": "URGENT"
+        })
+        # For Freshness: Add "column_qualified_name" + "threshold_unit": "DAYS"/"HOURS"/"MINUTES"
+
+        # Custom SQL rule
+        rule = create_dq_rules_tool({
+            "rule_type": "Custom SQL",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "rule_name": "Revenue Consistency Check",
+            "custom_sql": "SELECT COUNT(*) FROM TABLE WHERE revenue < 0 OR revenue > 1000000",
+            "threshold_compare_operator": "EQUAL",
+            "threshold_value": 0,
+            "alert_priority": "URGENT",
+            "dimension": "CONSISTENCY",  # See Data Quality Dimensions below
+            "description": "Ensure revenue values are within expected range"
+        })
+
+        # Bulk creation - Pass array instead of single dict
+        rules = create_dq_rules_tool([
+            {"rule_type": "Null Count", "column_qualified_name": "...EMAIL", ...},
+            {"rule_type": "Duplicate Count", "column_qualified_name": "...USER_ID", ...},
+            {"rule_type": "Row Count", "asset_qualified_name": "...", ...}
+        ])
+
+    Supported Rule Types:
+        Completeness: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage"
+        Statistical: "Min Value", "Max Value", "Average", "Standard Deviation"
+        Uniqueness: "Unique Count", "Duplicate Count"
+        Validity: "Regex", "String Length", "Valid Values"
+        Timeliness: "Freshness"
+        Volume: "Row Count"
+        Custom: "Custom SQL"
+
+    Valid Alert Priority Levels:
+        "LOW", "NORMAL" (default), "URGENT"
+
+    Threshold Operators:
+        "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", "LESS_THAN", "LESS_THAN_EQUAL", "BETWEEN"
+
+    Threshold Units (Freshness only):
+        "DAYS", "HOURS", "MINUTES"
+
+    Data Quality Dimensions (Custom SQL only):
+        "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", "VOLUME", "ACCURACY", "CONSISTENCY"
+
+    Rule Condition Types:
+        String Length: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN",
+                      "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_LESS_THAN"
+        Regex: "REGEX_MATCH", "REGEX_NOT_MATCH"
+        Valid Values: "IN_LIST", "NOT_IN_LIST"
+    """
+    try:
+        parsed_rules = parse_json_parameter(rules)
+        return create_dq_rules(parsed_rules)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "created_count": 0,
+            "created_rules": [],
+            "errors": [f"Parameter parsing error: {str(e)}"],
+        }
 
 
 def main():
