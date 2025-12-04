@@ -3,7 +3,7 @@ from .dsl import get_assets_by_dsl
 from .lineage import traverse_lineage
 from .assets import update_assets
 from .query import query_asset
-from .dq_rules import create_dq_rules
+from .dq_rules import create_dq_rules, schedule_dq_rules
 from .glossary import (
     create_glossary_category_assets,
     create_glossary_assets,
@@ -21,6 +21,10 @@ from .models import (
     DQRuleType,
     DQAssetType,
     DQRuleSpecification,
+    DQScheduleAssetType,
+    DQRuleScheduleSpecification,
+    DQRuleScheduleResponse,
+    ScheduledAssetInfo,
 )
 
 __all__ = [
@@ -42,7 +46,12 @@ __all__ = [
     "GlossaryCategory",
     "GlossaryTerm",
     "create_dq_rules",
+    "schedule_dq_rules",
     "DQRuleType",
     "DQAssetType",
     "DQRuleSpecification",
+    "DQScheduleAssetType",
+    "DQRuleScheduleSpecification",
+    "DQRuleScheduleResponse",
+    "ScheduledAssetInfo",
 ]

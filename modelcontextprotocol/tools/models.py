@@ -305,3 +305,107 @@ class DQRuleCreationResponse(BaseModel):
     created_count: int = 0
     created_rules: List[CreatedRuleInfo] = []
     errors: List[str] = []
+
+
+class DQScheduleAssetType(str, Enum):
+    """
+    Enum for asset types that support data quality rule scheduling.
+
+    These are the asset types where DQ rules can be scheduled to run
+    automatically at specified intervals.
+    """
+
+    TABLE = "Table"
+    VIEW = "View"
+    MATERIALIZED_VIEW = "MaterialisedView"
+    SNOWFLAKE_DYNAMIC_TABLE = "SnowflakeDynamicTable"
+
+
+class DQRuleScheduleSpecification(BaseModel):
+    """
+    Specification model for scheduling data quality rules on an asset.
+
+    This model defines the required parameters for scheduling DQ rule
+    execution on a table, view, or other supported asset types.
+
+    Attributes:
+        asset_type: Type of asset (Table, View, etc.)
+        asset_name: Display name of the asset
+        asset_qualified_name: Fully qualified name of the asset in Atlan
+        schedule_crontab: Cron expression defining the schedule (e.g., "0 0 * * *")
+        schedule_time_zone: Timezone for the schedule (e.g., "UTC", "America/New_York")
+
+    Example:
+        ```python
+        schedule = DQRuleScheduleSpecification(
+            asset_type="Table",
+            asset_name="CUSTOMERS",
+            asset_qualified_name="default/snowflake/123/DB/SCHEMA/CUSTOMERS",
+            schedule_crontab="0 2 * * *",  # Daily at 2 AM
+            schedule_time_zone="UTC"
+        )
+        ```
+    """
+
+    asset_type: DQScheduleAssetType
+    asset_name: str
+    asset_qualified_name: str
+    schedule_crontab: str
+    schedule_time_zone: str
+
+    @field_validator("schedule_crontab")
+    @classmethod
+    def validate_crontab(cls, v: str) -> str:
+        """
+        Validate the crontab expression format.
+
+        A valid cron expression should have 5 fields:
+        minute, hour, day of month, month, day of week.
+        """
+        parts = v.strip().split()
+        if len(parts) != 5:
+            raise ValueError(
+                f"Invalid cron expression '{v}'. Expected 5 fields "
+                "(minute hour day-of-month month day-of-week), got {len(parts)}."
+            )
+        return v.strip()
+
+    @field_validator("schedule_time_zone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validate that a non-empty timezone string is provided."""
+        if not v or not v.strip():
+            raise ValueError("schedule_time_zone cannot be empty")
+        return v.strip()
+
+
+class ScheduledAssetInfo(BaseModel):
+    """
+    Model representing information about a successfully scheduled asset.
+
+    This is returned as part of the response to indicate which assets
+    had their DQ rule schedules configured successfully.
+    """
+
+    asset_name: str
+    asset_qualified_name: str
+    schedule_crontab: str
+    schedule_time_zone: str
+
+
+class DQRuleScheduleResponse(BaseModel):
+    """
+    Response model for data quality rule scheduling operations.
+
+    Contains the results of scheduling DQ rules on one or more assets,
+    including success counts, details of scheduled assets, and any errors.
+
+    Attributes:
+        scheduled_count: Number of assets successfully scheduled
+        scheduled_assets: List of successfully scheduled asset details
+        errors: List of error messages for any failed scheduling attempts
+    """
+
+    scheduled_count: int = 0
+    scheduled_assets: List[ScheduledAssetInfo] = []
+    errors: List[str] = []
