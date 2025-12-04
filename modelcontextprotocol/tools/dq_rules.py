@@ -37,7 +37,6 @@ from .models import (
     DQRuleScheduleSpecification,
     DQRuleScheduleResponse,
     ScheduledAssetInfo,
-    DQScheduleAssetType,
 )
 
 logger = logging.getLogger(__name__)
@@ -265,155 +264,75 @@ def _build_rule_conditions(conditions: List[DQRuleCondition]) -> Any:
     return builder.build()
 
 
-# Asset type class mapping for schedule operations
-_SCHEDULE_ASSET_TYPE_MAP = {
-    DQScheduleAssetType.TABLE: Table,
-    DQScheduleAssetType.VIEW: View,
-    DQScheduleAssetType.MATERIALIZED_VIEW: MaterialisedView,
-    DQScheduleAssetType.SNOWFLAKE_DYNAMIC_TABLE: SnowflakeDynamicTable,
-}
-
-
 def schedule_dq_rules(
     schedules: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> DQRuleScheduleResponse:
     """
     Schedule data quality rule execution for one or multiple assets.
 
-    This function configures automated scheduling for DQ rule execution on
-    specified assets. The rules will run according to the provided cron schedule
-    in the specified timezone.
-
     Args:
         schedules: Either a single schedule specification or a list of specifications.
-            Each specification should contain:
-            - asset_type (str): Type of asset ("Table", "View", "MaterialisedView",
-              "SnowflakeDynamicTable")
-            - asset_name (str): Display name of the asset
-            - asset_qualified_name (str): Fully qualified name of the asset
-            - schedule_crontab (str): Cron expression (5 fields: min hour day month weekday)
-            - schedule_time_zone (str): Timezone (e.g., "UTC", "America/New_York")
 
     Returns:
-        DQRuleScheduleResponse: Response containing:
-            - scheduled_count: Number of schedules successfully created
-            - scheduled_assets: List of ScheduledAssetInfo with details
-            - errors: List of any error messages encountered
-
-    Raises:
-        ValueError: If schedule specification validation fails
-
-    Examples:
-        Schedule DQ rules for a single table:
-
-        >>> result = schedule_dq_rules({
-        ...     "asset_type": "Table",
-        ...     "asset_name": "CUSTOMERS",
-        ...     "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/CUSTOMERS",
-        ...     "schedule_crontab": "0 2 * * *",
-        ...     "schedule_time_zone": "UTC"
-        ... })
-
-        Schedule DQ rules for multiple assets:
-
-        >>> result = schedule_dq_rules([
-        ...     {
-        ...         "asset_type": "Table",
-        ...         "asset_name": "ORDERS",
-        ...         "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/ORDERS",
-        ...         "schedule_crontab": "0 3 * * *",
-        ...         "schedule_time_zone": "America/New_York"
-        ...     },
-        ...     {
-        ...         "asset_type": "View",
-        ...         "asset_name": "DAILY_SUMMARY",
-        ...         "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/DAILY_SUMMARY",
-        ...         "schedule_crontab": "30 4 * * *",
-        ...         "schedule_time_zone": "UTC"
-        ...     }
-        ... ])
+        DQRuleScheduleResponse: Response containing scheduled_count, scheduled_assets, and errors.
     """
-    # Normalize input to list for consistent handling
+    # Convert single schedule to list for consistent handling
     data = schedules if isinstance(schedules, list) else [schedules]
-    logger.info(f"Scheduling data quality rules for {len(data)} asset(s)")
-    logger.debug(f"Schedule specifications: {data}")
 
     result = DQRuleScheduleResponse()
 
-    try:
-        # Validate and parse all specifications first
-        validated_specs: List[DQRuleScheduleSpecification] = []
-        for idx, item in enumerate(data):
-            try:
-                spec = DQRuleScheduleSpecification(**item)
-                validated_specs.append(spec)
-            except ValueError as e:
-                error_msg = f"Schedule {idx + 1} validation error: {str(e)}"
-                result.errors.append(error_msg)
-                logger.error(f"Validation failed for schedule {idx + 1}: {e}")
-            except Exception as e:
-                error_msg = f"Schedule {idx + 1} parsing error: {str(e)}"
-                result.errors.append(error_msg)
-                logger.error(f"Error parsing schedule specification {idx + 1}: {e}")
+    # Validate and parse specifications
+    specs = []
+    for idx, item in enumerate(data):
+        try:
+            spec = DQRuleScheduleSpecification(**item)
+            specs.append(spec)
+        except Exception as e:
+            result.errors.append(f"Schedule {idx + 1} error: {str(e)}")
+            logger.error(f"Error parsing schedule specification {idx + 1}: {e}")
 
-        if not validated_specs:
-            logger.warning("No valid schedule specifications to process")
-            return result
+    if not specs:
+        logger.warning("No valid schedule specifications to create")
+        return result
 
-        # Get Atlan client
-        client = get_atlan_client()
+    # Get Atlan client
+    client = get_atlan_client()
 
-        # Process each validated specification
-        for spec in validated_specs:
-            try:
-                logger.debug(
-                    f"Creating schedule for {spec.asset_type.value} "
-                    f"asset: {spec.asset_name}"
-                )
+    # Schedule rules for each asset
+    for spec in specs:
+        try:
+            if spec.asset_type == DQAssetType.TABLE:
+                asset_cls = Table
+            elif spec.asset_type == DQAssetType.VIEW:
+                asset_cls = View
+            elif spec.asset_type == DQAssetType.MATERIALIZED_VIEW:
+                asset_cls = MaterialisedView
+            elif spec.asset_type == DQAssetType.SNOWFLAKE_DYNAMIC_TABLE:
+                asset_cls = SnowflakeDynamicTable
+            else:
+                raise ValueError(f"Unsupported asset type: {spec.asset_type.value}")
 
-                # Get the asset type class from mapping
-                asset_cls = _SCHEDULE_ASSET_TYPE_MAP.get(spec.asset_type)
-                if asset_cls is None:
-                    raise ValueError(f"Unsupported asset type: {spec.asset_type.value}")
+            client.asset.add_dq_rule_schedule(
+                asset_type=asset_cls,
+                asset_name=spec.asset_name,
+                asset_qualified_name=spec.asset_qualified_name,
+                schedule_crontab=spec.schedule_crontab,
+                schedule_time_zone=spec.schedule_time_zone,
+            )
 
-                # Schedule the data quality rules via Atlan client
-                client.asset.add_dq_rule_schedule(
-                    asset_type=asset_cls,
+            result.scheduled_assets.append(
+                ScheduledAssetInfo(
                     asset_name=spec.asset_name,
                     asset_qualified_name=spec.asset_qualified_name,
                     schedule_crontab=spec.schedule_crontab,
                     schedule_time_zone=spec.schedule_time_zone,
                 )
+            )
+            result.scheduled_count += 1
 
-                # Record successful scheduling
-                result.scheduled_assets.append(
-                    ScheduledAssetInfo(
-                        asset_name=spec.asset_name,
-                        asset_qualified_name=spec.asset_qualified_name,
-                        schedule_crontab=spec.schedule_crontab,
-                        schedule_time_zone=spec.schedule_time_zone,
-                    )
-                )
-                result.scheduled_count += 1
+        except Exception as e:
+            error_msg = f"Error scheduling {spec.asset_name}: {str(e)}"
+            result.errors.append(error_msg)
+            logger.error(error_msg)
 
-                logger.info(
-                    f"Successfully scheduled DQ rules for {spec.asset_name} "
-                    f"({spec.schedule_crontab} {spec.schedule_time_zone})"
-                )
-
-            except Exception as e:
-                error_msg = (
-                    f"Error scheduling rules for '{spec.asset_name}' "
-                    f"({spec.asset_qualified_name}): {str(e)}"
-                )
-                result.errors.append(error_msg)
-                logger.error(error_msg)
-
-        return result
-
-    except Exception as e:
-        error_msg = f"Unexpected error in schedule creation: {str(e)}"
-        logger.error(error_msg)
-        logger.exception("Exception details:")
-        result.errors.append(error_msg)
-        return result
+    return result

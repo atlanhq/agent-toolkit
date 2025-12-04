@@ -307,20 +307,6 @@ class DQRuleCreationResponse(BaseModel):
     errors: List[str] = []
 
 
-class DQScheduleAssetType(str, Enum):
-    """
-    Enum for asset types that support data quality rule scheduling.
-
-    These are the asset types where DQ rules can be scheduled to run
-    automatically at specified intervals.
-    """
-
-    TABLE = "Table"
-    VIEW = "View"
-    MATERIALIZED_VIEW = "MaterialisedView"
-    SNOWFLAKE_DYNAMIC_TABLE = "SnowflakeDynamicTable"
-
-
 class DQRuleScheduleSpecification(BaseModel):
     """
     Specification model for scheduling data quality rules on an asset.
@@ -328,26 +314,9 @@ class DQRuleScheduleSpecification(BaseModel):
     This model defines the required parameters for scheduling DQ rule
     execution on a table, view, or other supported asset types.
 
-    Attributes:
-        asset_type: Type of asset (Table, View, etc.)
-        asset_name: Display name of the asset
-        asset_qualified_name: Fully qualified name of the asset in Atlan
-        schedule_crontab: Cron expression defining the schedule (e.g., "0 0 * * *")
-        schedule_time_zone: Timezone for the schedule (e.g., "UTC", "America/New_York")
-
-    Example:
-        ```python
-        schedule = DQRuleScheduleSpecification(
-            asset_type="Table",
-            asset_name="CUSTOMERS",
-            asset_qualified_name="default/snowflake/123/DB/SCHEMA/CUSTOMERS",
-            schedule_crontab="0 2 * * *",  # Daily at 2 AM
-            schedule_time_zone="UTC"
-        )
-        ```
     """
 
-    asset_type: DQScheduleAssetType
+    asset_type: DQAssetType
     asset_name: str
     asset_qualified_name: str
     schedule_crontab: str
@@ -394,17 +363,7 @@ class ScheduledAssetInfo(BaseModel):
 
 
 class DQRuleScheduleResponse(BaseModel):
-    """
-    Response model for data quality rule scheduling operations.
-
-    Contains the results of scheduling DQ rules on one or more assets,
-    including success counts, details of scheduled assets, and any errors.
-
-    Attributes:
-        scheduled_count: Number of assets successfully scheduled
-        scheduled_assets: List of successfully scheduled asset details
-        errors: List of error messages for any failed scheduling attempts
-    """
+    """Response model for data quality rule scheduling operations."""
 
     scheduled_count: int = 0
     scheduled_assets: List[ScheduledAssetInfo] = []
