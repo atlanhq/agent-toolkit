@@ -909,7 +909,11 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def retrieve_atlan_tag_by_name_tool(display_name: str | None = None, color: str | None = None, description_filter: str | None = None):
+def retrieve_atlan_tag_by_name_tool(
+    display_name: str | None = None,
+    color: str | None = None,
+    description_filter: str | None = None,
+):
     """
     Retrieve Atlan tag definitions by various criteria or list all existing tags.
 
@@ -982,11 +986,15 @@ def retrieve_atlan_tag_by_name_tool(display_name: str | None = None, color: str 
         )
     """
     # Call the imported function from tools module (imported at top of file)
-    return retrieve_atlan_tag_by_name(display_name=display_name, color=color, description_filter=description_filter)
+    return retrieve_atlan_tag_by_name(
+        display_name=display_name, color=color, description_filter=description_filter
+    )
 
 
 @mcp.tool()
-def create_atlan_tag_tool(name: str, color: str | None = None, description: str | None = None):
+def create_atlan_tag_tool(
+    name: str, color: str | None = None, description: str | None = None
+):
     """
     Create a new Atlan tag definition.
 
@@ -1012,7 +1020,7 @@ def create_atlan_tag_tool(name: str, color: str | None = None, description: str 
 
     Returns:
         Dict[str, Any]: Response dictionary with different structures based on outcome:
-        
+
         If tag already exists:
             {
                 "exists": True,
@@ -1026,7 +1034,7 @@ def create_atlan_tag_tool(name: str, color: str | None = None, description: str 
                 },
                 "message": str  # Informative message about existing tag
             }
-        
+
         If tag created successfully:
             {
                 "exists": False,
@@ -1041,7 +1049,7 @@ def create_atlan_tag_tool(name: str, color: str | None = None, description: str 
                 },
                 "message": str  # Success message
             }
-        
+
         If error occurred:
             {
                 "error": str  # Error message describing what went wrong
@@ -1082,7 +1090,9 @@ def create_atlan_tag_tool(name: str, color: str | None = None, description: str 
 
 
 @mcp.tool()
-def update_atlan_tag_tool(name: str, color: str | None = None, description: str | None = None):
+def update_atlan_tag_tool(
+    name: str, color: str | None = None, description: str | None = None
+):
     """
     Update an existing Atlan tag definition.
 
@@ -1116,7 +1126,7 @@ def update_atlan_tag_tool(name: str, color: str | None = None, description: str 
 
     Returns:
         Dict[str, Any]: Response dictionary with different structures based on outcome:
-        
+
         If tag updated successfully:
             {
                 "updated": True,
@@ -1130,12 +1140,12 @@ def update_atlan_tag_tool(name: str, color: str | None = None, description: str 
                 },
                 "message": str  # Success message
             }
-        
+
         If error occurred:
             {
                 "error": str  # Error message describing what went wrong
             }
-            
+
         Common error scenarios:
             - Tag doesn't exist: "Tag with name 'X' does not exist..."
             - No properties provided: "At least one property (color or description)..."

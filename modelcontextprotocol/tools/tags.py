@@ -14,6 +14,7 @@ Tags in Atlan are used to classify and organize assets. Each tag can have:
 
 All tag operations use the Atlan typedef API to manage tag definitions.
 """
+
 import logging
 from typing import Optional, Dict, Any, List
 
@@ -32,7 +33,11 @@ ALLOWED_TAG_COLORS = {"GRAY", "GREEN", "YELLOW", "RED"}
 # -------------------------------------------------------------------------
 #  retrieve_atlan_tag_by_name  (new public function)
 # -------------------------------------------------------------------------
-def retrieve_atlan_tag_by_name(display_name: Optional[str] = None, color: Optional[str] = None, description_filter: Optional[str] = None) -> Dict[str, Any]:
+def retrieve_atlan_tag_by_name(
+    display_name: Optional[str] = None,
+    color: Optional[str] = None,
+    description_filter: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Retrieve Atlan tag definitions by various criteria or list all existing tags.
 
@@ -103,7 +108,7 @@ def retrieve_atlan_tag_by_name(display_name: Optional[str] = None, color: Option
         filter_parts.append(f"color='{color}'")
     if description_filter:
         filter_parts.append(f"description_filter='{description_filter}'")
-    
+
     if filter_parts:
         logger.info(f"Retrieving Atlan tags with {', '.join(filter_parts)}")
     else:
@@ -117,33 +122,42 @@ def retrieve_atlan_tag_by_name(display_name: Optional[str] = None, color: Option
 
         # Apply filters
         matches = all_tag_defs
-        
+
         if display_name:
             matches = [
-                tag_def for tag_def in matches
+                tag_def
+                for tag_def in matches
                 if getattr(tag_def, "display_name", None) == display_name
             ]
-        
+
         if color:
             color_lower = color.lower()
             matches = [
-                tag_def for tag_def in matches
-                if (getattr(tag_def, "options", {}) or {}).get("color", "").lower() == color_lower
+                tag_def
+                for tag_def in matches
+                if (getattr(tag_def, "options", {}) or {}).get("color", "").lower()
+                == color_lower
             ]
-        
+
         if description_filter:
             if description_filter.lower() == "empty":
                 matches = [
-                    tag_def for tag_def in matches
-                    if not getattr(tag_def, "description", None) or getattr(tag_def, "description", "").strip() == ""
+                    tag_def
+                    for tag_def in matches
+                    if not getattr(tag_def, "description", None)
+                    or getattr(tag_def, "description", "").strip() == ""
                 ]
             elif description_filter.lower() == "not_empty":
                 matches = [
-                    tag_def for tag_def in matches
-                    if getattr(tag_def, "description", None) and getattr(tag_def, "description", "").strip() != ""
+                    tag_def
+                    for tag_def in matches
+                    if getattr(tag_def, "description", None)
+                    and getattr(tag_def, "description", "").strip() != ""
                 ]
             else:
-                logger.warning(f"Invalid description_filter value: '{description_filter}'. Valid values are 'empty' or 'not_empty'. Ignoring filter.")
+                logger.warning(
+                    f"Invalid description_filter value: '{description_filter}'. Valid values are 'empty' or 'not_empty'. Ignoring filter."
+                )
 
         return {
             "tags": [
@@ -161,9 +175,7 @@ def retrieve_atlan_tag_by_name(display_name: Optional[str] = None, color: Option
         }
 
     except Exception as e:
-        logger.error(
-            "Error retrieving Atlan tag definitions: %s", e, exc_info=True
-        )
+        logger.error("Error retrieving Atlan tag definitions: %s", e, exc_info=True)
         return {"tags": [], "count": 0, "error": str(e)}
 
 
@@ -177,10 +189,10 @@ def create_atlan_tag(
 ) -> Dict[str, Any]:
     """
     Create a new Atlan tag definition.
-    
+
     This function creates a new tag (classification) in Atlan. Before creating,
     it checks if a tag with the same display name already exists to prevent duplicates.
-    
+
     Process:
     1. Validates that the tag name is provided and not empty
     2. Checks if a tag with the same display name already exists
@@ -200,7 +212,7 @@ def create_atlan_tag(
 
     Returns:
         Dict[str, Any]: Response dictionary with different structures based on outcome:
-        
+
         If tag already exists:
             {
                 "exists": True,
@@ -214,7 +226,7 @@ def create_atlan_tag(
                 },
                 "message": str  # Informative message about existing tag
             }
-        
+
         If tag created successfully:
             {
                 "exists": False,
@@ -229,7 +241,7 @@ def create_atlan_tag(
                 },
                 "message": str  # Success message
             }
-        
+
         If error occurred:
             {
                 "error": str  # Error message describing what went wrong
@@ -379,9 +391,7 @@ def create_atlan_tag(
         }
 
     except Exception as e:
-        logger.error(
-            f"Error creating Atlan tag '{name}': {e}", exc_info=True
-        )
+        logger.error(f"Error creating Atlan tag '{name}': {e}", exc_info=True)
         return {"error": f"Failed to create tag: {str(e)}"}
 
 
@@ -395,11 +405,11 @@ def update_atlan_tag(
 ) -> Dict[str, Any]:
     """
     Update an existing Atlan tag definition.
-    
+
     This function updates the color and/or description of an existing tag.
     The tag is identified by its display name. Only color and description can be updated;
     the tag name itself cannot be changed (create a new tag if you need a different name).
-    
+
     Process:
     1. Validates that the tag name is provided and not empty
     2. Validates that at least one property (color or description) is provided for update
@@ -409,7 +419,7 @@ def update_atlan_tag(
     6. Updates the specified properties (color and/or description)
     7. Saves the updated tag definition back to Atlan
     8. Returns the updated tag information
-    
+
     Args:
         name (str): Human-readable display name of the tag to update (required).
             Must match the exact display name of an existing tag (case-sensitive).
@@ -423,10 +433,10 @@ def update_atlan_tag(
             If None is explicitly passed, the description will be cleared.
             If not provided (omitted), the description remains unchanged.
             Note: To clear a description, pass an empty string "" or None.
-    
+
     Returns:
         Dict[str, Any]: Response dictionary with different structures based on outcome:
-        
+
         If tag updated successfully:
             {
                 "updated": True,
@@ -440,12 +450,12 @@ def update_atlan_tag(
                 },
                 "message": str  # Success message
             }
-        
+
         If error occurred:
             {
                 "error": str  # Error message describing what went wrong
             }
-            
+
         Common error scenarios:
             - Tag doesn't exist: "Tag with name 'X' does not exist..."
             - No properties provided: "At least one property (color or description)..."
@@ -487,72 +497,76 @@ def update_atlan_tag(
         >>> if "error" in result:
         ...     print(result["error"])  # "At least one property..."
     """
-    
+
     logger.info(
         f"Updating Atlan tag: name={name}, color={color or 'not provided'}, "
         f"description={bool(description)}"
     )
-    
+
     # Validate that name is provided
     if not name or not name.strip():
         error_msg = "Tag name is required and cannot be empty."
         logger.error(error_msg)
         return {"error": error_msg}
-    
+
     # Validate that at least one property is provided for update
     if not color and description is None:
-        error_msg = "At least one property (color or description) must be provided for update."
+        error_msg = (
+            "At least one property (color or description) must be provided for update."
+        )
         logger.error(error_msg)
         return {"error": error_msg}
-    
+
     client = get_atlan_client()
-    
+
     # ------------------------------------------------------------------
     # 1. Check if tag exists by displayName
     # ------------------------------------------------------------------
     result = retrieve_atlan_tag_by_name(display_name=name)
-    
+
     if result["error"]:
         logger.error(f"Error checking for existing tag: {result['error']}")
         return {"error": f"Failed to check if tag exists: {result['error']}"}
-    
+
     if result["count"] == 0:
-        error_msg = f"Tag with name '{name}' does not exist. Cannot update a non-existent tag."
+        error_msg = (
+            f"Tag with name '{name}' does not exist. Cannot update a non-existent tag."
+        )
         logger.error(error_msg)
         return {"error": error_msg}
-    
+
     # Get the existing tag
     existing_tag = result["tags"][0]
     internal_name = existing_tag.get("internal_name")
-    
+
     if not internal_name:
         error_msg = f"Tag '{name}' exists but internal name is missing. Cannot update."
         logger.error(error_msg)
         return {"error": error_msg}
-    
+
     logger.info(
         f"Found tag '{name}' (internal={internal_name}, guid={existing_tag.get('guid')})"
     )
-    
+
     # ------------------------------------------------------------------
     # 2. Retrieve the full tag definition by internal name
     # ------------------------------------------------------------------
     try:
         tag_def = client.typedef.get_by_name(internal_name)
-        
+
         if not tag_def:
             error_msg = f"Failed to retrieve tag definition for '{name}' (internal={internal_name})"
             logger.error(error_msg)
             return {"error": error_msg}
-        
+
         logger.debug(f"Retrieved tag definition for update: {tag_def}")
-        
+
     except Exception as e:
         logger.error(
             f"Error retrieving tag definition for '{name}': {e}", exc_info=True
         )
         return {"error": f"Failed to retrieve tag definition: {str(e)}"}
-    
+
     # ------------------------------------------------------------------
     # 3. Update color if provided
     # ------------------------------------------------------------------
@@ -576,14 +590,14 @@ def update_atlan_tag(
             msg = f"Invalid color '{color}'. Only the following colors are allowed: {valid_colors}"
             logger.error(msg)
             return {"error": msg}
-    
+
     # ------------------------------------------------------------------
     # 4. Update description if provided
     # ------------------------------------------------------------------
     if description is not None:
         tag_def.description = description
         logger.info(f"Updating description: {bool(description)}")
-    
+
     # ------------------------------------------------------------------
     # 5. Update tag through Atlan typedef API
     # ------------------------------------------------------------------
@@ -592,18 +606,18 @@ def update_atlan_tag(
         # Access the updated tag definition from the response object
         atlan_tag_defs = getattr(response, "atlan_tag_defs", []) or []
         updated_def = atlan_tag_defs[0] if atlan_tag_defs else None
-        
+
         if not updated_def:
             error_msg = "Tag update succeeded but no tag definition was returned."
             logger.error(error_msg)
             return {"error": error_msg}
-        
+
         logger.info(
             f"Successfully updated Atlan tag '{name}' "
             f"(internal={getattr(updated_def, 'name', None)}, "
             f"guid={getattr(updated_def, 'guid', None)})"
         )
-        
+
         # Get updated color from options
         updated_color = None
         if hasattr(updated_def, "options") and updated_def.options:
@@ -613,22 +627,25 @@ def update_atlan_tag(
                 if color_enum.value == color_value:
                     updated_color = color_enum.name
                     break
-        
+
         return {
             "updated": True,
             "tag": {
                 "display_name": getattr(updated_def, "display_name", name),
                 "internal_name": getattr(updated_def, "name", None),
                 "guid": getattr(updated_def, "guid", None),
-                "color": updated_color or (color.upper() if color else existing_tag.get("options", {}).get("color", "N/A")),
+                "color": updated_color
+                or (
+                    color.upper()
+                    if color
+                    else existing_tag.get("options", {}).get("color", "N/A")
+                ),
                 "description": getattr(updated_def, "description", description),
                 "options": getattr(updated_def, "options", {}) or {},
             },
             "message": f"Tag '{name}' has been successfully updated.",
         }
-        
+
     except Exception as e:
-        logger.error(
-            f"Error updating Atlan tag '{name}': {e}", exc_info=True
-        )
+        logger.error(f"Error updating Atlan tag '{name}': {e}", exc_info=True)
         return {"error": f"Failed to update tag: {str(e)}"}
