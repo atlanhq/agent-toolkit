@@ -17,11 +17,6 @@ from typing import Dict, Any, Optional, Union, List
 
 from client import get_atlan_client
 from pyatlan.model.enums import WorkflowPackage, AtlanWorkflowPhase
-from pyatlan.model.workflow import Workflow, WorkflowSchedule
-
-# from dotenv import load_dotenv
-
-# load_dotenv(dotenv_path="/Users/christopher.tin/Repos/.env")
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +28,7 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
     Note: There is a naming confusion in the Argo/Kubernetes API:
     - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
     - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
-    
+
     This function handles both types and returns standardized metadata dictionaries.
 
     Args:
@@ -46,7 +41,7 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
     """
     if result is None:
         return {}
-    
+
     try:
         dict_repr = result.dict(by_alias=True, exclude_unset=True)
     except (AttributeError, TypeError) as e:
@@ -55,7 +50,7 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
     source = dict_repr.get("_source", None)
     if source is None:
         return dict_repr
-    
+
     source_type = source.get("kind", None)
     if source_type == "Workflow":
         return extract_workflow_metadata(dict_repr)
@@ -66,7 +61,9 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
         return None  # Unsupported workflow type
 
 
-def extract_workflow_template_metadata(dict_repr: Dict[str, Any], include_dag: bool = False) -> Dict[str, Any]:
+def extract_workflow_template_metadata(
+    dict_repr: Dict[str, Any], include_dag: bool = False
+) -> Dict[str, Any]:
     """
     Extract useful metadata from a workflow (WorkflowTemplate).
 
@@ -87,37 +84,42 @@ def extract_workflow_template_metadata(dict_repr: Dict[str, Any], include_dag: b
             - If include_dag=True: workflow_steps and workflow_spec
     """
     source = dict_repr.get("_source") or {}
-    metadata = source.get('metadata') or {}
-    labels = metadata.get('labels') or {}
-    annotations = metadata.get('annotations') or {}
+    metadata = source.get("metadata") or {}
+    labels = metadata.get("labels") or {}
+    annotations = metadata.get("annotations") or {}
 
     base_output = {
-            'template_name': metadata.get('name'),
-            'package_name': annotations.get('package.argoproj.io/name'),
-            'package_version': labels.get('package.argoproj.io/version'),
-            'source_system': labels.get('orchestration.atlan.com/source'),
-            'source_category': labels.get('orchestration.atlan.com/sourceCategory'),
-            'workflow_type': labels.get('orchestration.atlan.com/type'),
-            'certified': labels.get('orchestration.atlan.com/certified') == 'true',
-            'verified': labels.get('orchestration.atlan.com/verified') == 'true',
-            'creator_email': labels.get('workflows.argoproj.io/creator-email'),
-            'creator_username': labels.get('workflows.argoproj.io/creator-preferred-username'),
-            'modifier_email': labels.get('workflows.argoproj.io/modifier-email'),
-            'modifier_username': labels.get('workflows.argoproj.io/modifier-preferred-username'),
-            'creation_timestamp': metadata.get('creationTimestamp'),
-            'package_author': annotations.get('package.argoproj.io/author'),
-            'package_description': annotations.get('package.argoproj.io/description'),
-            'package_repository': annotations.get('package.argoproj.io/repository')
-        }
+        "template_name": metadata.get("name"),
+        "package_name": annotations.get("package.argoproj.io/name"),
+        "package_version": labels.get("package.argoproj.io/version"),
+        "source_system": labels.get("orchestration.atlan.com/source"),
+        "source_category": labels.get("orchestration.atlan.com/sourceCategory"),
+        "workflow_type": labels.get("orchestration.atlan.com/type"),
+        "certified": labels.get("orchestration.atlan.com/certified") == "true",
+        "verified": labels.get("orchestration.atlan.com/verified") == "true",
+        "creator_email": labels.get("workflows.argoproj.io/creator-email"),
+        "creator_username": labels.get(
+            "workflows.argoproj.io/creator-preferred-username"
+        ),
+        "modifier_email": labels.get("workflows.argoproj.io/modifier-email"),
+        "modifier_username": labels.get(
+            "workflows.argoproj.io/modifier-preferred-username"
+        ),
+        "creation_timestamp": metadata.get("creationTimestamp"),
+        "package_author": annotations.get("package.argoproj.io/author"),
+        "package_description": annotations.get("package.argoproj.io/description"),
+        "package_repository": annotations.get("package.argoproj.io/repository"),
+    }
 
     if not include_dag:
         return base_output
     else:
         return {
             **base_output,
-            'workflow_steps': annotations.get('orchestration.atlan.com/workflow-steps'),
-            'workflow_spec': source.get('spec')
+            "workflow_steps": annotations.get("orchestration.atlan.com/workflow-steps"),
+            "workflow_spec": source.get("spec"),
         }
+
 
 def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -141,7 +143,7 @@ def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
             - run_started_at, run_finished_at: Execution timestamps
             - run_estimated_duration, run_progress: Execution progress
             - run_cpu_usage, run_memory_usage: Resource usage
-            
+
             Workflow Metadata (workflow-level):
             - workflow_id: Reference to the workflow (template) used
             - workflow_package_name: Package identifier
@@ -150,44 +152,50 @@ def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
             - workflow_creation_timestamp, workflow_archiving_status: Lifecycle info
     """
     source = dict_repr.get("_source") or {}
-    metadata = source.get('metadata') or {}
-    labels = metadata.get('labels') or {}
-    annotations = metadata.get('annotations') or {}
-    status = source.get('status') or {}
+    metadata = source.get("metadata") or {}
+    labels = metadata.get("labels") or {}
+    annotations = metadata.get("annotations") or {}
+    status = source.get("status") or {}
 
     return {
         # Run Metadata
-        'run_id': dict_repr.get('_id') or metadata.get('name'),
-        'run_phase': status.get('phase'),
-        'run_started_at': status.get('startedat') or status.get('startedAt'),
-        'run_finished_at': status.get('finishedat') or status.get('finishedAt'),
-        'run_estimated_duration': status.get('estimatedDuration'),
-        'run_progress': status.get('progress'),
-        'run_cpu_usage': status.get('resourcesDuration', {}).get('cpu'),
-        'run_memory_usage': status.get('resourcesDuration', {}).get('memory'),
-
+        "run_id": dict_repr.get("_id") or metadata.get("name"),
+        "run_phase": status.get("phase"),
+        "run_started_at": status.get("startedat") or status.get("startedAt"),
+        "run_finished_at": status.get("finishedat") or status.get("finishedAt"),
+        "run_estimated_duration": status.get("estimatedDuration"),
+        "run_progress": status.get("progress"),
+        "run_cpu_usage": status.get("resourcesDuration", {}).get("cpu"),
+        "run_memory_usage": status.get("resourcesDuration", {}).get("memory"),
         # Workflow Metadata
-        'workflow_id': labels.get('workflows.argoproj.io/workflow-template'),
+        "workflow_id": labels.get("workflows.argoproj.io/workflow-template"),
         # 'cron_workflow': labels.get('workflows.argoproj.io/cron-workflow'),
-        'workflow_package_name': annotations.get('package.argoproj.io/name'),
-        'workflow_cron_schedule': annotations.get('orchestration.atlan.com/schedule'),
-        'workflow_cron_timezone': annotations.get('orchestration.atlan.com/timezone'),
-        'workflow_creator_id': labels.get('workflows.argoproj.io/creator'),
-        'workflow_creator_email': labels.get('workflows.argoproj.io/creator-email'),
-        'workflow_creator_username': labels.get('workflows.argoproj.io/creator-preferred-username'),
-        'workflow_modifier_id': labels.get('workflows.argoproj.io/modifier'),
-        'workflow_modifier_email': labels.get('workflows.argoproj.io/modifier-email'),
-        'workflow_modifier_username': labels.get('workflows.argoproj.io/modifier-preferred-username'),
-        'workflow_creation_timestamp': metadata.get('creationTimestamp'),
-        'workflow_archiving_status': labels.get('workflows.argoproj.io/workflow-archiving-status')
+        "workflow_package_name": annotations.get("package.argoproj.io/name"),
+        "workflow_cron_schedule": annotations.get("orchestration.atlan.com/schedule"),
+        "workflow_cron_timezone": annotations.get("orchestration.atlan.com/timezone"),
+        "workflow_creator_id": labels.get("workflows.argoproj.io/creator"),
+        "workflow_creator_email": labels.get("workflows.argoproj.io/creator-email"),
+        "workflow_creator_username": labels.get(
+            "workflows.argoproj.io/creator-preferred-username"
+        ),
+        "workflow_modifier_id": labels.get("workflows.argoproj.io/modifier"),
+        "workflow_modifier_email": labels.get("workflows.argoproj.io/modifier-email"),
+        "workflow_modifier_username": labels.get(
+            "workflows.argoproj.io/modifier-preferred-username"
+        ),
+        "workflow_creation_timestamp": metadata.get("creationTimestamp"),
+        "workflow_archiving_status": labels.get(
+            "workflows.argoproj.io/workflow-archiving-status"
+        ),
     }
 
 
 def get_workflow_package_names() -> List[str]:
     """
-    Get the values of all workflow packages. 
+    Get the values of all workflow packages.
     """
     return [pkg.value for pkg in WorkflowPackage]
+
 
 def get_workflows(
     id: Optional[str] = None,
@@ -204,8 +212,8 @@ def get_workflows(
     Args:
         id (str, optional): The unique identifier (ID) of the workflow (e.g., 'atlan-snowflake-miner-1714638976').
             If provided, returns a single workflow with full details (workflow_steps and workflow_spec).
-        workflow_package_name (Union[WorkflowPackage, str], optional): Workflow package type 
-            (e.g., WorkflowPackage.SNOWFLAKE or "atlan-snowflake"). If provided, returns list of workflows 
+        workflow_package_name (Union[WorkflowPackage, str], optional): Workflow package type
+            (e.g., WorkflowPackage.SNOWFLAKE or "atlan-snowflake"). If provided, returns list of workflows
             with metadata only (no workflow_steps or workflow_spec).
         max_results (int, optional): Maximum number of workflows to return when getting by type. Defaults to 10.
             Only used when workflow_package_name is provided.
@@ -240,7 +248,7 @@ def get_workflows(
         if id is not None:
             # Get single workflow by ID - always include full details
             logger.info(f"Retrieving workflow with ID: {id}")
-            
+
             if not id:
                 raise ValueError("id cannot be empty")
 
@@ -267,19 +275,27 @@ def get_workflows(
 
         elif workflow_package_name is not None:
             # Get workflows by type - always metadata only
-            logger.info(f"Retrieving workflows with workflow_package_name={workflow_package_name}, max_results={max_results}")
+            logger.info(
+                f"Retrieving workflows with workflow_package_name={workflow_package_name}, max_results={max_results}"
+            )
 
-            logger.debug(f"Calling client.workflow.find_by_type() with workflow_package_name={workflow_package_name}")
-            results = client.workflow.find_by_type(prefix=workflow_package_name, max_results=max_results)
+            logger.debug(
+                f"Calling client.workflow.find_by_type() with workflow_package_name={workflow_package_name}"
+            )
+            results = client.workflow.find_by_type(
+                prefix=workflow_package_name, max_results=max_results
+            )
 
-            logger.info(f"Successfully retrieved workflows")
+            logger.info("Successfully retrieved workflows")
 
             # Process the response
             workflows = results if results else []
             total = len(workflows) if workflows else 0
 
             # Always metadata only (include_dag=False) when getting by type
-            processed_workflows = [_result_to_dict(workflow, include_dag=False) for workflow in workflows]
+            processed_workflows = [
+                _result_to_dict(workflow, include_dag=False) for workflow in workflows
+            ]
 
             return {
                 "workflows": processed_workflows,
@@ -314,12 +330,12 @@ def get_workflow_runs(
     2. Filter across all workflows by status list and optional time ranges
 
     Args:
-        workflow_name (str, optional): Name of the workflow (template) as displayed in the UI 
+        workflow_name (str, optional): Name of the workflow (template) as displayed in the UI
             (e.g., 'atlan-snowflake-miner-1714638976'). If provided, filters runs for that specific workflow.
-        workflow_phase (Union[AtlanWorkflowPhase, str], optional): Phase of the workflow_run 
+        workflow_phase (Union[AtlanWorkflowPhase, str], optional): Phase of the workflow_run
             (e.g., Succeeded, Running, Failed). Required if workflow_name is provided and status is not.
         status (Union[List[AtlanWorkflowPhase], List[str]], optional): List of workflow_run phases to filter by
-            (e.g., ['Succeeded', 'Failed']). Required if workflow_name is not provided. Can also be used 
+            (e.g., ['Succeeded', 'Failed']). Required if workflow_name is not provided. Can also be used
             with workflow_name (will use first item from list as workflow_phase).
         started_at (str, optional): Lower bound on 'status.startedAt' timestamp. Accepts:
             - Relative time format: 'now-2h', 'now-24h', 'now-7d', 'now-30d'
@@ -371,15 +387,21 @@ def get_workflow_runs(
         if workflow_name:
             # Use get_runs() API - single workflow, single phase
             if not workflow_phase and not status:
-                raise ValueError("Either workflow_phase or status must be provided when workflow_name is specified")
-            
+                raise ValueError(
+                    "Either workflow_phase or status must be provided when workflow_name is specified"
+                )
+
             # Use workflow_phase if provided, otherwise use first item from status list
             phase_to_use = workflow_phase
             if not phase_to_use and status:
-                phase_to_use = status[0] if isinstance(status, list) and len(status) > 0 else None
-            
+                phase_to_use = (
+                    status[0] if isinstance(status, list) and len(status) > 0 else None
+                )
+
             if not phase_to_use:
-                raise ValueError("workflow_phase or status must be provided when workflow_name is specified")
+                raise ValueError(
+                    "workflow_phase or status must be provided when workflow_name is specified"
+                )
 
             # Convert string to AtlanWorkflowPhase enum if needed
             if isinstance(phase_to_use, str):
@@ -395,7 +417,9 @@ def get_workflow_runs(
                         raise ValueError(f"Invalid workflow phase: {phase_to_use}")
 
             # Retrieve workflow runs using the pyatlan SDK
-            logger.debug(f"Calling client.workflow.get_runs() with workflow_name={workflow_name}, workflow_phase={phase_to_use}")
+            logger.debug(
+                f"Calling client.workflow.get_runs() with workflow_name={workflow_name}, workflow_phase={phase_to_use}"
+            )
             response = client.workflow.get_runs(
                 workflow_name=workflow_name,
                 workflow_phase=phase_to_use,
@@ -407,7 +431,9 @@ def get_workflow_runs(
         else:
             # Use find_runs_by_status_and_time_range() API - all workflows, status list, time ranges
             if not status:
-                raise ValueError("status must be provided when workflow_name is not specified")
+                raise ValueError(
+                    "status must be provided when workflow_name is not specified"
+                )
 
             # Convert string statuses to AtlanWorkflowPhase enums if needed
             status_list = []
@@ -478,4 +504,3 @@ def get_workflow_runs(
             "total": 0,
             "error": error_msg,
         }
-

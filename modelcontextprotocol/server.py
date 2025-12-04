@@ -1013,7 +1013,8 @@ def get_workflows_tool(
 def get_workflow_runs_tool(
     workflow_name: str | None = None,
     workflow_phase: str | None = None,
-    status: str | None = None, # This is technically a list but we get the input as a string so we parse it into a list
+    status: str
+    | None = None,  # This is technically a list but we get the input as a string so we parse it into a list
     started_at: str | None = None,
     finished_at: str | None = None,
     from_: int = 0,
@@ -1046,14 +1047,14 @@ def get_workflow_runs_tool(
     - Do NOT use if you need the complete workflow specification (use get_workflows_tool with id instead)
 
     Args:
-        workflow_name (str, optional): Name of the workflow (template) as displayed in the UI 
+        workflow_name (str, optional): Name of the workflow (template) as displayed in the UI
             (e.g., 'atlan-snowflake-miner-1714638976'). If provided, filters runs for that specific workflow.
             This refers to the workflow name, not individual workflow_run IDs.
         workflow_phase (str, optional): Phase of the workflow_run. Common values: 'Succeeded', 'Running', 'Failed', 'Error', 'Pending'.
-            Case-insensitive matching is supported. 
+            Case-insensitive matching is supported.
             REQUIRED when workflow_name is provided. DO NOT use status when workflow_name is provided.
-        status (List[str], optional): Array/list of workflow_run phases to filter by. 
-            IMPORTANT: Must be an array/list type, NOT a JSON string. 
+        status (List[str], optional): Array/list of workflow_run phases to filter by.
+            IMPORTANT: Must be an array/list type, NOT a JSON string.
             Correct format: ["Succeeded", "Failed"] (array/list)
             Incorrect format: '["Succeeded", "Failed"]' (string - will be rejected by schema validation)
             Common values:
@@ -1062,10 +1063,10 @@ def get_workflow_runs_tool(
                 - 'Running': Currently executing workflow_runs
                 - 'Error': Workflow_runs that encountered errors
                 - 'Pending': Workflow_runs waiting to start
-            Case-insensitive matching is supported. 
+            Case-insensitive matching is supported.
             REQUIRED when workflow_name is NOT provided. DO NOT use status when workflow_name is provided - use workflow_phase instead.
             Example: ["Succeeded", "Failed"]  # Array/list, not a string
-        
+
     Parameter Usage Rules:
         - If workflow_name is provided: MUST use workflow_phase (single phase string). Do NOT use status.
         - If workflow_name is NOT provided: MUST use status (list of phases). Do NOT use workflow_phase.
@@ -1095,7 +1096,7 @@ def get_workflow_runs_tool(
                 - run_progress: Progress indicator (e.g., "1/3")
                 - run_cpu_usage: CPU resource usage duration
                 - run_memory_usage: Memory resource usage duration
-                
+
                 Workflow Metadata:
                 - workflow_id: Reference to the workflow (template) used
                 - workflow_package_name: Package identifier
@@ -1133,13 +1134,13 @@ def get_workflow_runs_tool(
 
         # CORRECT: Get running workflow_runs (across all workflows - use status, NOT workflow_phase)
         result = get_workflow_runs_tool(status=["Running"])
-        
+
         # Analyze workflow_run durations
         runs = result.get("runs", [])
         for run in runs:
             if run.get("run_finished_at") and run.get("run_started_at"):
                 print(f"Workflow run {run['run_id']} took {run.get('run_estimated_duration')}")
-        
+
         # Analyze failure rates
         failed_runs = [r for r in result.get("runs", []) if r.get("run_phase") == "Failed"]
         print(f"Found {len(failed_runs)} failed workflow_runs in the time range")
@@ -1151,9 +1152,9 @@ def get_workflow_runs_tool(
         return {
             "runs": [],
             "total": 0,
-            "error": f"Parameter parsing error for status: {str(e)}"
+            "error": f"Parameter parsing error for status: {str(e)}",
         }
-    
+
     return get_workflow_runs(
         workflow_name=workflow_name,
         workflow_phase=workflow_phase,
