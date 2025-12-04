@@ -1164,6 +1164,8 @@ def get_workflow_runs_tool(
         from_=from_,
         size=size,
     )
+
+
 def create_domains(domains) -> List[Dict[str, Any]]:
     """
     Create Data Domains or Sub Domains in Atlan.
