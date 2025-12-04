@@ -368,3 +368,23 @@ class DQRuleScheduleResponse(BaseModel):
     scheduled_count: int = 0
     scheduled_assets: List[ScheduledAssetInfo] = []
     errors: List[str] = []
+
+
+class DQRuleDeleteSpecification(BaseModel):
+    """Specification model for deleting a data quality rule."""
+
+    rule_guid: str
+
+
+class DeletedRuleInfo(BaseModel):
+    """Model representing information about a successfully deleted rule."""
+
+    rule_guid: str
+
+
+class DQRuleDeleteResponse(BaseModel):
+    """Response model for data quality rule deletion operations."""
+
+    deleted_count: int = 0
+    deleted_rules: List[DeletedRuleInfo] = []
+    errors: List[str] = []

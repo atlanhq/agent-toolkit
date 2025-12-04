@@ -16,6 +16,7 @@ from tools import (
     create_data_product_assets,
     create_dq_rules,
     schedule_dq_rules,
+    delete_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -1057,7 +1058,7 @@ def create_dq_rules_tool(rules):
             must include:
             - rule_type (str): Type of rule (see Supported Rule Types) [REQUIRED]
             - asset_qualified_name (str): Qualified name of the asset (Table, View, MaterialisedView, or SnowflakeDynamicTable) [REQUIRED]
-            - asset_type (str): Type of asset - "Table", "View", "MaterialisedView", or "SnowflakeDynamicTable" [OPTIONAL, default: "Table"]
+            - asset_type (str): Type of asset - "Table" | "View" | "MaterialisedView" | "SnowflakeDynamicTable" [OPTIONAL, default: "Table"]
             - threshold_value (int/float): Threshold value for comparison [REQUIRED]
             - column_qualified_name (str): Column qualified name [REQUIRED for column-level rules, NOT for Row Count/Custom SQL]
             - threshold_compare_operator (str): Comparison operator (EQUAL, GREATER_THAN, etc.) [OPTIONAL, default varies by rule]
@@ -1110,21 +1111,12 @@ def create_dq_rules_tool(rules):
         rule = create_dq_rules_tool({
             "rule_type": "Row Count",  # No column_qualified_name needed
             "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "asset_type": "Table",  # Optional: "Table" (default), "View", "MaterialisedView", "SnowflakeDynamicTable"
             "threshold_compare_operator": "GREATER_THAN_EQUAL",
             "threshold_value": 1000,
             "alert_priority": "URGENT"
         })
         # For Freshness: Add "column_qualified_name" + "threshold_unit": "DAYS"/"HOURS"/"MINUTES"
-
-        # Row Count rule on a View
-        rule = create_dq_rules_tool({
-            "rule_type": "Row Count",
-            "asset_type": "View",  # Specify asset type for non-Table assets
-            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/MY_VIEW",
-            "threshold_compare_operator": "GREATER_THAN_EQUAL",
-            "threshold_value": 100,
-            "alert_priority": "NORMAL"
-        })
 
         # Custom SQL rule
         rule = create_dq_rules_tool({
@@ -1219,6 +1211,35 @@ def schedule_dq_rules_tool(schedules):
         return {
             "scheduled_count": 0,
             "scheduled_assets": [],
+            "errors": [f"Parameter parsing error: {str(e)}"],
+        }
+
+
+@mcp.tool()
+def delete_dq_rules_tool(rule_guids):
+    """
+    Delete one or multiple data quality rules in Atlan.
+
+    Args:
+        rule_guids: Single rule GUID (string) or list of rule GUIDs to delete.
+
+    Returns:
+        Dict with deleted_count, deleted_rules (list of GUIDs), and errors.
+
+    Example:
+        # Delete single rule
+        delete_dq_rules_tool("rule-guid-123")
+
+        # Delete multiple rules
+        delete_dq_rules_tool(["rule-guid-1", "rule-guid-2"])
+    """
+    try:
+        parsed_guids = parse_json_parameter(rule_guids)
+        return delete_dq_rules(parsed_guids)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "deleted_count": 0,
+            "deleted_rules": [],
             "errors": [f"Parameter parsing error: {str(e)}"],
         }
 

@@ -37,6 +37,9 @@ from .models import (
     DQRuleScheduleSpecification,
     DQRuleScheduleResponse,
     ScheduledAssetInfo,
+    DQRuleDeleteSpecification,
+    DQRuleDeleteResponse,
+    DeletedRuleInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -332,6 +335,73 @@ def schedule_dq_rules(
 
         except Exception as e:
             error_msg = f"Error scheduling {spec.asset_name}: {str(e)}"
+            result.errors.append(error_msg)
+            logger.error(error_msg)
+
+    return result
+
+
+def delete_dq_rules(
+    rule_guids: Union[str, List[str]],
+) -> DQRuleDeleteResponse:
+    """
+    Delete one or multiple data quality rules in Atlan.
+
+    Args:
+        rule_guids: Single rule GUID or list of rule GUIDs to delete.
+
+    Returns:
+        DQRuleDeleteResponse with deletion results and any errors.
+
+    Example:
+        # Delete single rule
+        result = delete_dq_rules("rule-guid-123")
+
+        # Delete multiple rules
+        result = delete_dq_rules(["rule-guid-1", "rule-guid-2"])
+    """
+    # Convert single GUID to list for consistent handling
+    data = rule_guids if isinstance(rule_guids, list) else [rule_guids]
+
+    result = DQRuleDeleteResponse()
+
+    # Validate and parse specifications
+    specs = []
+    for idx, item in enumerate(data):
+        try:
+            if isinstance(item, str):
+                spec = DQRuleDeleteSpecification(rule_guid=item)
+            else:
+                spec = DQRuleDeleteSpecification(**item)
+            specs.append(spec)
+        except Exception as e:
+            result.errors.append(f"Rule {idx + 1} error: {str(e)}")
+            logger.error(f"Error parsing rule specification {idx + 1}: {e}")
+
+    if not specs:
+        logger.warning("No valid rule specifications to delete")
+        return result
+
+    # Get Atlan client
+    client = get_atlan_client()
+
+    # Delete each rule
+    for spec in specs:
+        try:
+            response = client.asset.delete_by_guid(guid=spec.rule_guid)
+            deleted_assets = response.assets_deleted(asset_type=DataQualityRule)
+
+            if deleted_assets:
+                result.deleted_rules.append(DeletedRuleInfo(rule_guid=spec.rule_guid))
+                result.deleted_count += 1
+                logger.info(f"Successfully deleted rule: {spec.rule_guid}")
+            else:
+                error_msg = f"No rule found with GUID: {spec.rule_guid}"
+                result.errors.append(error_msg)
+                logger.warning(error_msg)
+
+        except Exception as e:
+            error_msg = f"Error deleting rule {spec.rule_guid}: {str(e)}"
             result.errors.append(error_msg)
             logger.error(error_msg)
 
