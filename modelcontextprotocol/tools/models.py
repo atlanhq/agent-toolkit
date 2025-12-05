@@ -305,3 +305,86 @@ class DQRuleCreationResponse(BaseModel):
     created_count: int = 0
     created_rules: List[CreatedRuleInfo] = []
     errors: List[str] = []
+
+
+class DQRuleScheduleSpecification(BaseModel):
+    """
+    Specification model for scheduling data quality rules on an asset.
+
+    This model defines the required parameters for scheduling DQ rule
+    execution on a table, view, or other supported asset types.
+
+    """
+
+    asset_type: DQAssetType
+    asset_name: str
+    asset_qualified_name: str
+    schedule_crontab: str
+    schedule_time_zone: str
+
+    @field_validator("schedule_crontab")
+    @classmethod
+    def validate_crontab(cls, v: str) -> str:
+        """
+        Validate the crontab expression format.
+
+        A valid cron expression should have 5 fields:
+        minute, hour, day of month, month, day of week.
+        """
+        parts = v.strip().split()
+        if len(parts) != 5:
+            raise ValueError(
+                f"Invalid cron expression '{v}'. Expected 5 fields "
+                "(minute hour day-of-month month day-of-week), got {len(parts)}."
+            )
+        return v.strip()
+
+    @field_validator("schedule_time_zone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validate that a non-empty timezone string is provided."""
+        if not v or not v.strip():
+            raise ValueError("schedule_time_zone cannot be empty")
+        return v.strip()
+
+
+class ScheduledAssetInfo(BaseModel):
+    """
+    Model representing information about a successfully scheduled asset.
+
+    This is returned as part of the response to indicate which assets
+    had their DQ rule schedules configured successfully.
+    """
+
+    asset_name: str
+    asset_qualified_name: str
+    schedule_crontab: str
+    schedule_time_zone: str
+
+
+class DQRuleScheduleResponse(BaseModel):
+    """Response model for data quality rule scheduling operations."""
+
+    scheduled_count: int = 0
+    scheduled_assets: List[ScheduledAssetInfo] = []
+    errors: List[str] = []
+
+
+class DQRuleDeleteSpecification(BaseModel):
+    """Specification model for deleting a data quality rule."""
+
+    rule_guid: str
+
+
+class DeletedRuleInfo(BaseModel):
+    """Model representing information about a successfully deleted rule."""
+
+    rule_guid: str
+
+
+class DQRuleDeleteResponse(BaseModel):
+    """Response model for data quality rule deletion operations."""
+
+    deleted_count: int = 0
+    deleted_rules: List[DeletedRuleInfo] = []
+    errors: List[str] = []
