@@ -19,6 +19,7 @@ from .models import (
     GlossaryCategory,
     GlossaryTerm,
     DQRuleType,
+    DQAssetType,
     DQRuleSpecification,
 )
 
@@ -42,5 +43,6 @@ __all__ = [
     "GlossaryTerm",
     "create_dq_rules",
     "DQRuleType",
+    "DQAssetType",
     "DQRuleSpecification",
 ]

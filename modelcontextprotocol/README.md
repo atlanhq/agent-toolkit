@@ -146,7 +146,7 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossaries` | Create glossaries                                                 |
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
-| `create_dq_rules`   | Create data quality rules (column-level, table-level, custom SQL) |
+| `create_dq_rules`   | Create data quality rules on Table, View, MaterialisedView, or SnowflakeDynamicTable assets (column-level, table-level, custom SQL) |
 | `query_asset`       | Execute SQL queries on table/view assets                          |
 
 ## Tool Access Control
