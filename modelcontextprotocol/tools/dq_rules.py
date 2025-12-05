@@ -306,15 +306,8 @@ def schedule_dq_rules(
     # Schedule rules for each asset
     for spec in specs:
         try:
-            if spec.asset_type == DQAssetType.TABLE:
-                asset_cls = Table
-            elif spec.asset_type == DQAssetType.VIEW:
-                asset_cls = View
-            elif spec.asset_type == DQAssetType.MATERIALIZED_VIEW:
-                asset_cls = MaterialisedView
-            elif spec.asset_type == DQAssetType.SNOWFLAKE_DYNAMIC_TABLE:
-                asset_cls = SnowflakeDynamicTable
-            else:
+            asset_cls = _ASSET_TYPE_MAP.get(spec.asset_type)
+            if not asset_cls:
                 raise ValueError(f"Unsupported asset type: {spec.asset_type.value}")
 
             client.asset.add_dq_rule_schedule(
