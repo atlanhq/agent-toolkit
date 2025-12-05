@@ -39,6 +39,15 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+# Asset type class mapping for DQ rule operations
+_ASSET_TYPE_MAP = {
+    DQAssetType.TABLE: Table,
+    DQAssetType.VIEW: View,
+    DQAssetType.MATERIALIZED_VIEW: MaterialisedView,
+    DQAssetType.SNOWFLAKE_DYNAMIC_TABLE: SnowflakeDynamicTable,
+}
+
+
 def create_dq_rules(
     rules: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> DQRuleCreationResponse:
@@ -148,14 +157,7 @@ def _create_dq_rule(spec: DQRuleSpecification, client) -> DataQualityRule:
     config = spec.rule_type.get_rule_config()
 
     # Determine asset class based on asset type
-    if spec.asset_type == DQAssetType.VIEW:
-        asset_class = View
-    elif spec.asset_type == DQAssetType.MATERIALIZED_VIEW:
-        asset_class = MaterialisedView
-    elif spec.asset_type == DQAssetType.SNOWFLAKE_DYNAMIC_TABLE:
-        asset_class = SnowflakeDynamicTable
-    else:
-        asset_class = Table  # Default fallback (includes TABLE and None)
+    asset_class = _ASSET_TYPE_MAP.get(spec.asset_type, Table)
 
     # Base parameters common to all rule types
     params = {
