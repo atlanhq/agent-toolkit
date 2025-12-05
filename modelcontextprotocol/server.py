@@ -1117,16 +1117,6 @@ def create_dq_rules_tool(rules):
         })
         # For Freshness: Add "column_qualified_name" + "threshold_unit": "DAYS"/"HOURS"/"MINUTES"
 
-        # Row Count rule on a View
-        rule = create_dq_rules_tool({
-            "rule_type": "Row Count",
-            "asset_type": "View",  # Specify asset type for non-Table assets
-            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/MY_VIEW",
-            "threshold_compare_operator": "GREATER_THAN_EQUAL",
-            "threshold_value": 100,
-            "alert_priority": "NORMAL"
-        })
-
         # Custom SQL rule
         rule = create_dq_rules_tool({
             "rule_type": "Custom SQL",
