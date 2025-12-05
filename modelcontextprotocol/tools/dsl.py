@@ -48,7 +48,9 @@ def get_assets_by_dsl(dsl_query: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         logger.info("Executing DSL search request")
         client = get_atlan_client()
         search_response = client.asset.search(index_request)
-        processed_results = SearchUtils.process_results(search_response)
+
+        # Process results with TOON formatting enabled by default
+        processed_results = SearchUtils.process_results(search_response, use_toon=True)
         return processed_results
     except Exception as e:
         logger.error(f"Error in DSL search: {str(e)}")
