@@ -370,14 +370,11 @@ class DQRuleScheduleResponse(BaseModel):
     errors: List[str] = []
 
 
-class DQRuleDeleteSpecification(BaseModel):
-    """Specification model for deleting a data quality rule."""
+class DQRuleInfo(BaseModel):
+    """Model representing a data quality rule identifier.
 
-    rule_guid: str
-
-
-class DeletedRuleInfo(BaseModel):
-    """Model representing information about a successfully deleted rule."""
+    Used for both delete operations (input) and deleted rule tracking (output).
+    """
 
     rule_guid: str
 
@@ -386,5 +383,5 @@ class DQRuleDeleteResponse(BaseModel):
     """Response model for data quality rule deletion operations."""
 
     deleted_count: int = 0
-    deleted_rules: List[DeletedRuleInfo] = []
+    deleted_rules: List[DQRuleInfo] = []
     errors: List[str] = []

@@ -37,9 +37,8 @@ from .models import (
     DQRuleScheduleSpecification,
     DQRuleScheduleResponse,
     ScheduledAssetInfo,
-    DQRuleDeleteSpecification,
+    DQRuleInfo,
     DQRuleDeleteResponse,
-    DeletedRuleInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -365,9 +364,9 @@ def delete_dq_rules(
     for idx, item in enumerate(data):
         try:
             if isinstance(item, str):
-                spec = DQRuleDeleteSpecification(rule_guid=item)
+                spec = DQRuleInfo(rule_guid=item)
             else:
-                spec = DQRuleDeleteSpecification(**item)
+                spec = DQRuleInfo(**item)
             specs.append(spec)
         except Exception as e:
             result.errors.append(f"Rule {idx + 1} error: {str(e)}")
@@ -387,7 +386,7 @@ def delete_dq_rules(
             deleted_assets = response.assets_deleted(asset_type=DataQualityRule)
 
             if deleted_assets:
-                result.deleted_rules.append(DeletedRuleInfo(rule_guid=spec.rule_guid))
+                result.deleted_rules.append(DQRuleInfo(rule_guid=spec.rule_guid))
                 result.deleted_count += 1
                 logger.info(f"Successfully deleted rule: {spec.rule_guid}")
             else:

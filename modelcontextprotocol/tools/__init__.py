@@ -24,9 +24,8 @@ from .models import (
     DQRuleScheduleSpecification,
     DQRuleScheduleResponse,
     ScheduledAssetInfo,
-    DQRuleDeleteSpecification,
+    DQRuleInfo,
     DQRuleDeleteResponse,
-    DeletedRuleInfo,
 )
 
 __all__ = [
@@ -56,7 +55,6 @@ __all__ = [
     "DQRuleScheduleSpecification",
     "DQRuleScheduleResponse",
     "ScheduledAssetInfo",
-    "DQRuleDeleteSpecification",
+    "DQRuleInfo",
     "DQRuleDeleteResponse",
-    "DeletedRuleInfo",
 ]
