@@ -1211,22 +1211,13 @@ def update_dq_rules_tool(rules):
             - errors: List of any errors encountered
 
     Examples:
-        # Update threshold and alert priority for a single rule
+        # Update single rule - threshold and priority
         result = update_dq_rules_tool({
             "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/abc-123",
             "rule_type": "Null Count",
             "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
             "threshold_value": 10,
-            "threshold_compare_operator": "LESS_THAN_EQUAL",
             "alert_priority": "URGENT"
-        })
-
-        # Update rule description only
-        result = update_dq_rules_tool({
-            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/abc-123",
-            "rule_type": "Row Count",
-            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-            "description": "Updated description for monitoring daily row counts"
         })
 
         # Update multiple rules at once
@@ -1242,45 +1233,25 @@ def update_dq_rules_tool(rules):
                 "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/def-456",
                 "rule_type": "Row Count",
                 "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-                "threshold_value": 1000,
-                "threshold_compare_operator": "GREATER_THAN_EQUAL"
+                "description": "Updated description"
             }
         ])
-
-        # Update rule conditions for String Length rule
-        result = update_dq_rules_tool({
-            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/ghi-789",
-            "rule_type": "String Length",
-            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-            "threshold_value": 15,
-            "rule_conditions": [{
-                "type": "STRING_LENGTH_BETWEEN",
-                "min_value": 10,
-                "max_value": 100
-            }],
-            "row_scope_filtering_enabled": True
-        })
 
         # Update Custom SQL rule
         result = update_dq_rules_tool({
             "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/jkl-012",
             "rule_type": "Custom SQL",
             "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-            "rule_name": "Updated Revenue Check",
-            "custom_sql": "SELECT COUNT(*) FROM TABLE WHERE revenue < 0 OR revenue > 2000000",
-            "threshold_value": 0,
-            "dimension": "CONSISTENCY",
-            "description": "Updated threshold for revenue validation"
+            "custom_sql": "SELECT COUNT(*) FROM TABLE WHERE revenue < 0",
+            "dimension": "CONSISTENCY"
         })
 
-        # Update Freshness rule threshold unit
+        # Update rule with conditions (String Length/Regex/Valid Values)
         result = update_dq_rules_tool({
-            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/mno-345",
-            "rule_type": "Freshness",
+            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/ghi-789",
+            "rule_type": "String Length",
             "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-            "threshold_value": 2,
-            "threshold_unit": "HOURS",
-            "alert_priority": "URGENT"
+            "rule_conditions": [{"type": "STRING_LENGTH_BETWEEN", "min_value": 10, "max_value": 100}]
         })
 
     Supported Rule Types:
