@@ -1181,38 +1181,23 @@ def create_dq_rules_tool(rules):
 @mcp.tool()
 def update_dq_rules_tool(rules):
     """
-    Update one or multiple existing data quality rules in Atlan.
-
-    To update a rule, you only need to provide the qualified name, rule_type, and
-    asset_qualified_name. All other parameters are optional and will only be updated
-    if provided.
+    Update existing data quality rules in Atlan.
 
     Args:
-        rules (Union[Dict[str, Any], List[Dict[str, Any]]]): Either a single rule
-            specification or a list of rule specifications. Each specification must include:
-            - qualified_name (str): The qualified name of the rule to update (required)
-            - rule_type (str): Type of rule (required for validation) [REQUIRED]
-            - asset_qualified_name (str): Qualified name of the table/view (required) [REQUIRED]
-            - threshold_value (int/float): Threshold value for comparison [OPTIONAL]
-            - threshold_compare_operator (str): Comparison operator (EQUAL, GREATER_THAN, etc.) [OPTIONAL]
-            - threshold_unit (str): Time unit for Freshness rules (DAYS, HOURS, MINUTES) [OPTIONAL]
-            - alert_priority (str): Alert priority level (LOW, NORMAL, URGENT) [OPTIONAL]
-            - custom_sql (str): SQL query [OPTIONAL, for Custom SQL rules]
-            - rule_name (str): Name for the rule [OPTIONAL, for Custom SQL rules]
-            - dimension (str): DQ dimension [OPTIONAL, for Custom SQL rules]
-            - rule_conditions (List[Dict]): Conditions for String Length/Regex/Valid Values [OPTIONAL]
-            - row_scope_filtering_enabled (bool): Enable row-level filtering [OPTIONAL]
-            - description (str): Rule description [OPTIONAL]
+        rules: Single rule dict or list of rule dicts. Required fields:
+            - qualified_name: Rule's qualified name
+            - rule_type: Rule type (e.g., "Null Count", "Row Count", "Custom SQL")
+            - asset_qualified_name: Table/view qualified name
+        Optional fields: threshold_value, threshold_compare_operator, threshold_unit,
+        alert_priority, custom_sql, rule_name, dimension, rule_conditions,
+        row_scope_filtering_enabled, description
 
     Returns:
-        Dict[str, Any]: Dictionary containing:
-            - updated_count: Number of rules successfully updated
-            - updated_rules: List of updated rules with guid, qualified_name, rule_type
-            - errors: List of any errors encountered
+        Dict with updated_count, updated_rules, and errors.
 
     Examples:
-        # Update single rule - threshold and priority
-        result = update_dq_rules_tool({
+        # Single rule update
+        update_dq_rules_tool({
             "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/abc-123",
             "rule_type": "Null Count",
             "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
@@ -1220,66 +1205,27 @@ def update_dq_rules_tool(rules):
             "alert_priority": "URGENT"
         })
 
-        # Update multiple rules at once
-        result = update_dq_rules_tool([
-            {
-                "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/abc-123",
-                "rule_type": "Null Count",
-                "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-                "threshold_value": 5,
-                "alert_priority": "URGENT"
-            },
-            {
-                "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/def-456",
-                "rule_type": "Row Count",
-                "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-                "description": "Updated description"
-            }
+        # Bulk update with conditions
+        update_dq_rules_tool([
+            {"qualified_name": "...", "rule_type": "Null Count", "threshold_value": 5},
+            {"qualified_name": "...", "rule_type": "String Length",
+             "rule_conditions": [{"type": "STRING_LENGTH_BETWEEN", "min_value": 10, "max_value": 100}]}
         ])
 
-        # Update Custom SQL rule
-        result = update_dq_rules_tool({
-            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/jkl-012",
-            "rule_type": "Custom SQL",
-            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-            "custom_sql": "SELECT COUNT(*) FROM TABLE WHERE revenue < 0",
-            "dimension": "CONSISTENCY"
-        })
+    Rule Types: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage",
+    "Min Value", "Max Value", "Average", "Standard Deviation", "Unique Count",
+    "Duplicate Count", "Regex", "String Length", "Valid Values", "Freshness",
+    "Row Count", "Custom SQL"
 
-        # Update rule with conditions (String Length/Regex/Valid Values)
-        result = update_dq_rules_tool({
-            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/ghi-789",
-            "rule_type": "String Length",
-            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
-            "rule_conditions": [{"type": "STRING_LENGTH_BETWEEN", "min_value": 10, "max_value": 100}]
-        })
-
-    Supported Rule Types:
-        Completeness: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage"
-        Statistical: "Min Value", "Max Value", "Average", "Standard Deviation"
-        Uniqueness: "Unique Count", "Duplicate Count"
-        Validity: "Regex", "String Length", "Valid Values"
-        Timeliness: "Freshness"
-        Volume: "Row Count"
-        Custom: "Custom SQL"
-
-    Valid Alert Priority Levels:
-        "LOW", "NORMAL", "URGENT"
-
-    Threshold Operators:
-        "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", "LESS_THAN", "LESS_THAN_EQUAL", "BETWEEN"
-
-    Threshold Units (Freshness only):
-        "DAYS", "HOURS", "MINUTES"
-
-    Data Quality Dimensions (Custom SQL only):
-        "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", "VOLUME", "ACCURACY", "CONSISTENCY"
-
-    Rule Condition Types:
-        String Length: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN",
-                      "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_LESS_THAN"
-        Regex: "REGEX_MATCH", "REGEX_NOT_MATCH"
-        Valid Values: "IN_LIST", "NOT_IN_LIST"
+    Alert Priority: "LOW", "NORMAL", "URGENT"
+    Operators: "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", "LESS_THAN",
+               "LESS_THAN_EQUAL", "BETWEEN"
+    Threshold Units: "DAYS", "HOURS", "MINUTES" (Freshness only)
+    Dimensions: "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", "VOLUME",
+                "ACCURACY", "CONSISTENCY" (Custom SQL only)
+    Condition Types: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN",
+                     "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_LESS_THAN",
+                     "REGEX_MATCH", "REGEX_NOT_MATCH", "IN_LIST", "NOT_IN_LIST"
     """
     try:
         parsed_rules = parse_json_parameter(rules)
