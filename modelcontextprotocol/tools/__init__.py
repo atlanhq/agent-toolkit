@@ -19,6 +19,7 @@ from .models import (
     GlossaryCategory,
     GlossaryTerm,
     DQRuleType,
+    DQAssetType,
     DQRuleSpecification,
 )
 from .tags import retrieve_atlan_tag_by_name, create_atlan_tag, update_atlan_tag
@@ -46,5 +47,6 @@ __all__ = [
     "update_atlan_tag",
     "create_dq_rules",
     "DQRuleType",
+    "DQAssetType",
     "DQRuleSpecification",
 ]
