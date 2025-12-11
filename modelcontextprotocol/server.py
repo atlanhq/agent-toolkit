@@ -21,8 +21,8 @@ from tools import (
     TermOperations,
     retrieve_atlan_tag_by_name,
     create_atlan_tag,
-    update_atlan_tag,
 )
+from tools.assets import AtlanTagUpdate
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
     parse_json_parameter,
@@ -486,11 +486,12 @@ def update_assets_tool(
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "term", and "atlanTag".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a dict with "operation" and "term_guids" keys.
+            For atlanTag, the value must be a dict with "name" (required) and optionally "description" and "color" keys.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -608,6 +609,21 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Update an Atlan tag description
+        result = update_assets_tool(
+            assets={
+                "guid": "dummy-guid",
+                "name": "Dummy",
+                "type_name": "Dummy",
+                "qualified_name": "dummy"
+            },
+            attribute_name="atlanTag",
+            attribute_values=[{
+                "name": "sv_mcp",
+                "description": "test update asset"
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -629,6 +645,18 @@ def update_assets_tool(
                         "updated_count": 0,
                     }
             parsed_attribute_values = term_operations
+        # Handle Atlan tag updates - convert dict to AtlanTagUpdate object
+        elif attr_enum == UpdatableAttribute.ATLAN_TAG:
+            tag_updates = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    tag_updates.append(AtlanTagUpdate(**value))
+                else:
+                    return {
+                        "error": "AtlanTag attribute values must be dictionaries with 'name' and optionally 'description' and 'color' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = tag_updates
         # For certificate status, convert values to enum
         elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [
@@ -913,9 +941,9 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 def retrieve_atlan_tag_by_name_tool(
-    display_name: str | None = None,
-    color: str | None = None,
-    description_filter: str | None = None,
+    display_name=None,
+    color=None,
+    description_filter=None,
 ):
     """
     Retrieve Atlan tag definitions by various criteria or list all existing tags.
@@ -996,7 +1024,7 @@ def retrieve_atlan_tag_by_name_tool(
 
 @mcp.tool()
 def create_atlan_tag_tool(
-    name: str, color: str | None = None, description: str | None = None
+    name, color=None, description=None
 ):
     """
     Create a new Atlan tag definition.
@@ -1090,105 +1118,6 @@ def create_atlan_tag_tool(
     """
     # Call the imported function from tools module (imported at top of file)
     return create_atlan_tag(name=name, color=color, description=description)
-
-
-@mcp.tool()
-def update_atlan_tag_tool(
-    name: str, color: str | None = None, description: str | None = None
-):
-    """
-    Update an existing Atlan tag definition.
-
-    This tool updates the color and/or description of an existing tag.
-    The tag is identified by its display name. Only color and description can be updated;
-    the tag name itself cannot be changed (create a new tag if you need a different name).
-
-    Process:
-    1. Validates that the tag name is provided and not empty
-    2. Validates that at least one property (color or description) is provided for update
-    3. Checks if a tag with the given display name exists
-    4. If it doesn't exist, returns an error
-    5. If it exists, retrieves the full tag definition
-    6. Updates the specified properties (color and/or description)
-    7. Saves the updated tag definition back to Atlan
-    8. Returns the updated tag information
-
-    Args:
-        name (str): Human-readable display name of the tag to update (required).
-            Must match the exact display name of an existing tag (case-sensitive).
-            Must be a non-empty string.
-        color (str, optional): New color for the tag (case-insensitive).
-            Only the following colors are allowed: GRAY, GREEN, YELLOW, RED
-            Invalid colors will result in an error response.
-            If not provided, the color remains unchanged.
-        description (str, optional): New description for the tag.
-            Can be any string, including empty string or None.
-            If None is explicitly passed, the description will be cleared.
-            If not provided (omitted), the description remains unchanged.
-            Note: To clear a description, pass an empty string "" or None.
-
-    Returns:
-        Dict[str, Any]: Response dictionary with different structures based on outcome:
-
-        If tag updated successfully:
-            {
-                "updated": True,
-                "tag": {
-                    "display_name": str,
-                    "internal_name": str,
-                    "guid": str,
-                    "color": str,  # One of: GRAY, GREEN, YELLOW, RED
-                    "description": str | None,
-                    "options": dict
-                },
-                "message": str  # Success message
-            }
-
-        If error occurred:
-            {
-                "error": str  # Error message describing what went wrong
-            }
-
-        Common error scenarios:
-            - Tag doesn't exist: "Tag with name 'X' does not exist..."
-            - No properties provided: "At least one property (color or description)..."
-            - Invalid color: "Invalid color 'X'. Only the following colors..."
-            - Empty name: "Tag name is required and cannot be empty."
-
-    Examples:
-        # Update only the color
-        result = update_atlan_tag_tool(name="PII", color="RED")
-        if result.get("updated"):
-            print(f"Updated tag color to {result['tag']['color']}")
-
-        # Update only the description
-        result = update_atlan_tag_tool(
-            name="Customer Data",
-            description="Updated description for customer-related data assets"
-        )
-
-        # Update both color and description
-        result = update_atlan_tag_tool(
-            name="Production",
-            color="GREEN",
-            description="Tag for production environment assets"
-        )
-
-        # Clear description by setting to empty string
-        result = update_atlan_tag_tool(name="Test Tag", description="")
-
-        # Error: tag doesn't exist
-        result = update_atlan_tag_tool(name="NonExistent", color="RED")
-        if "error" in result:
-            print(result["error"])  # "Tag with name 'NonExistent' does not exist..."
-
-        # Error: no properties provided
-        result = update_atlan_tag_tool(name="PII")
-        if "error" in result:
-            print(result["error"])  # "At least one property..."
-    """
-    # Call the imported function from tools module (imported at top of file)
-    return update_atlan_tag(name=name, color=color, description=description)
 
 
 def create_domains(domains) -> List[Dict[str, Any]]:
