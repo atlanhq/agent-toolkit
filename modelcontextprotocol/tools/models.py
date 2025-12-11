@@ -384,6 +384,8 @@ class DQRuleDeleteResponse(BaseModel):
 
     deleted_count: int = 0
     deleted_rules: List[DQRuleInfo] = []
+
+
 class DQRuleUpdateSpecification(BaseModel):
     """
     Model for updating an existing data quality rule.

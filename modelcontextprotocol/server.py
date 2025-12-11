@@ -1241,6 +1241,11 @@ def delete_dq_rules_tool(rule_guids):
         return {
             "deleted_count": 0,
             "deleted_rules": [],
+            "errors": [f"Parameter parsing error: {str(e)}"],
+        }
+
+
+@mcp.tool()
 def update_dq_rules_tool(rules):
     """
     Update existing data quality rules in Atlan.

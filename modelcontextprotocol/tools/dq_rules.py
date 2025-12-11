@@ -403,6 +403,8 @@ def delete_dq_rules(
             logger.error(error_msg)
 
     return result
+
+
 def update_dq_rules(
     rules: Union[Dict[str, Any], List[Dict[str, Any]]],
 ) -> DQRuleUpdateResponse:
