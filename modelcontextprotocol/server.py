@@ -1023,9 +1023,7 @@ def retrieve_atlan_tag_by_name_tool(
 
 
 @mcp.tool()
-def create_atlan_tag_tool(
-    name, color=None, description=None
-):
+def create_atlan_tag_tool(name, color=None, description=None):
     """
     Create a new Atlan tag definition.
 

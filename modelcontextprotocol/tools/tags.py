@@ -232,7 +232,6 @@ def create_atlan_tag(
 
     client = get_atlan_client()
 
-
     # 1. Check if tag already exists by displayName
 
     result = retrieve_atlan_tag_by_name(display_name=name)
@@ -258,7 +257,6 @@ def create_atlan_tag(
             "message": f"A tag with the name '{name}' already exists. Tag GUID: {existing.get('guid', 'N/A')}",
         }
 
-
     # 2. Determine color enum (optional, defaults to GRAY)
 
     if not color:
@@ -279,7 +277,6 @@ def create_atlan_tag(
             logger.error(msg)
             return {"error": msg}
 
-
     # 3. Build minimal AtlanTagDef object (as per Atlan documentation)
 
     try:
@@ -299,7 +296,6 @@ def create_atlan_tag(
             exc_info=True,
         )
         return {"error": f"Failed to create tag definition: {str(e)}"}
-
 
     # 4. Create tag through Atlan typedef API
 
@@ -337,6 +333,3 @@ def create_atlan_tag(
     except Exception as e:
         logger.error(f"Error creating Atlan tag '{name}': {e}", exc_info=True)
         return {"error": f"Failed to create tag: {str(e)}"}
-
-
-

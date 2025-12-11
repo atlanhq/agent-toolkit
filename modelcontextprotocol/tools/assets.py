@@ -17,6 +17,7 @@ from .tags import retrieve_atlan_tag_by_name
 # Initialize logging
 logger = logging.getLogger(__name__)
 
+
 # ---- Extend UpdatableAttribute enum for internal use ----
 # Note: This enum uses different values than models.py because asset attributes
 # use camelCase (e.g., "userDescription") while the API uses snake_case (e.g., "user_description")
@@ -26,7 +27,7 @@ class UpdatableAttribute(str, Enum):
     README = "readme"
     TERM = "term"
     ATLAN_TAG = "atlanTag"  # New attribute for Atlan Tag definition updates
-    
+
     @classmethod
     def from_models_enum(cls, models_attr: ModelsUpdatableAttribute):
         """Convert from models.py enum to assets.py enum."""
@@ -39,14 +40,17 @@ class UpdatableAttribute(str, Enum):
         }
         return mapping.get(models_attr, models_attr)
 
+
 # ---- New AtlanTagUpdate model ----
 class AtlanTagUpdate(BaseModel):
     name: str
     color: Optional[str] = None
     description: Optional[str] = None
 
+
 ALLOWED_TAG_COLORS = {"GRAY", "GREEN", "YELLOW", "RED"}
 # AtlanTagColor and retrieve_atlan_tag_by_name assumed imported from context
+
 
 def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, Any]:
     """
@@ -67,7 +71,9 @@ def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, 
         return {"error": error_msg}
     # 2. Validate at least one property
     if color is None and description is None:
-        error_msg = "At least one property (color or description) must be provided for update."
+        error_msg = (
+            "At least one property (color or description) must be provided for update."
+        )
         logger.error(error_msg)
         return {"error": error_msg}
 
@@ -77,26 +83,27 @@ def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, 
         logger.error(f"Error retrieving tag for update: {result['error']}")
         return {"error": f"Failed to retrieve tag: {result['error']}"}
     if result.get("count", 0) < 1 or not result.get("tags"):
-        error_msg = f"Tag with name '{name}' does not exist. Please check the display name."
+        error_msg = (
+            f"Tag with name '{name}' does not exist. Please check the display name."
+        )
         logger.error(error_msg)
         return {"error": error_msg}
     existing_tag = result["tags"][0]
 
     # Retrieve the full definition from the client
     try:
-        from pyatlan.model.typedef import AtlanTagDef
         from pyatlan.model.enums import AtlanTypeCategory
-        
+
         # Get all tag definitions and find the one we need
         response = client.typedef.get(type_category=AtlanTypeCategory.CLASSIFICATION)
         all_tag_defs = getattr(response, "atlan_tag_defs", []) or []
-        
+
         tag_def = None
         for tag in all_tag_defs:
             if getattr(tag, "name", None) == existing_tag["internal_name"]:
                 tag_def = tag
                 break
-        
+
         if not tag_def:
             error_msg = f"Failed to retrieve tag definition for '{name}' (internal={existing_tag['internal_name']})"
             logger.error(error_msg)
@@ -117,6 +124,7 @@ def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, 
             return {"error": error_msg}
         try:
             from pyatlan.model.enums import AtlanTagColor
+
             atlan_color_enum = AtlanTagColor[color_upper]
             tag_def.options = tag_def.options or {}
             tag_def.options["color"] = atlan_color_enum.value
@@ -148,6 +156,7 @@ def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, 
         if hasattr(updated_def, "options") and updated_def.options:
             color_value = updated_def.options.get("color", "")
             from pyatlan.model.enums import AtlanTagColor
+
             for color_enum in AtlanTagColor:
                 if color_enum.value == color_value:
                     updated_color = color_enum.name
@@ -159,7 +168,12 @@ def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, 
                 "display_name": getattr(updated_def, "display_name", name),
                 "internal_name": getattr(updated_def, "name", None),
                 "guid": getattr(updated_def, "guid", None),
-                "color": updated_color or (color.upper() if color else existing_tag.get("options", {}).get("color", "N/A")),
+                "color": updated_color
+                or (
+                    color.upper()
+                    if color
+                    else existing_tag.get("options", {}).get("color", "N/A")
+                ),
                 "description": getattr(updated_def, "description", description),
                 "options": getattr(updated_def, "options", {}) or {},
             },
@@ -169,10 +183,13 @@ def _perform_atlan_tag_update(client, update_data: AtlanTagUpdate) -> Dict[str, 
         logger.error(f"Error updating Atlan tag '{name}': {e}", exc_info=True)
         return {"error": f"Failed to update tag: {str(e)}"}
 
+
 def update_assets(
     updatable_assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: Union[UpdatableAttribute, ModelsUpdatableAttribute],
-    attribute_values: List[Union[str, CertificateStatus, TermOperations, AtlanTagUpdate]],
+    attribute_values: List[
+        Union[str, CertificateStatus, TermOperations, AtlanTagUpdate]
+    ],
 ) -> Dict[str, Any]:
     """
     Update one or multiple assets with different values for attributes, term operations, or Atlan Tag definitions.
@@ -211,8 +228,12 @@ def update_assets(
             return {"updated_count": 0, "errors": [error_msg]}
 
         # Normalize attribute_name - handle both enum types by comparing values
-        attr_value = attribute_name.value if hasattr(attribute_name, 'value') else str(attribute_name)
-        
+        attr_value = (
+            attribute_name.value
+            if hasattr(attribute_name, "value")
+            else str(attribute_name)
+        )
+
         # Initialize result tracking
         result = {"updated_count": 0, "errors": []}
 
@@ -220,7 +241,10 @@ def update_assets(
         asset_updates_performed = False
 
         # Validate certificate status values if applicable
-        if attr_value == UpdatableAttribute.CERTIFICATE_STATUS.value or attr_value == ModelsUpdatableAttribute.CERTIFICATE_STATUS.value:
+        if (
+            attr_value == UpdatableAttribute.CERTIFICATE_STATUS.value
+            or attr_value == ModelsUpdatableAttribute.CERTIFICATE_STATUS.value
+        ):
             for value in attribute_values:
                 if value not in CertificateStatus.__members__.values():
                     error_msg = f"Invalid certificate status: {value}"
@@ -236,7 +260,10 @@ def update_assets(
         readme_update_parent_assets = []
         for index, updatable_asset in enumerate(updatable_assets):
             # Handle AtlanTag update at the top
-            if attr_value == UpdatableAttribute.ATLAN_TAG.value or attr_value == ModelsUpdatableAttribute.ATLAN_TAG.value:
+            if (
+                attr_value == UpdatableAttribute.ATLAN_TAG.value
+                or attr_value == ModelsUpdatableAttribute.ATLAN_TAG.value
+            ):
                 tag_update_value = attribute_values[index]
                 if not isinstance(tag_update_value, AtlanTagUpdate):
                     error_msg = f"AtlanTag update value must be an AtlanTagUpdate object for index {index}"
@@ -246,10 +273,14 @@ def update_assets(
                 tag_update_result = _perform_atlan_tag_update(client, tag_update_value)
                 if tag_update_result.get("updated"):
                     result["updated_count"] += 1
-                    logger.info(f"Successfully updated Atlan tag '{tag_update_value.name}'")
+                    logger.info(
+                        f"Successfully updated Atlan tag '{tag_update_value.name}'"
+                    )
                 else:
                     # Add error
-                    msg = tag_update_result.get("error", f"Unknown error updating tag '{tag_update_value.name}'")
+                    msg = tag_update_result.get(
+                        "error", f"Unknown error updating tag '{tag_update_value.name}'"
+                    )
                     logger.error(msg)
                     result["errors"].append(msg)
                 # Don't process asset object for this row
@@ -278,7 +309,10 @@ def update_assets(
                 )
 
             # Special handling for README updates
-            if attr_value == UpdatableAttribute.README.value or attr_value == ModelsUpdatableAttribute.README.value:
+            if (
+                attr_value == UpdatableAttribute.README.value
+                or attr_value == ModelsUpdatableAttribute.README.value
+            ):
                 # Get the current readme content for the asset
                 asset_readme_response = (
                     FluentSearch()
@@ -302,7 +336,10 @@ def update_assets(
                     # Add the parent/actual asset to the list of assets that were updated with readme.
                     readme_update_parent_assets.append(asset)
                     asset_updates_performed = True
-            elif attr_value == UpdatableAttribute.TERM.value or attr_value == ModelsUpdatableAttribute.TERM.value:
+            elif (
+                attr_value == UpdatableAttribute.TERM.value
+                or attr_value == ModelsUpdatableAttribute.TERM.value
+            ):
                 # Special handling for term operations
                 term_value = attribute_values[index]
                 if not isinstance(term_value, TermOperations):
@@ -353,7 +390,11 @@ def update_assets(
             else:
                 # Regular attribute update flow
                 # Use the local enum value for asset attributes (camelCase)
-                local_attr_name = UpdatableAttribute(attr_value) if attr_value in [e.value for e in UpdatableAttribute] else None
+                local_attr_name = (
+                    UpdatableAttribute(attr_value)
+                    if attr_value in [e.value for e in UpdatableAttribute]
+                    else None
+                )
                 if local_attr_name:
                     setattr(asset, local_attr_name.value, attribute_values[index])
                 else:
@@ -380,7 +421,7 @@ def update_assets(
             result["updated_count"] += len(response.guid_assignments)
             logger.info(f"Successfully updated {len(response.guid_assignments)} assets")
         elif not asset_updates_performed:
-            logger.info(f"Processed only Atlan tag updates; no asset.save() invoked.")
+            logger.info("Processed only Atlan tag updates; no asset.save() invoked.")
 
         return result
 
