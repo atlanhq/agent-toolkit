@@ -1,7 +1,7 @@
 """
-Data Quality Rules creation tool for Atlan MCP server.
+Data Quality Rules creation and update tools for Atlan MCP server.
 
-This module provides functionality to create data quality rules in Atlan,
+This module provides functionality to create and update data quality rules in Atlan,
 supporting column-level, table-level, and custom SQL rules.
 """
 
@@ -34,6 +34,9 @@ from .models import (
     CreatedRuleInfo,
     DQRuleCondition,
     DQAssetType,
+    DQRuleUpdateSpecification,
+    DQRuleUpdateResponse,
+    UpdatedRuleInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -261,3 +264,168 @@ def _build_rule_conditions(conditions: List[DQRuleCondition]) -> Any:
         builder.add_condition(**condition_params)
 
     return builder.build()
+
+
+def update_dq_rules(
+    rules: Union[Dict[str, Any], List[Dict[str, Any]]],
+) -> DQRuleUpdateResponse:
+    """
+    Update one or multiple existing data quality rules in Atlan.
+
+    To update a rule, you only need to provide the qualified name, rule_type, and
+    asset_qualified_name. All other parameters are optional and will only be updated
+    if provided.
+
+    Args:
+        rules (Union[Dict[str, Any], List[Dict[str, Any]]): Either a single rule
+            specification or a list of rule specifications. Each specification must include:
+            - qualified_name (str): The qualified name of the rule to update (required)
+            - rule_type (str): Type of rule (required for validation)
+            - asset_qualified_name (str): Qualified name of the table/view (required)
+            - Additional optional fields to update (see examples)
+
+    Returns:
+        DQRuleUpdateResponse: Response containing:
+            - updated_count: Number of rules successfully updated
+            - updated_rules: List of updated rule details (guid, qualified_name, rule_type)
+            - errors: List of any errors encountered
+
+    Raises:
+        Exception: If there's an error updating the rules.
+    """
+    # Convert single rule to list for consistent handling
+    data = rules if isinstance(rules, list) else [rules]
+    logger.info(f"Updating {len(data)} data quality rule(s)")
+
+    result = DQRuleUpdateResponse()
+
+    try:
+        # Validate and parse specifications
+        specs = []
+        for idx, item in enumerate(data):
+            try:
+                # Pydantic model validation happens automatically
+                spec = DQRuleUpdateSpecification(**item)
+                specs.append(spec)
+            except ValueError as e:
+                # Pydantic validation errors
+                result.errors.append(f"Rule {idx + 1} validation error: {str(e)}")
+                logger.error(
+                    f"Error validating rule update specification {idx + 1}: {e}"
+                )
+            except Exception as e:
+                result.errors.append(f"Rule {idx + 1} error: {str(e)}")
+                logger.error(f"Error parsing rule update specification {idx + 1}: {e}")
+
+        if not specs:
+            logger.warning("No valid rule update specifications to process")
+            return result
+
+        # Get Atlan client
+        client = get_atlan_client()
+
+        # Update rules
+        updated_assets = []
+        for spec in specs:
+            try:
+                logger.debug(
+                    f"Updating {spec.rule_type.value} rule: {spec.qualified_name}"
+                )
+                rule = _update_dq_rule(spec, client)
+                updated_assets.append(rule)
+
+            except Exception as e:
+                error_msg = f"Error updating rule {spec.qualified_name}: {str(e)}"
+                result.errors.append(error_msg)
+                logger.error(error_msg)
+
+        if not updated_assets:
+            return result
+
+        # Bulk save all updated rules
+        logger.info(f"Saving {len(updated_assets)} updated data quality rules")
+        response = client.asset.save(updated_assets)
+
+        # Process response
+        for updated_rule in response.mutated_entities.UPDATE:
+            result.updated_rules.append(
+                UpdatedRuleInfo(
+                    guid=updated_rule.guid,
+                    qualified_name=updated_rule.qualified_name,
+                    rule_type=updated_rule.dq_rule_type
+                    if hasattr(updated_rule, "dq_rule_type")
+                    else None,
+                )
+            )
+
+        result.updated_count = len(result.updated_rules)
+        logger.info(f"Successfully updated {result.updated_count} data quality rules")
+
+        return result
+
+    except Exception as e:
+        error_msg = f"Error in bulk rule update: {str(e)}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        return result
+
+
+def _update_dq_rule(spec: DQRuleUpdateSpecification, client) -> DataQualityRule:
+    """
+    Update a data quality rule based on specification.
+
+    Args:
+        spec (DQRuleUpdateSpecification): Rule update specification
+        client: Atlan client instance
+
+    Returns:
+        DataQualityRule: Updated rule asset
+    """
+    logger.debug(f"Updating {spec.rule_type.value} rule: {spec.qualified_name}")
+
+    # Base parameters - only qualified_name and client are required
+    params = {
+        "client": client,
+        "qualified_name": spec.qualified_name,
+    }
+
+    # Add optional threshold parameters if provided
+    if spec.threshold_value is not None:
+        params["threshold_value"] = spec.threshold_value
+
+    if spec.threshold_compare_operator:
+        params["threshold_compare_operator"] = DataQualityRuleThresholdCompareOperator[
+            spec.threshold_compare_operator
+        ]
+
+    if spec.threshold_unit:
+        params["threshold_unit"] = DataQualityRuleThresholdUnit[spec.threshold_unit]
+
+    if spec.alert_priority:
+        params["alert_priority"] = DataQualityRuleAlertPriority[spec.alert_priority]
+
+    # Add Custom SQL specific parameters if provided
+    if spec.custom_sql:
+        params["custom_sql"] = spec.custom_sql
+
+    if spec.rule_name:
+        params["rule_name"] = spec.rule_name
+
+    if spec.dimension:
+        params["dimension"] = DataQualityDimension[spec.dimension]
+
+    # Add rule conditions if provided
+    if spec.rule_conditions:
+        params["rule_conditions"] = _build_rule_conditions(spec.rule_conditions)
+
+    if spec.row_scope_filtering_enabled is not None:
+        params["row_scope_filtering_enabled"] = spec.row_scope_filtering_enabled
+
+    # Use the updater method from DataQualityRule
+    updated_rule = DataQualityRule.updater(**params)
+
+    # Add description if provided
+    if spec.description:
+        updated_rule.description = spec.description
+
+    return updated_rule
