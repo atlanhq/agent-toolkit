@@ -34,6 +34,11 @@ from .models import (
     CreatedRuleInfo,
     DQRuleCondition,
     DQAssetType,
+    DQRuleScheduleSpecification,
+    DQRuleScheduleResponse,
+    ScheduledAssetInfo,
+    DQRuleInfo,
+    DQRuleDeleteResponse,
     DQRuleUpdateSpecification,
     DQRuleUpdateResponse,
     UpdatedRuleInfo,
@@ -264,6 +269,140 @@ def _build_rule_conditions(conditions: List[DQRuleCondition]) -> Any:
         builder.add_condition(**condition_params)
 
     return builder.build()
+
+
+def schedule_dq_rules(
+    schedules: Union[Dict[str, Any], List[Dict[str, Any]]],
+) -> DQRuleScheduleResponse:
+    """
+    Schedule data quality rule execution for one or multiple assets.
+
+    Args:
+        schedules: Either a single schedule specification or a list of specifications.
+
+    Returns:
+        DQRuleScheduleResponse: Response containing scheduled_count, scheduled_assets, and errors.
+    """
+    # Convert single schedule to list for consistent handling
+    data = schedules if isinstance(schedules, list) else [schedules]
+
+    result = DQRuleScheduleResponse()
+
+    # Validate and parse specifications
+    specs = []
+    for idx, item in enumerate(data):
+        try:
+            spec = DQRuleScheduleSpecification(**item)
+            specs.append(spec)
+        except Exception as e:
+            result.errors.append(f"Schedule {idx + 1} error: {str(e)}")
+            logger.error(f"Error parsing schedule specification {idx + 1}: {e}")
+
+    if not specs:
+        logger.warning("No valid schedule specifications to create")
+        return result
+
+    # Get Atlan client
+    client = get_atlan_client()
+
+    # Schedule rules for each asset
+    for spec in specs:
+        try:
+            asset_cls = _ASSET_TYPE_MAP.get(spec.asset_type)
+            if not asset_cls:
+                raise ValueError(f"Unsupported asset type: {spec.asset_type.value}")
+
+            client.asset.add_dq_rule_schedule(
+                asset_type=asset_cls,
+                asset_name=spec.asset_name,
+                asset_qualified_name=spec.asset_qualified_name,
+                schedule_crontab=spec.schedule_crontab,
+                schedule_time_zone=spec.schedule_time_zone,
+            )
+
+            result.scheduled_assets.append(
+                ScheduledAssetInfo(
+                    asset_name=spec.asset_name,
+                    asset_qualified_name=spec.asset_qualified_name,
+                    schedule_crontab=spec.schedule_crontab,
+                    schedule_time_zone=spec.schedule_time_zone,
+                )
+            )
+            result.scheduled_count += 1
+
+        except Exception as e:
+            error_msg = f"Error scheduling {spec.asset_name}: {str(e)}"
+            result.errors.append(error_msg)
+            logger.error(error_msg)
+
+    return result
+
+
+def delete_dq_rules(
+    rule_guids: Union[str, List[str]],
+) -> DQRuleDeleteResponse:
+    """
+    Delete one or multiple data quality rules in Atlan.
+
+    Args:
+        rule_guids: Single rule GUID or list of rule GUIDs to delete.
+
+    Returns:
+        DQRuleDeleteResponse with deletion results and any errors.
+
+    Example:
+        # Delete single rule
+        result = delete_dq_rules("rule-guid-123")
+
+        # Delete multiple rules
+        result = delete_dq_rules(["rule-guid-1", "rule-guid-2"])
+    """
+    # Convert single GUID to list for consistent handling
+    data = rule_guids if isinstance(rule_guids, list) else [rule_guids]
+
+    result = DQRuleDeleteResponse()
+
+    # Validate and parse specifications
+    specs = []
+    for idx, item in enumerate(data):
+        try:
+            if isinstance(item, str):
+                spec = DQRuleInfo(rule_guid=item)
+            else:
+                spec = DQRuleInfo(**item)
+            specs.append(spec)
+        except Exception as e:
+            result.errors.append(f"Rule {idx + 1} error: {str(e)}")
+            logger.error(f"Error parsing rule specification {idx + 1}: {e}")
+
+    if not specs:
+        logger.warning("No valid rule specifications to delete")
+        return result
+
+    # Get Atlan client
+    client = get_atlan_client()
+
+    # Delete each rule
+    for spec in specs:
+        try:
+            response = client.asset.delete_by_guid(guid=spec.rule_guid)
+            deleted_assets = response.assets_deleted(asset_type=DataQualityRule)
+
+            if deleted_assets:
+                result.deleted_rules.append(DQRuleInfo(rule_guid=spec.rule_guid))
+                result.deleted_count += 1
+                logger.info(f"Successfully deleted rule: {spec.rule_guid}")
+            else:
+                error_msg = f"No rule found with GUID: {spec.rule_guid}"
+                result.errors.append(error_msg)
+                logger.warning(error_msg)
+
+        except Exception as e:
+            error_msg = f"Error deleting rule {spec.rule_guid}: {str(e)}"
+            result.errors.append(error_msg)
+            logger.error(error_msg)
+
+    return result
 
 
 def update_dq_rules(

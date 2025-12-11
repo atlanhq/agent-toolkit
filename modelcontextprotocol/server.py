@@ -15,6 +15,8 @@ from tools import (
     create_data_domain_assets,
     create_data_product_assets,
     create_dq_rules,
+    schedule_dq_rules,
+    delete_dq_rules,
     update_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
@@ -1174,6 +1176,71 @@ def create_dq_rules_tool(rules):
         return {
             "created_count": 0,
             "created_rules": [],
+            "errors": [f"Parameter parsing error: {str(e)}"],
+        }
+
+
+@mcp.tool()
+def schedule_dq_rules_tool(schedules):
+    """
+    Schedule data quality rule execution for one or multiple assets.
+
+    Args:
+        schedules: Single schedule or list of schedules. Each schedule requires:
+            - asset_type (str): "Table", "View", "MaterialisedView", or "SnowflakeDynamicTable"
+            - asset_name (str): Name of the asset
+            - asset_qualified_name (str): Qualified name of the asset
+            - schedule_crontab (str): Cron expression (5 fields: min hour day month weekday)
+            - schedule_time_zone (str): Timezone (e.g., "UTC", "America/New_York")
+
+    Returns:
+        Dict with scheduled_count, scheduled_assets, and errors.
+
+    Example:
+        schedule_dq_rules_tool({
+            "asset_type": "Table",
+            "asset_name": "CUSTOMERS",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/CUSTOMERS",
+            "schedule_crontab": "0 2 * * *",
+            "schedule_time_zone": "UTC"
+        })
+    """
+    try:
+        parsed_schedules = parse_json_parameter(schedules)
+        return schedule_dq_rules(parsed_schedules)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "scheduled_count": 0,
+            "scheduled_assets": [],
+            "errors": [f"Parameter parsing error: {str(e)}"],
+        }
+
+
+@mcp.tool()
+def delete_dq_rules_tool(rule_guids):
+    """
+    Delete one or multiple data quality rules in Atlan.
+
+    Args:
+        rule_guids: Single rule GUID (string) or list of rule GUIDs to delete.
+
+    Returns:
+        Dict with deleted_count, deleted_rules (list of GUIDs), and errors.
+
+    Example:
+        # Delete single rule
+        delete_dq_rules_tool("rule-guid-123")
+
+        # Delete multiple rules
+        delete_dq_rules_tool(["rule-guid-1", "rule-guid-2"])
+    """
+    try:
+        parsed_guids = parse_json_parameter(rule_guids)
+        return delete_dq_rules(parsed_guids)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "deleted_count": 0,
+            "deleted_rules": [],
             "errors": [f"Parameter parsing error: {str(e)}"],
         }
 
