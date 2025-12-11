@@ -147,6 +147,9 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `create_glossary_categories` | Create glossary categories                               |
 | `create_glossary_terms` | Create glossary terms                                         |
 | `create_dq_rules`   | Create data quality rules on Table, View, MaterialisedView, or SnowflakeDynamicTable assets (column-level, table-level, custom SQL) |
+| `update_dq_rules`   | Update existing data quality rules (threshold, priority, conditions, etc.) |
+| `schedule_dq_rules` | Schedule data quality rule execution for assets using cron expressions |
+| `delete_dq_rules`   | Delete one or multiple data quality rules by GUID                 |
 | `query_asset`       | Execute SQL queries on table/view assets                          |
 
 ## Tool Access Control
@@ -214,13 +217,16 @@ You can restrict any of the following tools:
 - `create_glossary_categories` - Category creation
 - `create_glossary_terms` - Term creation
 - `create_dq_rules_tool` - Data quality rule creation
+- `update_dq_rules_tool` - Data quality rule updates
+- `schedule_dq_rules_tool` - Data quality rule scheduling
+- `delete_dq_rules_tool` - Data quality rule deletion
 
 ### Common Use Cases
 
 #### Read-Only Access
 Restrict all write operations:
 ```
-RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool
+RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool,update_dq_rules_tool,schedule_dq_rules_tool,delete_dq_rules_tool
 ```
 
 #### Disable DSL Queries
@@ -232,7 +238,7 @@ RESTRICTED_TOOLS=get_assets_by_dsl_tool
 #### Minimal Access
 Allow only basic search:
 ```
-RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool
+RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool,update_dq_rules_tool,schedule_dq_rules_tool,delete_dq_rules_tool
 ```
 
 ### How It Works
