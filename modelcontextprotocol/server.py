@@ -17,6 +17,7 @@ from tools import (
     create_dq_rules,
     schedule_dq_rules,
     delete_dq_rules,
+    update_dq_rules,
     UpdatableAttribute,
     CertificateStatus,
     UpdatableAsset,
@@ -1240,6 +1241,61 @@ def delete_dq_rules_tool(rule_guids):
         return {
             "deleted_count": 0,
             "deleted_rules": [],
+def update_dq_rules_tool(rules):
+    """
+    Update existing data quality rules in Atlan.
+
+    Args:
+        rules: Single rule dict or list of rule dicts. Required fields:
+            - qualified_name: Rule's qualified name
+            - rule_type: Rule type (e.g., "Null Count", "Row Count", "Custom SQL")
+            - asset_qualified_name: Table/view qualified name
+        Optional fields: threshold_value, threshold_compare_operator, threshold_unit,
+        alert_priority, custom_sql, rule_name, dimension, rule_conditions,
+        row_scope_filtering_enabled, description
+
+    Returns:
+        Dict with updated_count, updated_rules, and errors.
+
+    Examples:
+        # Single rule update
+        update_dq_rules_tool({
+            "qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE/rule/abc-123",
+            "rule_type": "Null Count",
+            "asset_qualified_name": "default/snowflake/123/DB/SCHEMA/TABLE",
+            "threshold_value": 10,
+            "alert_priority": "URGENT"
+        })
+
+        # Bulk update with conditions
+        update_dq_rules_tool([
+            {"qualified_name": "...", "rule_type": "Null Count", "threshold_value": 5},
+            {"qualified_name": "...", "rule_type": "String Length",
+             "rule_conditions": [{"type": "STRING_LENGTH_BETWEEN", "min_value": 10, "max_value": 100}]}
+        ])
+
+    Rule Types: "Null Count", "Null Percentage", "Blank Count", "Blank Percentage",
+    "Min Value", "Max Value", "Average", "Standard Deviation", "Unique Count",
+    "Duplicate Count", "Regex", "String Length", "Valid Values", "Freshness",
+    "Row Count", "Custom SQL"
+
+    Alert Priority: "LOW", "NORMAL", "URGENT"
+    Operators: "EQUAL", "GREATER_THAN", "GREATER_THAN_EQUAL", "LESS_THAN",
+               "LESS_THAN_EQUAL", "BETWEEN"
+    Threshold Units: "DAYS", "HOURS", "MINUTES" (Freshness only)
+    Dimensions: "COMPLETENESS", "VALIDITY", "UNIQUENESS", "TIMELINESS", "VOLUME",
+                "ACCURACY", "CONSISTENCY" (Custom SQL only)
+    Condition Types: "STRING_LENGTH_EQUALS", "STRING_LENGTH_BETWEEN",
+                     "STRING_LENGTH_GREATER_THAN", "STRING_LENGTH_LESS_THAN",
+                     "REGEX_MATCH", "REGEX_NOT_MATCH", "IN_LIST", "NOT_IN_LIST"
+    """
+    try:
+        parsed_rules = parse_json_parameter(rules)
+        return update_dq_rules(parsed_rules)
+    except (json.JSONDecodeError, ValueError) as e:
+        return {
+            "updated_count": 0,
+            "updated_rules": [],
             "errors": [f"Parameter parsing error: {str(e)}"],
         }
 

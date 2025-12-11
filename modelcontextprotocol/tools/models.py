@@ -384,4 +384,51 @@ class DQRuleDeleteResponse(BaseModel):
 
     deleted_count: int = 0
     deleted_rules: List[DQRuleInfo] = []
+class DQRuleUpdateSpecification(BaseModel):
+    """
+    Model for updating an existing data quality rule.
+
+    Only necessary and updatable fields are included. All fields except
+    qualified_name, rule_type, and asset_qualified_name are optional.
+    """
+
+    # Required fields for identification and validation
+    qualified_name: str  # The qualified name of the rule to update
+    rule_type: DQRuleType  # Type of rule (required for validation)
+    asset_qualified_name: (
+        str  # Qualified name of the table/view (required for validation)
+    )
+
+    # Optional updatable fields
+    threshold_value: Optional[Union[int, float]] = None
+    threshold_compare_operator: Optional[str] = None  # "EQUAL", "GREATER_THAN", etc.
+    threshold_unit: Optional[str] = (
+        None  # "DAYS", "HOURS", "MINUTES" (for Freshness rules)
+    )
+    alert_priority: Optional[str] = None  # "LOW", "NORMAL", "URGENT"
+
+    # Custom SQL specific fields
+    custom_sql: Optional[str] = None
+    rule_name: Optional[str] = None
+    dimension: Optional[str] = None  # "COMPLETENESS", "VALIDITY", etc.
+
+    # Advanced configuration
+    rule_conditions: Optional[List[DQRuleCondition]] = None
+    row_scope_filtering_enabled: Optional[bool] = None
+    description: Optional[str] = None
+
+
+class UpdatedRuleInfo(BaseModel):
+    """Model representing information about an updated data quality rule."""
+
+    guid: str
+    qualified_name: str
+    rule_type: Optional[str] = None
+
+
+class DQRuleUpdateResponse(BaseModel):
+    """Response model for data quality rule update operations."""
+
+    updated_count: int = 0
+    updated_rules: List[UpdatedRuleInfo] = []
     errors: List[str] = []
