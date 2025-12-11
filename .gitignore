@@ -161,3 +161,10 @@ cython_debug/
 .vscode/
 
 .DS_Store
+
+# Repomix output
+repomix-output.txt
+repomix-output.xml
+
+# Test files
+test_dq_view_rule.py
