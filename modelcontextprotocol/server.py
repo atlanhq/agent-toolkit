@@ -724,7 +724,7 @@ def query_asset_tool(
         result = query_asset_tool(
             sql='SELECT * FROM PAGES LIMIT 10',
             connection_qualified_name="default/snowflake/1657275059",
-            default_schema="LANDING.FRONTEND_PROD"
+            default_schema="LANDING/FRONTEND_PROD"
         )
 
         # Query without specifying default schema (fully qualified table names)
@@ -747,7 +747,7 @@ def query_asset_tool(
             ORDER BY page_count DESC
             ''',
             connection_qualified_name="default/snowflake/1657275059",
-            default_schema="LANDING.FRONTEND_PROD"
+            default_schema="LANDING/FRONTEND_PROD"
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
@@ -942,41 +942,24 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 @mcp.tool()
 def retrieve_atlan_tag_by_name_tool(
     display_name=None,
-    color=None,
     description_filter=None,
 ):
     """
     Retrieve Atlan tag definitions by various criteria or list all existing tags.
 
     This tool queries the Atlan typedef API to retrieve tag definitions (classifications).
-    Filters can be combined - if multiple filters are provided, tags must match all criteria.
-
-    Usage:
-        - If `display_name` is provided:
-            Returns all tag definitions whose displayName exactly matches it (case-sensitive).
-        - If `color` is provided:
-            Returns all tag definitions with the specified color (case-insensitive).
-            Valid colors: GRAY, GREEN, YELLOW, RED
-        - If `description_filter` is provided:
-            Returns tags filtered by description status ("empty" or "not_empty").
-        - If multiple filters are provided:
-            Returns tags matching all criteria (AND logic).
-        - If all are omitted or null:
-            Returns all existing Atlan tags in the instance.
+    If `display_name` is provided, returns all tag definitions whose displayName exactly matches it.
+    If `description_filter` is provided, returns tags filtered by description status ("empty" or "not_empty").
+    If both are omitted or null, returns all existing Atlan tags in the instance.
 
     Args:
         display_name (str | None, optional): Exact display name to filter by (case-sensitive).
             If provided, returns tags whose displayName exactly matches this value.
             If None, no display name filter is applied.
-        color (str | None, optional): Color to filter by (case-insensitive).
-            Valid values: "GRAY", "GREEN", "YELLOW", "RED" (or any case variation).
-            If provided, returns tags with the specified color.
-            If None, no color filter is applied.
         description_filter (str | None, optional): Filter by description status.
             - "empty": Returns only tags with empty or None descriptions.
             - "not_empty": Returns only tags with non-empty descriptions.
             - If None, no description filter is applied.
-            Note: Invalid values are logged as warnings and ignored.
 
     Returns:
         Dict[str, Any]: A dictionary containing:
@@ -986,7 +969,7 @@ def retrieve_atlan_tag_by_name_tool(
                     - "internal_name" (str | None): Internal Atlan name (auto-generated)
                     - "guid" (str | None): Unique identifier for the tag
                     - "description" (str | None): Tag description if set
-                    - "options" (dict): Tag options including color, icon, etc.
+                    - "options" (dict): Tag options (may include color, icon, etc.)
             - "count" (int): Number of tags found matching the criteria
             - "error" (str | None): Error message if an error occurred, None otherwise
 
@@ -995,10 +978,6 @@ def retrieve_atlan_tag_by_name_tool(
         result = retrieve_atlan_tag_by_name_tool(display_name="PII")
         if result["error"] is None:
             print(f"Found {result['count']} tag(s)")
-
-        # Retrieve all tags with red color (case-insensitive)
-        result = retrieve_atlan_tag_by_name_tool(color="red")
-        # Works with "red", "RED", "Red", etc.
 
         # Retrieve all tags with empty descriptions
         result = retrieve_atlan_tag_by_name_tool(description_filter="empty")
@@ -1009,21 +988,14 @@ def retrieve_atlan_tag_by_name_tool(
         # Retrieve all tags (no filters)
         result = retrieve_atlan_tag_by_name_tool()
         print(f"Total tags in Atlan: {result['count']}")
-
-        # Combine filters: tags with specific name and color
-        result = retrieve_atlan_tag_by_name_tool(
-            display_name="Production",
-            color="GREEN"
-        )
     """
-    # Call the imported function from tools module (imported at top of file)
     return retrieve_atlan_tag_by_name(
-        display_name=display_name, color=color, description_filter=description_filter
+        display_name=display_name, description_filter=description_filter
     )
 
 
 @mcp.tool()
-def create_atlan_tag_tool(name, color=None, description=None):
+def create_atlan_tag_tool(name, description=None):
     """
     Create a new Atlan tag definition.
 
@@ -1031,19 +1003,15 @@ def create_atlan_tag_tool(name, color=None, description=None):
     it checks if a tag with the same display name already exists to prevent duplicates.
 
     Process:
-    1. Validates that the tag name is provided and not empty
-    2. Checks if a tag with the same display name already exists
-    3. If it exists, returns information about the existing tag
-    4. If it doesn't exist, validates the color (if provided) and creates the tag
-    5. Returns the created tag definition with its GUID and internal name
+    1. Validates that the tag name is provided and not empty.
+    2. Checks if a tag with the same display name already exists.
+    3. If it exists, returns information about the existing tag.
+    4. If it doesn't exist, creates the tag with default color "GRAY".
+    5. Returns the created tag definition with its GUID and internal name.
 
     Args:
         name (str): Human-readable display name of the tag (required).
             Must be a non-empty string. Whitespace-only strings are rejected.
-        color (str, optional): Color for the tag (case-insensitive).
-            Only the following colors are allowed: GRAY, GREEN, YELLOW, RED
-            Defaults to GRAY if not provided.
-            Invalid colors will result in an error response.
         description (str, optional): Description of the tag.
             Can be any string or None. Empty strings are allowed.
 
@@ -1070,9 +1038,9 @@ def create_atlan_tag_tool(name, color=None, description=None):
                 "created": True,
                 "tag": {
                     "display_name": str,
-                    "internal_name": str,  # Auto-generated by Atlan
-                    "guid": str,  # Auto-generated by Atlan
-                    "color": str,  # One of: GRAY, GREEN, YELLOW, RED
+                    "internal_name": str,
+                    "guid": str,
+                    "color": str,  # Always "GRAY" unless updated via Atlan UI
                     "description": str | None,
                     "options": dict
                 },
@@ -1091,13 +1059,6 @@ def create_atlan_tag_tool(name, color=None, description=None):
             print(f"Created tag: {result['tag']['display_name']}")
             print(f"GUID: {result['tag']['guid']}")
 
-        # Create a tag with specific color and description
-        result = create_atlan_tag_tool(
-            name="Customer Data",
-            color="GREEN",
-            description="Tag for customer-related data assets"
-        )
-
         # Create a tag with description only (uses default GRAY color)
         result = create_atlan_tag_tool(
             name="Production",
@@ -1109,13 +1070,9 @@ def create_atlan_tag_tool(name, color=None, description=None):
         if result.get("exists"):
             print(f"Tag already exists: {result['tag']['guid']}")
 
-        # Invalid color will return error
-        result = create_atlan_tag_tool(name="Test", color="BLUE")
-        if "error" in result:
-            print(result["error"])  # "Invalid color 'BLUE'..."
     """
-    # Call the imported function from tools module (imported at top of file)
-    return create_atlan_tag(name=name, color=color, description=description)
+    # Always create with default color=GRAY (do not allow caller-specified color)
+    return create_atlan_tag(name=name, color="GRAY", description=description)
 
 
 def create_domains(domains) -> List[Dict[str, Any]]:
