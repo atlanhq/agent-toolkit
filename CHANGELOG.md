@@ -13,8 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `schedule_dq_rules`
   - `delete_dq_rules`
 
-### Changed
-- Updated README documentation to include new DQ rule management tools
 
 ## [0.3.0] - 2025-12-03
 - Added new tools:
