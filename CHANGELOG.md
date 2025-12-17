@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `update_dq_rules`
   - `schedule_dq_rules`
   - `delete_dq_rules`
+- Extended asset support for `create_dq_rules` to View, MaterialisedView, and SnowflakeDynamicTable
+- DockerHub as an additional container registry alongside GHCR
+
+### Changed
+- Upgraded FastMCP dependency from 2.13.0.2 to 2.13.2
 
 ## [0.3.0] - 2025-12-03
 - Added new tools:
