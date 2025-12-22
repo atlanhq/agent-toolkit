@@ -938,7 +938,7 @@ def get_workflows_tool(
     """
     Retrieve workflows (WorkflowTemplate) by ID or by package type.
 
-    Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
+    Naming Convention Note:
     - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
     - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
@@ -1023,7 +1023,7 @@ def get_workflow_runs_tool(
     """
     Retrieve workflow_runs with flexible filtering options.
 
-    Naming Convention Note: The Argo/Kubernetes API uses terminology that can be confusing:
+    Naming Convention Note:
     - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
     - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 

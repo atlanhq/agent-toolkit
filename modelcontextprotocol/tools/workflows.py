@@ -1,13 +1,8 @@
 """Tools for retrieving and managing workflows in Atlan.
 
 Naming Convention Note:
-The Argo/Kubernetes API uses terminology that can be confusing:
-- "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
-- "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
-
-Throughout this module:
-- "workflow" refers to WorkflowTemplate (kind="WorkflowTemplate") - the template definition
-- "workflow_run" refers to Workflow (kind="Workflow") - an executed instance/run
+- "workflow" refers to a workflow template definition (kind="WorkflowTemplate")
+- "workflow_run" refers to an executed instance/run (kind="Workflow")
 - The extract_workflow_metadata() function returns fields prefixed with "run_*" for execution data
   and "workflow_*" for workflow-level metadata to clearly distinguish between the two.
 """
@@ -25,7 +20,7 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
     """
     Process a workflow or workflow_run object into a standardized dictionary format.
 
-    Note: There is a naming confusion in the Argo/Kubernetes API:
+    Note: This function handles two types of workflow objects:
     - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
     - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
@@ -67,7 +62,7 @@ def extract_workflow_template_metadata(
     """
     Extract useful metadata from a workflow (WorkflowTemplate).
 
-    Note: In Argo terminology, "WorkflowTemplate" (kind="WorkflowTemplate") is a workflow (template definition).
+    Note: "WorkflowTemplate" (kind="WorkflowTemplate") is a workflow (template definition).
     This function extracts workflow metadata including package info, source system, certification status, etc.
 
     Args:
@@ -125,7 +120,7 @@ def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extract comprehensive metadata from a workflow_run (Workflow executed instance/run).
 
-    Note: In Argo terminology, "Workflow" (kind="Workflow") is a workflow_run (executed instance/run).
+    Note: "Workflow" (kind="Workflow") is a workflow_run (executed instance/run).
     This is different from "WorkflowTemplate" which is a workflow (template definition).
 
     The returned dictionary uses a two-tier naming convention:
