@@ -936,11 +936,7 @@ def get_workflows_tool(
     max_results: int = 10,
 ) -> Dict[str, Any]:
     """
-    Retrieve workflows (WorkflowTemplate) by ID or by package type.
-
-    Naming Convention Note:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
-    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
+    Retrieve workflows by ID or by package type.
 
     This tool supports two main use cases:
     1. Get a specific workflow by ID (returns full workflow details including steps and spec)
@@ -949,7 +945,7 @@ def get_workflows_tool(
     IMPORTANT: When getting by ID, this tool returns full workflow instructions with all steps and transformations.
     When getting by type, this tool returns only basic metadata to avoid large responses.
 
-    Note: This tool only returns workflows (WorkflowTemplate), not workflow_runs.
+    Note: This tool only returns workflows (templates), not workflow_runs.
     To get workflow_run information, use get_workflow_runs_tool.
 
     When to use this tool:
@@ -971,7 +967,7 @@ def get_workflows_tool(
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflows: List of workflow (WorkflowTemplate) dictionaries. When getting by ID, contains single item.
+            - workflows: List of workflow dictionaries. When getting by ID, contains single item.
                 Each workflow contains:
                     - template_name: Name of the template
                     - package_name, package_version: Package information
@@ -1022,10 +1018,6 @@ def get_workflow_runs_tool(
 ) -> Dict[str, Any]:
     """
     Retrieve workflow_runs with flexible filtering options.
-
-    Naming Convention Note:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
-    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
 
     This tool supports two main use cases:
     1. Filter by specific workflow name and phase (single workflow)

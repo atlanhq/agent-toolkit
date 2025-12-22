@@ -1,8 +1,8 @@
 """Tools for retrieving and managing workflows in Atlan.
 
 Naming Convention Note:
-- "workflow" refers to a workflow template definition (kind="WorkflowTemplate")
-- "workflow_run" refers to an executed instance/run (kind="Workflow")
+- "workflow" refers to a workflow template definition
+- "workflow_run" refers to an executed instance/run
 - The extract_workflow_metadata() function returns fields prefixed with "run_*" for execution data
   and "workflow_*" for workflow-level metadata to clearly distinguish between the two.
 """
@@ -20,15 +20,11 @@ def _result_to_dict(result: Any, include_dag: bool = False) -> Optional[Dict[str
     """
     Process a workflow or workflow_run object into a standardized dictionary format.
 
-    Note: This function handles two types of workflow objects:
-    - "WorkflowTemplate" (kind="WorkflowTemplate") = workflow (template definition)
-    - "Workflow" (kind="Workflow") = workflow_run (executed instance/run)
-
-    This function handles both types and returns standardized metadata dictionaries.
+    This function handles both workflow templates and workflow runs, returning standardized metadata dictionaries.
 
     Args:
         result: The workflow or workflow_run object from PyAtlan (WorkflowSearchResult or Workflow).
-        include_dag: If True, includes the workflow DAG in the output. This only applies if the input is a workflow (WorkflowTemplate).
+        include_dag: If True, includes the workflow DAG in the output. This only applies if the input is a workflow template.
             For workflow_run instances, this parameter has no effect.
     Returns:
         Optional[Dict[str, Any]]: Serialized workflow or workflow_run dictionary using Pydantic's dict() method.
@@ -60,13 +56,12 @@ def extract_workflow_template_metadata(
     dict_repr: Dict[str, Any], include_dag: bool = False
 ) -> Dict[str, Any]:
     """
-    Extract useful metadata from a workflow (WorkflowTemplate).
+    Extract useful metadata from a workflow template.
 
-    Note: "WorkflowTemplate" (kind="WorkflowTemplate") is a workflow (template definition).
     This function extracts workflow metadata including package info, source system, certification status, etc.
 
     Args:
-        dict_repr: The workflow object from the workflows array (kind="WorkflowTemplate")
+        dict_repr: The workflow template object from the workflows array
         include_dag: If True, includes the workflow DAG (workflow_steps and workflow_spec) in the output.
             When False, returns only essential metadata fields.
 
@@ -118,17 +113,14 @@ def extract_workflow_template_metadata(
 
 def extract_workflow_metadata(dict_repr: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extract comprehensive metadata from a workflow_run (Workflow executed instance/run).
-
-    Note: "Workflow" (kind="Workflow") is a workflow_run (executed instance/run).
-    This is different from "WorkflowTemplate" which is a workflow (template definition).
+    Extract comprehensive metadata from a workflow_run (executed instance/run).
 
     The returned dictionary uses a two-tier naming convention:
     - Fields prefixed with "run_*" contain execution-specific metadata (phase, timing, resource usage)
     - Fields prefixed with "workflow_*" contain workflow-level metadata (template reference, package, creator)
 
     Args:
-        dict_repr: The workflow_run object dictionary representation (kind="Workflow")
+        dict_repr: The workflow_run object dictionary representation
 
     Returns:
         Dictionary containing comprehensive workflow_run metadata with fields:
@@ -198,7 +190,7 @@ def get_workflows(
     max_results: int = 10,
 ) -> Dict[str, Any]:
     """
-    Retrieve workflows (WorkflowTemplate) by ID or by package type.
+    Retrieve workflows by ID or by package type.
 
     This function supports two main use cases:
     1. Get a specific workflow by ID (returns full workflow details including steps and spec)
@@ -215,7 +207,7 @@ def get_workflows(
 
     Returns:
         Dict[str, Any]: Dictionary containing:
-            - workflows: List of workflow (WorkflowTemplate) dictionaries. When getting by ID, contains single item.
+            - workflows: List of workflow dictionaries. When getting by ID, contains single item.
             - total: Total count of workflows (1 when getting by ID, actual count when getting by type)
             - error: None if no error occurred, otherwise the error message
 
