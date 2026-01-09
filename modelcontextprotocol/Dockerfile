@@ -16,7 +16,7 @@ RUN python -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 RUN uv sync --no-cache-dir --no-dev --python /app/.venv/bin/python
 
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.13.9-slim-bookworm AS runtime
 
 RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 
