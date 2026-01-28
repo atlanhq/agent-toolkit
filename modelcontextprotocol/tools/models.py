@@ -22,6 +22,9 @@ class UpdatableAttribute(str, Enum):
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
     TERM = "term"
+    ATLAN_TAGS = "atlan_tags"
+    OWNER_USERS = "owner_users"
+    OWNER_GROUPS = "owner_groups"
 
 
 class TermOperation(str, Enum):
@@ -37,6 +40,20 @@ class TermOperations(BaseModel):
 
     operation: TermOperation
     term_guids: List[str]
+
+
+class AtlanTagOperations(BaseModel):
+    """Model for Atlan tag operations on assets."""
+
+    operation: TermOperation
+    atlan_tag_names: List[str]
+
+
+class OwnerOperations(BaseModel):
+    """Model for owner operations on assets."""
+
+    operation: TermOperation
+    owner_usernames: List[str]
 
 
 class UpdatableAsset(BaseModel):

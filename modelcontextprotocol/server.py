@@ -22,6 +22,8 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    AtlanTagOperations,
+    OwnerOperations,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -479,24 +481,32 @@ def update_assets_tool(
     attribute_values,
 ):
     """
-    Update one or multiple assets with different values for attributes or term operations.
+    Update one or multiple assets with different values for attributes or operations.
 
     Args:
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
-            For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
+            For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
-        attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
-            For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
-            For readme, the value must be a valid Markdown string.
-            For term, the value must be a dict with "operation" and "term_guids" keys.
+            Supports: "user_description", "certificate_status", "readme", "term",
+            "atlan_tags", "owner_users", "owner_groups".
+        attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set.
+            - For certificate_status: "VERIFIED", "DRAFT", or "DEPRECATED"
+            - For readme: Valid Markdown string
+            - For term: Dict with "operation" and "term_guids" keys
+            - For atlan_tags: Dict with "operation" and "atlan_tag_names" keys
+            - For owner_users/owner_groups: Dict with "operation" and "owner_usernames" keys
+            Operations: "append" (add to existing), "replace" (replace all), "remove" (remove specified)
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
-            - operation: The operation that was performed (for term operations)
+
+    Notes:
+        - Tags: Requires exact tag name. Tags must exist before being applied to assets.
+        - Owners: Requires exact username for users, exact group name for groups.
+          Partial matches are not accepted (e.g., "abhinav" won't match "abhinav.mathur").
 
     Examples:
         # Update certificate status for a single asset
@@ -608,6 +618,51 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Append Atlan tags (add to existing)
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid",
+                "name": "CustomerTable",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123/DB/SCHEMA/CUSTOMERS"
+            },
+            attribute_name="atlan_tags",
+            attribute_values=[{
+                "operation": "append",  # or "replace", "remove"
+                "atlan_tag_names": ["PII", "Sensitive"]
+            }]
+        )
+
+        # Replace owner users (removes existing, sets new)
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid",
+                "name": "SalesTable",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123/DB/SCHEMA/SALES"
+            },
+            attribute_name="owner_users",
+            attribute_values=[{
+                "operation": "replace",
+                "owner_usernames": ["john.doe", "jane.smith"]
+            }]
+        )
+
+        # Append owner groups (adds to existing)
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid",
+                "name": "AnalyticsTable",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123/DB/SCHEMA/ANALYTICS"
+            },
+            attribute_name="owner_groups",
+            attribute_values=[{
+                "operation": "append",
+                "owner_usernames": ["data-engineers", "analytics-team"]
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -629,6 +684,30 @@ def update_assets_tool(
                         "updated_count": 0,
                     }
             parsed_attribute_values = term_operations
+        # Handle atlan tag operations - convert dict to AtlanTagOperations object
+        elif attr_enum == UpdatableAttribute.ATLAN_TAGS:
+            tag_operations = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    tag_operations.append(AtlanTagOperations(**value))
+                else:
+                    return {
+                        "error": "Atlan tag attribute values must be dictionaries with 'operation' and 'atlan_tag_names' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = tag_operations
+        # Handle owner operations - convert dict to OwnerOperations object
+        elif attr_enum in [UpdatableAttribute.OWNER_USERS, UpdatableAttribute.OWNER_GROUPS]:
+            owner_operations = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    owner_operations.append(OwnerOperations(**value))
+                else:
+                    return {
+                        "error": "Owner attribute values must be dictionaries with 'operation' and 'owner_usernames' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = owner_operations
         # For certificate status, convert values to enum
         elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [
