@@ -16,22 +16,20 @@ RUN python -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 RUN uv sync --no-cache-dir --no-dev --python /app/.venv/bin/python
 
-FROM python:3.12-slim-bookworm AS runtime
+FROM registry.atlan.com/public/pyatlan:main-latest AS runtime
 
-RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
+WORKDIR /home/nonroot/app
 
-WORKDIR /appuser
-
-COPY --from=builder --chown=appuser:appuser /app /appuser
+COPY --from=builder --chown=nonroot:nonroot /app /home/nonroot/app
 
 # Set the PATH to use the virtual environment
-ENV PATH="/appuser/.venv/bin:$PATH"
+ENV PATH="/home/nonroot/app/.venv/bin:$PATH"
 
 ENV MCP_TRANSPORT="stdio"
 ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8000"
 ENV MCP_PATH="/"
 
-USER appuser
+USER nonroot
 
-ENTRYPOINT exec python server.py --transport "$MCP_TRANSPORT" --host "$MCP_HOST" --port "$MCP_PORT" --path "$MCP_PATH"
+ENTRYPOINT ["sh", "-c", "exec python server.py --transport \"$MCP_TRANSPORT\" --host \"$MCP_HOST\" --port \"$MCP_PORT\" --path \"$MCP_PATH\""]
