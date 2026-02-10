@@ -1,0 +1,27 @@
+name: MCP Trivy Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - "modelcontextprotocol/**"
+      - ".github/workflows/mcp-trivy.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+  security-events: write
+
+jobs:
+  trivy:
+    uses: atlanhq/.github/.github/workflows/reusable-trivy-scan.yml@main
+    with:
+      image_context: './modelcontextprotocol/'
+      dockerfile: './modelcontextprotocol/Dockerfile'
+      image_tag: 'mcp-trivy:latest'
+      scan_uv_lock: true
+      uv_lock_path: 'modelcontextprotocol/uv.lock'
+      add_pr_comment: true
+      comment_title: 'MCP Trivy Scan Results'

@@ -1,0 +1,30 @@
+name: MCP Build Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - "modelcontextprotocol/**"
+      - ".github/workflows/mcp-server-release.yml"
+      - ".github/workflows/mcp-build.yml"
+
+jobs:
+  build-mcp-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build MCP image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./modelcontextprotocol/
+          file: ./modelcontextprotocol/Dockerfile
+          push: false
+          load: true
+          tags: mcp-build-check:latest
