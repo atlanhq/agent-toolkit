@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-02-13
+
+### Fixed
+- Dockerfile builder using Python 3.12 while pyatlan runtime image uses 3.11, causing ABI incompatibility for compiled C extensions
+- Broken venv python symlink after multi-stage COPY — builder path `/usr/local/bin/python` does not exist in pyatlan runtime, causing `ModuleNotFoundError` at container startup
+
+### Changed
+- Upgraded `fastmcp` from 2.13.2 to >=2.14.0 (resolved to 2.14.5)
+- Removed deprecated `dependencies` constructor argument from `FastMCP()` init, added `fastmcp.json` for dependency metadata
+- Constrained transitive dependencies to remediate HIGH/CRITICAL vulnerabilities:
+  - `authlib>=1.6.6`, `cryptography>=46.0.5`, `h11>=0.16.0`
+  - `python-multipart>=0.0.22`, `starlette>=0.49.1`, `urllib3>=2.6.3`
+
 ## [0.3.1] - 2025-12-17
 
 ### Added
