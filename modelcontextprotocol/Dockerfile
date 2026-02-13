@@ -32,7 +32,7 @@ ENV PATH="/home/nonroot/app/.venv/bin:$PATH"
 ENV MCP_TRANSPORT="stdio"
 ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8000"
-ENV MCP_PATH="/"
+ENV MCP_PATH="/mcp/"
 
 USER nonroot
 
