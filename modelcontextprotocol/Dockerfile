@@ -1,33 +1,22 @@
-# Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+FROM registry.atlan.com/public/pyatlan:main-latest
 
-# Set environment variables for build
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
-
-# Install the project into `/app`
-WORKDIR /app
-
-ADD . /app
-
-# Create a virtual environment and install dependencies
-RUN python -m venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
-RUN uv sync --no-cache-dir --no-dev --python /app/.venv/bin/python
-
-FROM registry.atlan.com/public/pyatlan:main-latest AS runtime
-
+USER root
 WORKDIR /home/nonroot/app
 
-COPY --from=builder --chown=nonroot:nonroot /app /home/nonroot/app
+# Set UV environment variables
+ENV UV_NO_MANAGED_PYTHON=true \
+    UV_SYSTEM_PYTHON=true
 
-# Fix venv python symlink: builder has python at /usr/local/bin, runtime at /usr/bin
-RUN ln -sf /usr/bin/python3 /home/nonroot/app/.venv/bin/python && \
-    ln -sf /usr/bin/python3 /home/nonroot/app/.venv/bin/python3
+# Copy project files
+COPY --chown=nonroot:nonroot . /home/nonroot/app
 
-# Set the PATH to use the virtual environment
-ENV PATH="/home/nonroot/app/.venv/bin:$PATH"
+# Install MCP server and its deps to system python
+# pyatlan and common deps (pydantic, httpx, cryptography, etc.) already in base image
+RUN uv pip install --system --no-cache --no-deps . && \
+    uv pip install --system --no-cache \
+        "fastmcp>=2.14.0" \
+        "uvicorn>=0.35.0" && \
+    rm -rf /root/.cache ~/.cache
 
 ENV MCP_TRANSPORT="stdio"
 ENV MCP_HOST="0.0.0.0"
