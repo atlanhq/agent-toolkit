@@ -1,5 +1,5 @@
 # Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
 
 # Set environment variables for build
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,6 +21,10 @@ FROM registry.atlan.com/public/pyatlan:main-latest AS runtime
 WORKDIR /home/nonroot/app
 
 COPY --from=builder --chown=nonroot:nonroot /app /home/nonroot/app
+
+# Fix venv python symlink: builder has python at /usr/local/bin, runtime at /usr/bin
+RUN ln -sf /usr/bin/python3 /home/nonroot/app/.venv/bin/python && \
+    ln -sf /usr/bin/python3 /home/nonroot/app/.venv/bin/python3
 
 # Set the PATH to use the virtual environment
 ENV PATH="/home/nonroot/app/.venv/bin:$PATH"
