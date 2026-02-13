@@ -1,0 +1,6 @@
+{
+  "entrypoint": "server.py",
+  "environment": {
+    "dependencies": ["pyatlan", "fastmcp"]
+  }
+}
