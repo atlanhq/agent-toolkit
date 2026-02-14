@@ -22,6 +22,8 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    AnnouncementData,
+    AnnouncementType,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -486,11 +488,13 @@ def update_assets_tool(
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "term", and "announcement".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a dict with "operation" and "term_guids" keys.
+            For announcement, the value must be a dict with "announcement_title", "announcement_type" ("information", "warning", or "issue"), and optional "announcement_message".
+            Note: Only one announcement can exist per asset. Updating an announcement will replace any existing announcement.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -608,6 +612,73 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Add an informational announcement to a single asset
+        # Note: Only one announcement can exist per asset. This will replace any existing announcement.
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Data Table",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_DATA"
+            },
+            attribute_name="announcement",
+            attribute_values=[{
+                "announcement_title": "Scheduled Maintenance",
+                "announcement_type": "information",
+                "announcement_message": "This table will be unavailable for maintenance on 2024-01-15 from 2 AM to 4 AM EST."
+            }]
+        )
+
+        # Add announcements to multiple assets (each asset gets its own announcement)
+        # Note: Each asset can only have one announcement. Updating will replace any existing announcement.
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "asset-guid-1",
+                    "name": "Table 1",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_1"
+                },
+                {
+                    "guid": "asset-guid-2",
+                    "name": "Table 2",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_2"
+                }
+            ],
+            attribute_name="announcement",
+            attribute_values=[
+                {
+                    "announcement_title": "Data Quality Issue",
+                    "announcement_type": "warning",
+                    "announcement_message": "This table contains incomplete data. Please verify before use."
+                },
+                {
+                    "announcement_title": "Schema Change Pending",
+                    "announcement_type": "warning",
+                    "announcement_message": "Schema changes will be applied next week."
+                }
+            ]
+        )
+
+        # Add an issue announcement to a glossary term
+        # Note: Only one announcement can exist per asset. This will replace any existing announcement.
+        result = update_assets_tool(
+            assets={
+                "guid": "term-guid-here",
+                "name": "Customer",
+                "type_name": "AtlasGlossaryTerm",
+                "qualified_name": "term-qualified-name",
+                "glossary_guid": "glossary-guid-here"
+            },
+            attribute_name="announcement",
+            attribute_values=[{
+                "announcement_title": "Term Deprecation Notice",
+                "announcement_type": "issue",
+                "announcement_message": "This term is being deprecated. Please use 'Client' instead."
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -629,6 +700,28 @@ def update_assets_tool(
                         "updated_count": 0,
                     }
             parsed_attribute_values = term_operations
+        # Handle announcement operations - convert dict to AnnouncementData object
+        elif attr_enum == UpdatableAttribute.ANNOUNCEMENT:
+            announcement_data_list = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    # Convert announcement_type string to enum
+                    if "announcement_type" in value:
+                        announcement_type_str = value["announcement_type"].lower()
+                        try:
+                            value["announcement_type"] = AnnouncementType(announcement_type_str)
+                        except ValueError:
+                            return {
+                                "error": f"Invalid announcement_type: {announcement_type_str}. Must be 'information', 'warning', or 'issue'",
+                                "updated_count": 0,
+                            }
+                    announcement_data_list.append(AnnouncementData(**value))
+                else:
+                    return {
+                        "error": "Announcement attribute values must be dictionaries with 'announcement_title', 'announcement_type', and optional 'announcement_message' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = announcement_data_list
         # For certificate status, convert values to enum
         elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [
