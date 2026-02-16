@@ -12,7 +12,7 @@
     {
       "name": "atlan",
       "source": "./",
-      "description": "Atlan data catalog plugin for Claude Code. Search, explore, govern, and manage your data assets through natural language. Includes semantic search, lineage traversal, glossary management, data quality rules, and governance workflows powered by the Atlan MCP server.",
+      "description": "Atlan data catalog plugin for Claude Code. Search, explore, govern, and manage your data assets through natural language. Powered by the Atlan MCP server with semantic search, lineage traversal, glossary management, data quality rules, and more.",
       "version": "1.0.0",
       "author": {
         "name": "Atlan",

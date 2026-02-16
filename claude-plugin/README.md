@@ -6,20 +6,6 @@ Connects to Atlan via OAuth at `mcp.atlan.com/mcp` - no API keys required.
 
 ## Features
 
-### Skills (Agent-invoked)
-Claude automatically uses these based on task context:
-
-| Skill | Description |
-|-------|-------------|
-| `search-assets` | Natural language search across all data assets |
-| `explore-lineage` | Trace data flow upstream and downstream |
-| `manage-glossary` | Create and manage business glossaries, terms, and categories |
-| `manage-domains` | Create data domains, subdomains, and data products |
-| `data-quality` | Create, update, schedule, and manage DQ rules |
-| `update-assets` | Update descriptions, certificates, README, terms, and custom metadata |
-| `discover-metadata` | Find custom metadata definitions by natural language |
-| `review-governance` | Audit data governance posture with scorecards |
-
 ### MCP Tools
 All powered by the Atlan MCP server:
 
@@ -41,13 +27,13 @@ All powered by the Atlan MCP server:
 
 **From marketplace (when available):**
 ```shell
-/plugin marketplace add atlanhq/atlan-claude-plugin
+/plugin marketplace add atlanhq/agent-toolkit
 /plugin install atlan@atlan-marketplace
 ```
 
 **From local directory (for development):**
 ```bash
-claude --plugin-dir ./atlan-claude-plugin
+claude --plugin-dir ./claude-plugin
 ```
 
 ### 2. Authenticate
@@ -64,25 +50,25 @@ Try searching: "Find all customer tables in Snowflake"
 
 ```bash
 # From the repository root
-claude --plugin-dir ./atlan-claude-plugin
+claude --plugin-dir ./claude-plugin
 ```
 
 ### Test with multiple plugins
 
 ```bash
-claude --plugin-dir ./atlan-claude-plugin --plugin-dir ./other-plugin
+claude --plugin-dir ./claude-plugin --plugin-dir ./other-plugin
 ```
 
 ### Debug plugin loading
 
 ```bash
-claude --debug --plugin-dir ./atlan-claude-plugin
+claude --debug --plugin-dir ./claude-plugin
 ```
 
 ### Validate plugin structure
 
 ```bash
-claude plugin validate ./atlan-claude-plugin
+claude plugin validate ./claude-plugin
 ```
 
 ## Examples
@@ -97,19 +83,10 @@ Just talk to Claude naturally:
 ## Plugin Structure
 
 ```
-atlan-claude-plugin/
+claude-plugin/
 ├── .claude-plugin/
 │   ├── plugin.json              # Plugin manifest
 │   └── marketplace.json         # Marketplace configuration
-├── skills/                      # Agent-invoked skills
-│   ├── search-assets/SKILL.md
-│   ├── explore-lineage/SKILL.md
-│   ├── manage-glossary/SKILL.md
-│   ├── manage-domains/SKILL.md
-│   ├── data-quality/SKILL.md
-│   ├── update-assets/SKILL.md
-│   ├── discover-metadata/SKILL.md
-│   └── review-governance/SKILL.md
 ├── .mcp.json                    # MCP server (mcp.atlan.com/mcp via OAuth)
 ├── CLAUDE.md                    # Claude Code instructions
 ├── LICENSE
@@ -121,7 +98,7 @@ atlan-claude-plugin/
 
 1. Clone the repository
 2. Make your changes
-3. Test locally with `claude --plugin-dir ./atlan-claude-plugin`
+3. Test locally with `claude --plugin-dir ./claude-plugin`
 4. Submit a pull request
 
 ## License

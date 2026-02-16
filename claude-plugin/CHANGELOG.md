@@ -9,15 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of the Atlan Claude Code Plugin
-- **8 Skills** (agent-invoked):
-  - `search-assets` - Natural language asset search via semantic search
-  - `explore-lineage` - Upstream and downstream lineage traversal
-  - `manage-glossary` - Glossary, term, and category management
-  - `manage-domains` - Data domain and product management
-  - `data-quality` - DQ rule creation, scheduling, and management
-  - `update-assets` - Asset property updates (descriptions, certificates, terms, metadata)
-  - `discover-metadata` - Custom metadata discovery via natural language
-  - `review-governance` - Governance posture auditing with scorecards
-- **MCP Server Integration** via OAuth at `mcp.atlan.com/mcp`
+- **MCP Server Integration** via OAuth at `mcp.atlan.com/mcp` (13 tools)
+  - Search & Discovery: `semantic_search_tool`
+  - Lineage: `traverse_lineage_tool`
+  - Asset Management: `update_assets_tool`, `discover_custom_metadata_tool`
+  - Glossary: `create_glossaries`, `create_glossary_terms`, `create_glossary_categories`
+  - Data Mesh: `create_domains`, `create_data_products`
+  - Data Quality: `create_dq_rules_tool`, `update_dq_rules_tool`, `schedule_dq_rules_tool`, `delete_dq_rules_tool`
 - **CLAUDE.md** with tool usage conventions and guidelines
 - Marketplace configuration for distribution
