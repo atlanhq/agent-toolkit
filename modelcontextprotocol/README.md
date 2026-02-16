@@ -8,6 +8,7 @@ The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 2. Select one of the following approaches based on your preference:
    - **[Install via Docker](#install-via-docker)** - Uses Docker containers (recommended)
    - **[Install via uv](#install-via-uv)** - Uses UV package manager
+   - **[Windows Setup (without UV)](#windows-setup-without-uv)** - Alternative Windows installation method
 
 > [!NOTE]
 > Make sure to replace `<YOUR_API_KEY>`, `<YOUR_INSTANCE>`, and `<YOUR_AGENT_ID>` with your actual Atlan API key, instance URL, and agent ID(optional) in the configuration file respectively.
@@ -134,6 +135,21 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
   }
 }
 ```
+
+## Windows Setup (without UV)
+
+**For Windows users experiencing issues with UV**, you can use an alternative installation method using Python's built-in virtual environment capabilities.
+
+
+**Quick Setup:**
+```powershell
+# Download and extract code to C:\agent-toolkit-main
+cd C:\agent-toolkit-main\modelcontextprotocol
+python -m venv .venv
+C:\agent-toolkit-main\modelcontextprotocol\.venv\Scripts\python.exe -m pip install -e "C:\agent-toolkit-main\modelcontextprotocol\"
+```
+
+**For detailed step-by-step instructions**, including Claude Desktop and VSCode configuration, see our comprehensive **[Windows Setup Guide](./docs/WINDOWS_SETUP.md)**.
 
 ## Available Tools
 
@@ -312,7 +328,8 @@ Want to develop locally? Check out our [Local Build](./docs/LOCAL_BUILD.md) Guid
 
 ## Troubleshooting
 
-1. If Claude Desktop shows an error similar to `spawn uv ENOENT {"context":"connection","stack":"Error: spawn uv ENOENT\n    at ChildProcess._handle.onexit`, it is most likely [this](https://github.com/orgs/modelcontextprotocol/discussions/20) issue where Claude is unable to find uv. To fix it:
+1. **UV Installation Issues**: If Claude Desktop shows an error similar to `spawn uv ENOENT {"context":"connection","stack":"Error: spawn uv ENOENT\n    at ChildProcess._handle.onexit`, it is most likely [this](https://github.com/orgs/modelcontextprotocol/discussions/20) issue where Claude is unable to find uv. To fix it:
    - Make sure uv is installed and available in your PATH
-   - Run `which uv` to verify the installation path
-   - Update Claude's configuration to point to the exact uv path by running `whereis uv` and use that path
+   - Run `which uv` (macOS/Linux) or `where uv` (Windows) to verify the installation path
+   - Update Claude's configuration to point to the exact uv path
+   - **Windows users**: If you continue to have UV issues, consider using our [Windows Setup Guide](./docs/WINDOWS_SETUP.md) which doesn't require UV
