@@ -7,14 +7,18 @@ Connects to Atlan via OAuth at `mcp.atlan.com/mcp` - no API keys required.
 ## Features
 
 ### MCP Tools
-All powered by the Atlan MCP server:
+15 tools powered by the Atlan MCP server. 12 enabled by default, 3 additional tools available per tenant via feature flags.
 
+**Enabled by default (12):**
 - **Search**: `semantic_search_tool`
 - **Lineage**: `traverse_lineage_tool`
-- **Updates**: `update_assets_tool`, `discover_custom_metadata_tool`
+- **Assets**: `update_assets_tool`
 - **Glossary**: `create_glossaries`, `create_glossary_terms`, `create_glossary_categories`
 - **Data Mesh**: `create_domains`, `create_data_products`
 - **Data Quality**: `create_dq_rules_tool`, `update_dq_rules_tool`, `schedule_dq_rules_tool`, `delete_dq_rules_tool`
+
+**Available via feature flag (3):**
+- `search_assets_tool`, `get_assets_by_dsl_tool`, `query_assets_tool`
 
 ## Prerequisites
 
