@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.3] - 2026-02-17
 
 ### Fixed
-- Eliminated multi-stage builder and venv from Dockerfile, now installing directly to system python using uv
-- Removed Python venv and broken symlink workaround from #206
+- Eliminated multi-stage builder and venv from Dockerfile, now installing directly to system python using uv, removing the broken symlink workaround from #206
 - Eliminated bundled pip/setuptools/wheel and their vendored dependencies which carried 2 HIGH vulnerabilities:
   - jaraco.context 5.3.0 (CVE-2026-23949)
   - wheel 0.45.1 (CVE-2026-24049)
