@@ -32,6 +32,7 @@ from .models import (
     DQRuleInfo,
     DQRuleDeleteResponse,
 )
+from .tags import retrieve_atlan_tag_by_name, create_atlan_tag
 
 __all__ = [
     "search_assets",
@@ -51,6 +52,8 @@ __all__ = [
     "Glossary",
     "GlossaryCategory",
     "GlossaryTerm",
+    "retrieve_atlan_tag_by_name",
+    "create_atlan_tag",
     "create_dq_rules",
     "schedule_dq_rules",
     "delete_dq_rules",

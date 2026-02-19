@@ -22,7 +22,10 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    retrieve_atlan_tag_by_name,
+    create_atlan_tag,
 )
+from tools.assets import AtlanTagUpdate
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
     parse_json_parameter,
@@ -486,11 +489,12 @@ def update_assets_tool(
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "term", and "atlanTag".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
             For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a dict with "operation" and "term_guids" keys.
+            For atlanTag, the value must be a dict with "name" (required) and optionally "description" and "color" keys.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
@@ -608,6 +612,21 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Update an Atlan tag description
+        result = update_assets_tool(
+            assets={
+                "guid": "dummy-guid",
+                "name": "Dummy",
+                "type_name": "Dummy",
+                "qualified_name": "dummy"
+            },
+            attribute_name="atlanTag",
+            attribute_values=[{
+                "name": "sv_mcp",
+                "description": "test update asset"
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -629,6 +648,18 @@ def update_assets_tool(
                         "updated_count": 0,
                     }
             parsed_attribute_values = term_operations
+        # Handle Atlan tag updates - convert dict to AtlanTagUpdate object
+        elif attr_enum == UpdatableAttribute.ATLAN_TAG:
+            tag_updates = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    tag_updates.append(AtlanTagUpdate(**value))
+                else:
+                    return {
+                        "error": "AtlanTag attribute values must be dictionaries with 'name' and optionally 'description' and 'color' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = tag_updates
         # For certificate status, convert values to enum
         elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [
@@ -696,7 +727,7 @@ def query_asset_tool(
         result = query_asset_tool(
             sql='SELECT * FROM PAGES LIMIT 10',
             connection_qualified_name="default/snowflake/1657275059",
-            default_schema="LANDING.FRONTEND_PROD"
+            default_schema="LANDING/FRONTEND_PROD"
         )
 
         # Query without specifying default schema (fully qualified table names)
@@ -719,7 +750,7 @@ def query_asset_tool(
             ORDER BY page_count DESC
             ''',
             connection_qualified_name="default/snowflake/1657275059",
-            default_schema="LANDING.FRONTEND_PROD"
+            default_schema="LANDING/FRONTEND_PROD"
         )
     """
     return query_asset(sql, connection_qualified_name, default_schema)
@@ -912,6 +943,141 @@ def create_glossary_categories(categories) -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
+def retrieve_atlan_tag_by_name_tool(
+    display_name=None,
+    description_filter=None,
+):
+    """
+    Retrieve Atlan tag definitions by various criteria or list all existing tags.
+
+    This tool queries the Atlan typedef API to retrieve tag definitions (classifications).
+    If `display_name` is provided, returns all tag definitions whose displayName exactly matches it.
+    If `description_filter` is provided, returns tags filtered by description status ("empty" or "not_empty").
+    If both are omitted or null, returns all existing Atlan tags in the instance.
+
+    Args:
+        display_name (str | None, optional): Exact display name to filter by (case-sensitive).
+            If provided, returns tags whose displayName exactly matches this value.
+            If None, no display name filter is applied.
+        description_filter (str | None, optional): Filter by description status.
+            - "empty": Returns only tags with empty or None descriptions.
+            - "not_empty": Returns only tags with non-empty descriptions.
+            - If None, no description filter is applied.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - "tags" (List[Dict[str, Any]]): List of tag objects matching the criteria.
+                Each tag object contains:
+                    - "display_name" (str): Human-readable tag name
+                    - "internal_name" (str | None): Internal Atlan name (auto-generated)
+                    - "guid" (str | None): Unique identifier for the tag
+                    - "description" (str | None): Tag description if set
+                    - "options" (dict): Tag options (may include color, icon, etc.)
+            - "count" (int): Number of tags found matching the criteria
+            - "error" (str | None): Error message if an error occurred, None otherwise
+
+    Examples:
+        # Retrieve a specific tag by display name
+        result = retrieve_atlan_tag_by_name_tool(display_name="PII")
+        if result["error"] is None:
+            print(f"Found {result['count']} tag(s)")
+
+        # Retrieve all tags with empty descriptions
+        result = retrieve_atlan_tag_by_name_tool(description_filter="empty")
+
+        # Retrieve all tags with non-empty descriptions
+        result = retrieve_atlan_tag_by_name_tool(description_filter="not_empty")
+
+        # Retrieve all tags (no filters)
+        result = retrieve_atlan_tag_by_name_tool()
+        print(f"Total tags in Atlan: {result['count']}")
+    """
+    return retrieve_atlan_tag_by_name(
+        display_name=display_name, description_filter=description_filter
+    )
+
+
+@mcp.tool()
+def create_atlan_tag_tool(name, description=None):
+    """
+    Create a new Atlan tag definition.
+
+    This tool creates a new tag (classification) in Atlan. Before creating,
+    it checks if a tag with the same display name already exists to prevent duplicates.
+
+    Process:
+    1. Validates that the tag name is provided and not empty.
+    2. Checks if a tag with the same display name already exists.
+    3. If it exists, returns information about the existing tag.
+    4. If it doesn't exist, creates the tag with default color "GRAY".
+    5. Returns the created tag definition with its GUID and internal name.
+
+    Args:
+        name (str): Human-readable display name of the tag (required).
+            Must be a non-empty string. Whitespace-only strings are rejected.
+        description (str, optional): Description of the tag.
+            Can be any string or None. Empty strings are allowed.
+
+    Returns:
+        Dict[str, Any]: Response dictionary with different structures based on outcome:
+
+        If tag already exists:
+            {
+                "exists": True,
+                "created": False,
+                "tag": {
+                    "display_name": str,
+                    "internal_name": str,
+                    "guid": str,
+                    "description": str | None,
+                    "options": dict
+                },
+                "message": str  # Informative message about existing tag
+            }
+
+        If tag created successfully:
+            {
+                "exists": False,
+                "created": True,
+                "tag": {
+                    "display_name": str,
+                    "internal_name": str,
+                    "guid": str,
+                    "color": str,  # Always "GRAY" unless updated via Atlan UI
+                    "description": str | None,
+                    "options": dict
+                },
+                "message": str  # Success message
+            }
+
+        If error occurred:
+            {
+                "error": str  # Error message describing what went wrong
+            }
+
+    Examples:
+        # Create a tag with default color (GRAY)
+        result = create_atlan_tag_tool(name="PII")
+        if result.get("created"):
+            print(f"Created tag: {result['tag']['display_name']}")
+            print(f"GUID: {result['tag']['guid']}")
+
+        # Create a tag with description only (uses default GRAY color)
+        result = create_atlan_tag_tool(
+            name="Production",
+            description="Tag for production environment assets"
+        )
+
+        # Attempt to create duplicate tag
+        result = create_atlan_tag_tool(name="PII")
+        if result.get("exists"):
+            print(f"Tag already exists: {result['tag']['guid']}")
+
+    """
+    # Always create with default color=GRAY (do not allow caller-specified color)
+    return create_atlan_tag(name=name, color="GRAY", description=description)
+
+
 def create_domains(domains) -> List[Dict[str, Any]]:
     """
     Create Data Domains or Sub Domains in Atlan.
