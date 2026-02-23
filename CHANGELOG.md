@@ -5,13 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Claude Code Plugin
+## [1.0.0] - 2026-02-16 (Claude Code Plugin)
 
-### [1.0.0] - 2026-02-16
-
-#### Added
+### Added
 - Initial release of the Atlan Claude Code Plugin
-- **MCP Server Integration** via OAuth at `mcp.atlan.com/mcp` (15 tools)
+- MCP Server Integration via OAuth at `mcp.atlan.com/mcp` (15 tools)
   - Search & Discovery: `semantic_search_tool`
   - Lineage: `traverse_lineage_tool`
   - Asset Management: `update_assets_tool`
@@ -19,25 +17,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Data Mesh: `create_domains`, `create_data_products`
   - Data Quality: `create_dq_rules_tool`, `update_dq_rules_tool`, `schedule_dq_rules_tool`, `delete_dq_rules_tool`
   - Feature-flagged: `search_assets_tool`, `get_assets_by_dsl_tool`, `query_assets_tool`
-- **CLAUDE.md** with tool usage conventions and guidelines
+- CLAUDE.md with tool usage conventions and guidelines
 - Marketplace configuration for distribution
 
-## MCP Server
+## [0.3.3] - 2026-02-17
 
-### [0.3.3] - 2026-02-17
-
-#### Fixed
+### Fixed
 - Eliminated multi-stage builder and venv from Dockerfile, now installing directly to system python using uv, removing the broken symlink workaround from #206
 - Eliminated bundled pip/setuptools/wheel and their vendored dependencies which carried 2 HIGH vulnerabilities:
   - jaraco.context 5.3.0 (CVE-2026-23949)
   - wheel 0.45.1 (CVE-2026-24049)
 
-#### Security
+### Security
 - Trivy scan: 0 HIGH/CRITICAL vulnerabilities on the resulting Docker image
 - The pyatlan base image already provides pyatlan, pydantic, httpx, cryptography, authlib, h11, anyio, and other common packages at the system level
 - Only MCP-specific packages (fastmcp, uvicorn, and their transitive deps) are now installed on top
 
-### [0.3.2] - 2026-02-13
+## [0.3.2] - 2026-02-13
 
 ### Fixed
 - Dockerfile builder using Python 3.12 while pyatlan runtime image uses 3.11, causing ABI incompatibility for compiled C extensions
