@@ -264,6 +264,10 @@ The Atlan MCP Server supports three transport modes, each optimized for differen
 
 For comprehensive deployment instructions, configuration examples, and production best practices, see our [Deployment Guide](./docs/Deployment.md).
 
+## Deployment
+
+For information on running the server in different environments (stdio, SSE, or streamable HTTP), see the [deployment guide](../deployment/Readme.md).
+
 ## Production Deployment
 
 - Host the Atlan MCP container image on the cloud/platform of your choice
