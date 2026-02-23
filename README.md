@@ -1,110 +1,31 @@
-# Atlan Plugin for Claude Code
+# Atlan Agent Toolkit
 
-The official Atlan plugin for Claude Code. Search, explore, govern, and manage your data assets through natural language, powered by the [Atlan MCP server](https://github.com/atlanhq/atlan-mcp-server).
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
+[![PyPI - Version](https://img.shields.io/pypi/v/atlan-mcp-server.svg)](https://pypi.org/project/atlan-mcp-server)
+[![License](https://img.shields.io/github/license/atlanhq/agent-toolkit.svg)](https://github.com/atlanhq/agent-toolkit/blob/main/LICENSE)
 
-Connects to Atlan via OAuth at `mcp.atlan.com/mcp` - no API keys required.
 
-## Features
+This repository contains a collection of tools and protocols for interacting with Atlan services for AI agents. Each component is designed to provide specific functionality and can be used independently or together.
 
-### MCP Tools
-15 tools powered by the Atlan MCP server. 12 enabled by default, 3 additional tools available per tenant via feature flags.
+## Components
 
-**Enabled by default (12):**
-- **Search**: `semantic_search_tool`
-- **Lineage**: `traverse_lineage_tool`
-- **Assets**: `update_assets_tool`
-- **Glossary**: `create_glossaries`, `create_glossary_terms`, `create_glossary_categories`
-- **Data Mesh**: `create_domains`, `create_data_products`
-- **Data Quality**: `create_dq_rules_tool`, `update_dq_rules_tool`, `schedule_dq_rules_tool`, `delete_dq_rules_tool`
+### Model Context Protocol (MCP)
 
-**Available via feature flag (3):**
-- `search_assets_tool`, `get_assets_by_dsl_tool`, `query_assets_tool`
+An MCP server that enables interaction with Atlan services through tool calling. Provides tools for asset search, and retrieval using [pyatlan](https://developer.atlan.com/sdks/python/).
 
-## Prerequisites
+You can find the documentation and setup instructions for the MCP server [here](modelcontextprotocol/README.md).
 
-- [Claude Code](https://claude.com/claude-code) v1.0.33 or later
-- An Atlan account (authentication via OAuth - no API keys needed)
 
-## Setup
+## 🔍 DeepWiki: Ask Questions About This Project
 
-### 1. Install the plugin
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/atlanhq/agent-toolkit)
 
-**From marketplace (when available):**
-```shell
-/plugin marketplace add atlanhq/agent-toolkit
-/plugin install atlan@atlan-marketplace
-```
-
-**From local directory (for development):**
-```bash
-claude --plugin-dir ./claude-plugin
-```
-
-### 2. Authenticate
-
-Run `/mcp` in Claude Code and select "Authenticate" for Atlan. This opens a browser-based OAuth login flow - no API keys or environment variables needed.
-
-### 3. Verify
-
-Try searching: "Find all customer tables in Snowflake"
-
-## Local Development & Testing
-
-### Test the plugin locally
-
-```bash
-# From the repository root
-claude --plugin-dir ./claude-plugin
-```
-
-### Test with multiple plugins
-
-```bash
-claude --plugin-dir ./claude-plugin --plugin-dir ./other-plugin
-```
-
-### Debug plugin loading
-
-```bash
-claude --debug --plugin-dir ./claude-plugin
-```
-
-### Validate plugin structure
-
-```bash
-claude plugin validate ./claude-plugin
-```
-
-## Examples
-
-Just talk to Claude naturally:
-- "Find all PII-tagged columns in our Snowflake warehouse"
-- "What tables feed into the revenue dashboard?"
-- "Create a data quality rule to check for null emails"
-- "Set up a business glossary for our marketing terms"
-- "Review the governance posture of our customer data"
-
-## Plugin Structure
-
-```
-claude-plugin/
-├── .claude-plugin/
-│   ├── plugin.json              # Plugin manifest
-│   └── marketplace.json         # Marketplace configuration
-├── .mcp.json                    # MCP server (mcp.atlan.com/mcp via OAuth)
-├── CLAUDE.md                    # Claude Code instructions
-├── LICENSE
-├── CHANGELOG.md
-└── README.md
-```
 
 ## Contributing
 
-1. Clone the repository
-2. Make your changes
-3. Test locally with `claude --plugin-dir ./claude-plugin`
-4. Submit a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to the Atlan Agent Toolkit.
+
 
 ## License
 
-Apache-2.0
+The project is licensed under the [MIT License](LICENSE). Please see the [LICENSE](LICENSE) file for details.
