@@ -1,0 +1,22 @@
+name: MCP Scheduled Security Scan
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scan:
+    uses: atlanhq/.github/.github/workflows/reusable-trivy-scan-scheduled.yml@main
+    with:
+      image_context: './modelcontextprotocol/'
+      dockerfile: './modelcontextprotocol/Dockerfile'
+      image_tag: 'mcp-scheduled-scan:latest'
+      scan_uv_lock: true
+      uv_lock_path: 'modelcontextprotocol/uv.lock'
+      service_name: 'MCP Server'
+      linear_team_id: ${{ vars.LINEAR_TEAM_ID }}
+      linear_priority: 2
+    secrets:
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
