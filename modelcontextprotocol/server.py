@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from fastmcp import FastMCP
 from tools import (
     search_assets,
@@ -474,9 +474,9 @@ def traverse_lineage_tool(
 
 @mcp.tool()
 def update_assets_tool(
-    assets,
-    attribute_name,
-    attribute_values,
+    assets: Union[Dict[str, Any], List[Dict[str, Any]], str],
+    attribute_name: str,
+    attribute_values: Union[List[Any], str],
 ):
     """
     Update one or multiple assets with different values for attributes or term operations.
