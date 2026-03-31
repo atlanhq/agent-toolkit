@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Any, List, Optional, Union
 
 from client import get_atlan_client
+from pyatlan.errors import NotFoundError
 from pyatlan.model.enums import LineageDirection
 from pyatlan.model.lineage import FluentLineage
 from pyatlan.model.fields.atlan_fields import AtlanField
@@ -109,6 +110,15 @@ def traverse_lineage(
         )
         return {"assets": results_list, "error": None}
 
+    except NotFoundError:
+        logger.info(
+            f"No lineage found for asset {guid} (404 from lineage API)"
+        )
+        return {
+            "assets": [],
+            "error": None,
+            "message": "No lineage found for this asset. It may not have upstream or downstream connections in the catalog.",
+        }
     except Exception as e:
         logger.error(f"Error traversing lineage: {str(e)}")
         return {"assets": [], "error": str(e)}
