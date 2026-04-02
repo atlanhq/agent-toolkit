@@ -655,7 +655,10 @@ def update_assets_tool(
 
 @mcp.tool()
 def query_asset_tool(
-    sql: str, connection_qualified_name: str, default_schema: str | None = None
+    sql: str | None = None,
+    connection_qualified_name: str = "",
+    default_schema: str | None = None,
+    query: str | None = None,
 ):
     """
     Execute a SQL query on a table/view asset.
@@ -678,6 +681,7 @@ def query_asset_tool(
         default_schema (str, optional): Default schema name to use for unqualified
             objects in the SQL, in the form "DB.SCHEMA"
             (e.g., "RAW.WIDEWORLDIMPORTERS_WAREHOUSE")
+        query (str, optional): Deprecated alias for 'sql'. Use 'sql' instead.
 
     Examples:
         # Use case: How to query the PAGES table and retrieve the first 10 rows
@@ -722,6 +726,18 @@ def query_asset_tool(
             default_schema="LANDING.FRONTEND_PROD"
         )
     """
+    # Backward compat: accept deprecated 'query' param as alias for 'sql'
+    if query and not sql:
+        sql = query
+
+    if not sql:
+        return {
+            "success": False,
+            "data": None,
+            "error": "Either 'sql' or 'query' parameter must be provided",
+            "query_info": {},
+        }
+
     return query_asset(sql, connection_qualified_name, default_schema)
 
 
