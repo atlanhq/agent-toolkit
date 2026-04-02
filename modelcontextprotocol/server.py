@@ -452,12 +452,26 @@ def traverse_lineage_tool(
             size=10
         )
     """
+    # Coerce direction from list to string (LLMs often pass ["upstream"] instead of "upstream")
+    if isinstance(direction, list):
+        if len(direction) == 1:
+            direction = direction[0]
+        else:
+            raise ValueError(
+                "direction must be a single string: 'UPSTREAM', 'DOWNSTREAM', or 'BOTH'. "
+                f"Got multiple values: {direction}"
+            )
+
     try:
         direction_enum = LineageDirection[direction.upper()]
-    except KeyError:
+    except (KeyError, AttributeError):
         raise ValueError(
             f"Invalid direction: {direction}. Must be either 'UPSTREAM' or 'DOWNSTREAM'"
         )
+
+    # Coerce include_attributes from string to list (LLMs may pass a single string instead of a list)
+    if isinstance(include_attributes, str):
+        include_attributes = parse_list_parameter(include_attributes)
 
     # Parse include_attributes parameter if provided
     parsed_include_attributes = parse_list_parameter(include_attributes)
