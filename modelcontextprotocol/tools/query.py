@@ -80,9 +80,14 @@ def query_asset(
         client = get_atlan_client()
 
         # Build query request
+        # Prepend an MCP origin comment so queries are identifiable in
+        # downstream observability logs (e.g. Heka's db.statement OTEL field).
+        # QueryRequest has no application/source field, so a SQL comment is
+        # the only portable way to tag origin without SDK changes.
         logger.debug("Building QueryRequest object")
+        tagged_sql = f"/* atlan-mcp */ {sql.strip()}"
         query_request = QueryRequest(
-            sql=sql,
+            sql=tagged_sql,
             data_source_name=connection_qualified_name,
             default_schema=default_schema,
         )
