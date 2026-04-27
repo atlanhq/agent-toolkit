@@ -140,7 +140,6 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | Tool                | Description                                                       |
 | ------------------- | ----------------------------------------------------------------- |
 | `search_assets`     | Search for assets based on conditions                             |
-| `get_assets_by_dsl` | Retrieve assets using a DSL query                                 |
 | `traverse_lineage`  | Retrieve lineage for an asset                                     |
 | `update_assets`     | Update asset attributes (user description and certificate status) |
 | `create_glossaries` | Create glossaries                                                 |
@@ -178,7 +177,7 @@ You can restrict access to specific tools using the `RESTRICTED_TOOLS` environme
         "-e",
         "ATLAN_AGENT_ID=<YOUR_AGENT_ID>",
         "-e",
-        "RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool",
+        "RESTRICTED_TOOLS=update_assets_tool",
         "ghcr.io/atlanhq/atlan-mcp-server:latest"
       ]
     }
@@ -198,7 +197,7 @@ You can restrict access to specific tools using the `RESTRICTED_TOOLS` environme
         "ATLAN_API_KEY": "<YOUR_API_KEY>",
         "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
         "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>",
-        "RESTRICTED_TOOLS": "get_assets_by_dsl_tool,update_assets_tool"
+        "RESTRICTED_TOOLS": "update_assets_tool"
       }
     }
   }
@@ -210,7 +209,6 @@ You can restrict access to specific tools using the `RESTRICTED_TOOLS` environme
 You can restrict any of the following tools:
 
 - `search_assets_tool` - Asset search functionality
-- `get_assets_by_dsl_tool` - DSL query execution
 - `traverse_lineage_tool` - Lineage traversal
 - `update_assets_tool` - Asset updates (descriptions, certificates)
 - `create_glossaries` - Glossary creation
@@ -229,16 +227,10 @@ Restrict all write operations:
 RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool,update_dq_rules_tool,schedule_dq_rules_tool,delete_dq_rules_tool
 ```
 
-#### Disable DSL Queries
-For security or performance reasons:
-```
-RESTRICTED_TOOLS=get_assets_by_dsl_tool
-```
-
 #### Minimal Access
 Allow only basic search:
 ```
-RESTRICTED_TOOLS=get_assets_by_dsl_tool,update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool,update_dq_rules_tool,schedule_dq_rules_tool,delete_dq_rules_tool
+RESTRICTED_TOOLS=update_assets_tool,traverse_lineage_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool,update_dq_rules_tool,schedule_dq_rules_tool,delete_dq_rules_tool
 ```
 
 ### How It Works
