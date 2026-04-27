@@ -27,7 +27,10 @@ from fastmcp.client.auth import BearerAuth, OAuth
 #   ATLAN_BASE_URL (no API key)       →  OAuth against {base_url}/mcp
 _base_url = os.environ.get("ATLAN_BASE_URL", "").rstrip("/")
 _api_key = os.environ.get("ATLAN_API_KEY")
-_force_oauth = os.environ.get("ATLAN_AUTH", "").lower() == "oauth" or "--oauth" in sys.argv
+_force_oauth = os.environ.get("ATLAN_AUTH", "").lower() == "oauth"
+if "--oauth" in sys.argv:
+    _force_oauth = True
+    sys.argv.remove("--oauth")
 
 if not _base_url:
     raise SystemExit("Error: ATLAN_BASE_URL must be set (e.g. https://your-tenant.atlan.com)")
