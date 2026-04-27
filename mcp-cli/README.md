@@ -34,16 +34,16 @@ The `--oauth` flag and `ATLAN_AUTH=oauth` are useful when `ATLAN_API_KEY` is set
 
 ```bash
 # List all available tools
-uv run python3 atlan_cli.py list-tools
+uv run atlan_cli.py list-tools
 
 # Search assets
-uv run python3 atlan_cli.py call-tool semantic_search_tool --user-query "PII tables in Snowflake"
+uv run atlan_cli.py call-tool semantic_search_tool --user-query "PII tables in Snowflake"
 
 # Force OAuth even if API key is in .env
-uv run python3 atlan_cli.py --oauth call-tool semantic_search_tool --user-query "PII tables"
+uv run atlan_cli.py --oauth call-tool semantic_search_tool --user-query "PII tables"
 
 # Override auth via env var
-ATLAN_AUTH=oauth uv run python3 atlan_cli.py call-tool semantic_search_tool --user-query "PII tables"
+ATLAN_AUTH=oauth uv run atlan_cli.py call-tool semantic_search_tool --user-query "PII tables"
 ```
 
 ## Available Capabilities
@@ -55,7 +55,7 @@ ATLAN_AUTH=oauth uv run python3 atlan_cli.py call-tool semantic_search_tool --us
 - **Data quality** — create, update, schedule, and delete DQ rules
 - **Custom metadata** — manage CM sets and attribute values
 
-Run `uv run python3 atlan_cli.py list-tools` for the full list with parameter details.
+Run `uv run atlan_cli.py list-tools` for the full list with parameter details.
 
 ## Regenerating the CLI
 

@@ -24,6 +24,7 @@ from rich.console import Console
 
 from fastmcp import Client
 from fastmcp.client.auth import BearerAuth, OAuth
+from key_value.aio.stores.filetree.store import FileTreeStore
 
 # Auth resolution:
 #   --oauth flag or ATLAN_AUTH=oauth  →  OAuth regardless of ATLAN_API_KEY
@@ -39,12 +40,16 @@ if "--oauth" in sys.argv:
 if not _base_url:
     raise SystemExit("Error: ATLAN_BASE_URL must be set (e.g. https://your-tenant.atlan.com)")
 
+_token_dir = Path.home() / ".atlan" / "mcp-tokens"
+_token_dir.mkdir(parents=True, exist_ok=True)
+_token_store = FileTreeStore(directory=_token_dir)
+
 if _api_key and not _force_oauth:
     CLIENT_SPEC = f"{_base_url}/mcp/api-key"
     _auth = BearerAuth(_api_key)
 else:
     CLIENT_SPEC = f"{_base_url}/mcp"
-    _auth = OAuth(mcp_url=CLIENT_SPEC)
+    _auth = OAuth(mcp_url=CLIENT_SPEC, token_storage=_token_store)
 
 app = cyclopts.App(name="mcp.atlan.com", help="CLI for mcp.atlan.com MCP server")
 call_tool_app = cyclopts.App(name="call-tool", help="Call a tool on the server")
