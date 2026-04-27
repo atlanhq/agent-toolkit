@@ -22,15 +22,17 @@ from fastmcp import Client
 from fastmcp.client.auth import BearerAuth, OAuth
 
 # Auth resolution:
-#   ATLAN_BASE_URL + ATLAN_API_KEY  →  Bearer auth against {base_url}/mcp/api-key
-#   ATLAN_BASE_URL (no API key)     →  OAuth against {base_url}/mcp
+#   --oauth flag or ATLAN_AUTH=oauth  →  OAuth regardless of ATLAN_API_KEY
+#   ATLAN_BASE_URL + ATLAN_API_KEY    →  Bearer auth against {base_url}/mcp/api-key
+#   ATLAN_BASE_URL (no API key)       →  OAuth against {base_url}/mcp
 _base_url = os.environ.get("ATLAN_BASE_URL", "").rstrip("/")
 _api_key = os.environ.get("ATLAN_API_KEY")
+_force_oauth = os.environ.get("ATLAN_AUTH", "").lower() == "oauth" or "--oauth" in sys.argv
 
 if not _base_url:
     raise SystemExit("Error: ATLAN_BASE_URL must be set (e.g. https://your-tenant.atlan.com)")
 
-if _api_key:
+if _api_key and not _force_oauth:
     CLIENT_SPEC = f"{_base_url}/mcp/api-key"
     _auth = BearerAuth(_api_key)
 else:
