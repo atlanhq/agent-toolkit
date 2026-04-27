@@ -6,9 +6,13 @@ Generated using [`fastmcp generate-cli`](https://gofastmcp.com/cli/generate-cli)
 
 ## Prerequisites
 
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it. All Python dependencies (`fastmcp`, `python-dotenv`, `mcp`) are declared inline via PEP 723 and installed automatically on first run:
+
 ```bash
-pip install fastmcp python-dotenv
+uv run atlan_cli.py list-tools
 ```
+
+No `pip install` needed.
 
 ## Configuration
 
@@ -29,6 +33,8 @@ ATLAN_API_KEY=your-api-key   # omit to use OAuth
 | **Force OAuth** | `--oauth` flag or `ATLAN_AUTH=oauth` | `{base_url}/mcp` |
 
 The `--oauth` flag and `ATLAN_AUTH=oauth` are useful when `ATLAN_API_KEY` is set in `.env` but you want to authenticate via browser instead.
+
+OAuth tokens are cached in `~/.atlan/mcp-tokens/` after the first login — subsequent runs skip the browser entirely.
 
 ## Usage
 
@@ -65,4 +71,4 @@ If tool schemas change, regenerate with:
 fastmcp generate-cli https://your-tenant.atlan.com/mcp --auth oauth --output atlan_cli.py --force
 ```
 
-Then re-apply the auth block at the top of the file (lines 15–38) — `fastmcp` does not write auth into generated scripts by design.
+Then re-apply the auth block at the top of the file (everything above `app = cyclopts.App(...)`) — `fastmcp` does not write auth into generated scripts by design.
