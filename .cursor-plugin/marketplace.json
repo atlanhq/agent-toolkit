@@ -1,0 +1,11 @@
+{
+  "name": "atlan",
+  "owner": { "name": "Atlan", "email": "support@atlan.com" },
+  "metadata": {
+    "description": "Atlan plugins for AI coding assistants.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    { "path": "cursor-plugin" }
+  ]
+}
