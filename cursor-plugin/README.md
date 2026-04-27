@@ -29,7 +29,7 @@ cursor-plugin/
 │   └── plugin.json       # Manifest
 ├── mcp.json              # MCP server registration (mirrors manifest for default discovery)
 ├── assets/
-│   └── atlan-icon.svg    # Logo
+│   └── atlan-logo.png    # Logo
 └── README.md
 ```
 

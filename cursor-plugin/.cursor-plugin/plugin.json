@@ -1,13 +1,13 @@
 {
   "name": "atlan",
   "version": "0.1.0",
-  "description": "Connect Cursor to Atlan's data catalog via the hosted MCP server.",
+  "description": "Atlan is the context layer for enterprise AI. Use Atlan agent skills in Cursor — curate your data graph, search & discover, traverse lineage, govern context, manage glossaries and Data Quality, execute SQL and more.",
   "author": { "name": "Atlan" },
   "homepage": "https://atlan.com",
   "repository": "https://github.com/atlanhq/agent-toolkit",
   "license": "Apache-2.0",
   "keywords": ["atlan", "mcp", "data-catalog", "metadata"],
-  "logo": "assets/atlan-icon.svg",
+  "logo": "assets/atlan-logo.png",
   "mcpServers": {
     "atlan": {
       "type": "http",

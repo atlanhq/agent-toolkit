@@ -2,7 +2,7 @@
   "name": "atlan",
   "owner": { "name": "Atlan", "email": "support@atlan.com" },
   "metadata": {
-    "description": "Atlan plugins for AI coding assistants.",
+    "description": "Atlan is the context layer for enterprise AI. Use Atlan agent skills in Cursor — curate your data graph, search & discover, traverse lineage, govern context, manage glossaries and Data Quality, execute SQL and more.",
     "version": "0.1.0"
   },
   "plugins": [
