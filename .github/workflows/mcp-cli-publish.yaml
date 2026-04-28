@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write  # required for PyPI Trusted Publisher (OIDC)
 
 jobs:
   publish:
@@ -31,6 +32,4 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: uv publish
