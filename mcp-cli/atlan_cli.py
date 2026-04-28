@@ -520,8 +520,10 @@ async def login(
             sys.exit(0)
         if choice == "2":
             try:
-                api_key_in = Prompt.ask("API key", password=True)
-                tenant_in = Prompt.ask("Tenant URL (e.g. https://demo.atlan.com)")
+                # Use input() not getpass — getpass reads char-by-char in raw mode
+                # and stalls on long pasted JWTs (1000+ chars).
+                api_key_in = input("  API key: ").strip()
+                tenant_in = input("  Tenant URL (e.g. https://demo.atlan.com): ").strip()
             except (KeyboardInterrupt, EOFError):
                 sys.exit(0)
             if not api_key_in or not tenant_in:
