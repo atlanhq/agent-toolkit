@@ -102,28 +102,31 @@ class _JsonFileStore:
         return [data.get(k) for k in keys]
 
 
-# Auth resolution:
+# Auth resolution (lazy — evaluated on first tool/command call):
 #   --oauth flag or ATLAN_AUTH=oauth  →  OAuth regardless of ATLAN_API_KEY
 #   ATLAN_BASE_URL + ATLAN_API_KEY    →  Bearer auth against {base_url}/mcp/api-key
 #   ATLAN_BASE_URL (no API key)       →  OAuth against {base_url}/mcp
-_base_url = os.environ.get("ATLAN_BASE_URL", "").rstrip("/")
-_api_key = os.environ.get("ATLAN_API_KEY")
-_force_oauth = os.environ.get("ATLAN_AUTH", "").lower() == "oauth"
-if "--oauth" in sys.argv:
-    _force_oauth = True
-    sys.argv.remove("--oauth")
+_resolved: tuple[str, object] | None = None
 
-if not _base_url:
-    raise SystemExit("Error: ATLAN_BASE_URL must be set (e.g. https://your-tenant.atlan.com)")
 
-_token_store = _KeyringStore()
-
-if _api_key and not _force_oauth:
-    CLIENT_SPEC = f"{_base_url}/mcp/api-key"
-    _auth = BearerAuth(_api_key)
-else:
-    CLIENT_SPEC = f"{_base_url}/mcp"
-    _auth = OAuth(mcp_url=CLIENT_SPEC, token_storage=_token_store)
+def _resolve_auth() -> tuple[str, object]:
+    global _resolved
+    if _resolved is not None:
+        return _resolved
+    base_url = os.environ.get("ATLAN_BASE_URL", "").rstrip("/")
+    if not base_url:
+        raise SystemExit("Error: ATLAN_BASE_URL must be set (e.g. https://your-tenant.atlan.com)")
+    api_key = os.environ.get("ATLAN_API_KEY")
+    force_oauth = os.environ.get("ATLAN_AUTH", "").lower() == "oauth"
+    token_store = _KeyringStore()
+    if api_key and not force_oauth:
+        client_spec = f"{base_url}/mcp/api-key"
+        auth = BearerAuth(api_key)
+    else:
+        client_spec = f"{base_url}/mcp"
+        auth = OAuth(mcp_url=client_spec, token_storage=token_store)
+    _resolved = (client_spec, auth)
+    return _resolved
 
 app = cyclopts.App(name="atlan", help="CLI for Atlan MCP server")
 
@@ -166,7 +169,7 @@ async def _call_tool(tool_name: str, arguments: dict) -> None:
         for k, v in arguments.items()
         if v is not None and (not isinstance(v, list) or len(v) > 0)
     }
-    async with Client(CLIENT_SPEC, auth=_auth) as client:
+    async with Client(*_resolve_auth()) as client:
         result = await client.call_tool(tool_name, filtered, raise_on_error=False)
         _print_tool_result(result)
         if result.is_error:
@@ -181,7 +184,7 @@ async def _call_tool(tool_name: str, arguments: dict) -> None:
 @app.command
 async def list_tools() -> None:
     """List available tools."""
-    async with Client(CLIENT_SPEC, auth=_auth) as client:
+    async with Client(*_resolve_auth()) as client:
         tools = await client.list_tools()
         if not tools:
             console.print("[dim]No tools found.[/dim]")
@@ -206,7 +209,7 @@ async def list_tools() -> None:
 @app.command
 async def list_resources() -> None:
     """List available resources."""
-    async with Client(CLIENT_SPEC, auth=_auth) as client:
+    async with Client(*_resolve_auth()) as client:
         resources = await client.list_resources()
         if not resources:
             console.print("[dim]No resources found.[/dim]")
@@ -223,7 +226,7 @@ async def list_resources() -> None:
 @app.command
 async def read_resource(uri: Annotated[str, cyclopts.Parameter(help="Resource URI")]) -> None:
     """Read a resource by URI."""
-    async with Client(CLIENT_SPEC, auth=_auth) as client:
+    async with Client(*_resolve_auth()) as client:
         contents = await client.read_resource(uri)
         for block in contents:
             if isinstance(block, mcp.types.TextResourceContents):
@@ -236,7 +239,7 @@ async def read_resource(uri: Annotated[str, cyclopts.Parameter(help="Resource UR
 @app.command
 async def list_prompts() -> None:
     """List available prompts."""
-    async with Client(CLIENT_SPEC, auth=_auth) as client:
+    async with Client(*_resolve_auth()) as client:
         prompts = await client.list_prompts()
         if not prompts:
             console.print("[dim]No prompts found.[/dim]")
@@ -266,7 +269,7 @@ async def get_prompt(
         key, value = arg.split("=", 1)
         parsed[key] = value
 
-    async with Client(CLIENT_SPEC, auth=_auth) as client:
+    async with Client(*_resolve_auth()) as client:
         result = await client.get_prompt(name, parsed or None)
         for msg in result.messages:
             console.print(f"[bold]{msg.role}:[/bold]")
@@ -812,6 +815,9 @@ async def get_asset_icons(
 
 
 def main() -> None:
+    if "--oauth" in sys.argv:
+        sys.argv.remove("--oauth")
+        os.environ["ATLAN_AUTH"] = "oauth"
     app()
 
 
