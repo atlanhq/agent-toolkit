@@ -14,17 +14,16 @@ import time
 from pathlib import Path
 from typing import Annotated, Any, Mapping
 
+import cyclopts
+import mcp.types
 from dotenv import load_dotenv
+from fastmcp import Client
+from fastmcp.client.auth import BearerAuth, OAuth
+from rich.console import Console
+from rich.panel import Panel
 
 load_dotenv(Path.cwd() / ".env", override=False)
 load_dotenv(Path(__file__).parent / ".env", override=False)
-
-import cyclopts
-import mcp.types
-from rich.console import Console
-
-from fastmcp import Client
-from fastmcp.client.auth import BearerAuth, OAuth
 
 _ATLAN_DIR = Path.home() / ".atlan"
 _CONFIG_FILE = _ATLAN_DIR / "config.json"
@@ -32,38 +31,6 @@ _CREDS_FILE = _ATLAN_DIR / "credentials.json"
 _OAUTH_PROXY = "https://mcp.atlan.com"
 _JSON_MODE = False
 
-
-class _KeyringStore:
-    """AsyncKeyValue store backed by the OS keychain (macOS Keychain, etc.).
-
-    Tokens are encrypted at rest by the OS. Falls back to _JsonFileStore
-    if keyring is unavailable (headless servers, CI).
-    """
-
-    _SERVICE = "atlan-mcp"
-
-    async def get(self, key: str, *, collection: str | None = None) -> dict[str, Any] | None:
-        import keyring
-        v = keyring.get_password(f"{self._SERVICE}/{collection or 'default'}", key)
-        return json.loads(v) if v else None
-
-    async def ttl(self, key: str, *, collection: str | None = None) -> tuple[dict[str, Any] | None, float | None]:
-        return await self.get(key, collection=collection), None
-
-    async def put(self, key: str, value: Mapping[str, Any], *, collection: str | None = None, ttl: Any = None) -> None:
-        import keyring
-        keyring.set_password(f"{self._SERVICE}/{collection or 'default'}", key, json.dumps(dict(value)))
-
-    async def delete(self, key: str, *, collection: str | None = None) -> bool:
-        import keyring
-        try:
-            keyring.delete_password(f"{self._SERVICE}/{collection or 'default'}", key)
-            return True
-        except keyring.errors.PasswordDeleteError:
-            return False
-
-    async def get_many(self, keys: list[str], *, collection: str | None = None) -> list[dict[str, Any] | None]:
-        return [await self.get(k, collection=collection) for k in keys]
 
 
 class _JsonFileStore:
@@ -111,21 +78,6 @@ class _JsonFileStore:
         data = self._load(collection or "default")
         return [data.get(k) for k in keys]
 
-
-class _CapturingStore(_JsonFileStore):
-    """Intercepts FastMCP OAuth token storage to also save to our canonical keyring format."""
-
-    async def put(self, key: str, value: Mapping[str, Any], *, collection: str | None = None, ttl: Any = None) -> None:
-        await super().put(key, value, collection=collection, ttl=ttl)
-        v = dict(value)
-        if "access_token" in v:
-            expires_in = v.get("expires_in", 300)
-            _keyring_set("access_token", json.dumps({
-                "access_token": v["access_token"],
-                "expires_at": time.time() + expires_in - 30,
-            }))
-        if "refresh_token" in v:
-            _keyring_set("refresh_token", str(v["refresh_token"]))
 
 
 def _keyring_get(account: str) -> str | None:
@@ -178,6 +130,15 @@ def _keyring_delete(account: str) -> None:
             pass
 
 
+def _maybe_json(v):
+    """Parse v as JSON if it's a string; return v unchanged on failure."""
+    if not isinstance(v, str):
+        return v
+    try:
+        return json.loads(v)
+    except (json.JSONDecodeError, ValueError):
+        return v
+
 def _read_config() -> dict | None:
     if not _CONFIG_FILE.exists():
         return None
@@ -196,6 +157,8 @@ def _write_config(cfg: dict) -> None:
 
 def _wipe_credentials() -> None:
     """Wipe all stored credentials. Called ONLY from: refresh failure, logout, login."""
+    global _resolved
+    _resolved = None
     for account in ("refresh_token", "access_token", "api_key"):
         _keyring_delete(account)
     # Clear FastMCP's internal token cache so next login --oauth always opens browser.
@@ -223,7 +186,7 @@ def _resolve_auth() -> tuple[str, object]:
 
     if override_oauth:
         url = f"{_OAUTH_PROXY}/mcp"
-        store = _CapturingStore(_ATLAN_DIR / ".fastmcp-cache")
+        store = _JsonFileStore(_ATLAN_DIR / ".fastmcp-cache")
         _resolved = (url, OAuth(mcp_url=url, token_storage=store))
         return _resolved
 
@@ -240,7 +203,7 @@ def _resolve_auth() -> tuple[str, object]:
         if api_key and not force_oauth:
             _resolved = (f"{base_url}/mcp/api-key", BearerAuth(api_key))
         else:
-            store = _CapturingStore(_ATLAN_DIR / ".fastmcp-cache")
+            store = _JsonFileStore(_ATLAN_DIR / ".fastmcp-cache")
             url = f"{base_url}/mcp"
             _resolved = (url, OAuth(mcp_url=url, token_storage=store))
         return _resolved
@@ -537,7 +500,6 @@ async def login(
             sys.exit(3)
         _keyring_set("api_key", api_key)
         _write_config({"auth_mode": "api-key", "tenant": tenant})
-        from rich.panel import Panel
         console.print(Panel(
             f"  Mode    [cyan]api-key[/cyan]\n  Tenant  {tenant}\n\nRun [bold]atlan status[/bold] to verify connectivity.",
             title="[green]● Login successful[/green]",
@@ -595,7 +557,6 @@ async def login(
             _keyring_set("refresh_token", tokens.refresh_token)
 
     _write_config({"auth_mode": "oauth", "client_id": "mcp-client"})
-    from rich.panel import Panel
     console.print(Panel(
         f"  Mode    [cyan]oauth[/cyan]\n  Proxy   {_OAUTH_PROXY}/mcp\n\nRun [bold]atlan status[/bold] to check token validity.",
         title="[green]● Login successful[/green]",
@@ -622,7 +583,6 @@ async def status() -> None:
 
     auth_mode = cfg.get("auth_mode", "unknown")
 
-    from rich.panel import Panel
 
     if auth_mode == "api-key":
         tenant = cfg.get("tenant", "?")
@@ -682,9 +642,8 @@ async def semantic_search_tool(
     include_readme: Annotated[bool, cyclopts.Parameter(help="Set true to fetch and return README content for each asset. Only enable when the user explicitly asks for README/documentation content — adds latency.")] = False,
 ) -> None:
     '''PREFERRED search tool — use this FIRST for any discovery or lookup query. Handles natural language, fuzzy matching, typos, abbreviations, multi-word names, and glossary term lookups. Covers all asset types: tables, columns, views, schemas, dashboards, glossary terms, categories, domains, data products, and more. NOT for users or groups — use resolve_metadata_tool for those. Only fall back to search_assets_tool if you need exact attribute filtering, aggregations, or structured conditions that semantic search cannot express. This tool accepts ONLY: user_query (required), limit, offset, include_readme. It does NOT accept asset_type, conditions, search_query, or any other parameters.'''
-    # Parse JSON parameters
-    limit_parsed = json.loads(limit) if isinstance(limit, str) else limit
-    offset_parsed = json.loads(offset) if isinstance(offset, str) else offset
+    limit_parsed = _maybe_json(limit)
+    offset_parsed = _maybe_json(offset)
 
     await _call_tool('semantic_search_tool', {'user_query': user_query, 'limit': limit_parsed, 'offset': offset_parsed, 'include_readme': include_readme})
 
@@ -741,25 +700,20 @@ IMPORTANT: Call 2 must NOT have asset_type or glossary_qualified_name filters �
 GLOSSARY TERM WORKFLOWS:
 - Filter terms by category: conditions={"__categories": "<categoryQualifiedName>"}. NOTE: __categories only stores the DIRECT parent category. To include subcategories, first fetch all categories in the glossary (asset_type="AtlasGlossaryCategory", include_attributes=["qualifiedName","parentCategory"]), walk the parentCategory tree to find all descendants, then use conditions={"__categories": {"operator": "within", "value": [allDescendantQNs]}}.
 NOT for users/groups — use resolve_metadata_tool for those.'''
-    # Parse JSON parameters
-    conditions_parsed = json.loads(conditions) if isinstance(conditions, str) else conditions
-    negative_conditions_parsed = json.loads(negative_conditions) if isinstance(negative_conditions, str) else negative_conditions
-    some_conditions_parsed = json.loads(some_conditions) if isinstance(some_conditions, str) else some_conditions
-    include_attributes_parsed = json.loads(include_attributes) if isinstance(include_attributes, str) else include_attributes
-    asset_type_parsed = json.loads(asset_type) if isinstance(asset_type, str) else asset_type
-    glossary_qualified_name_parsed = json.loads(glossary_qualified_name) if isinstance(glossary_qualified_name, str) else glossary_qualified_name
-    sort_by_parsed = json.loads(sort_by) if isinstance(sort_by, str) else sort_by
-    sort_parsed = json.loads(sort) if isinstance(sort, str) else sort
-    connection_qualified_name_parsed = json.loads(connection_qualified_name) if isinstance(connection_qualified_name, str) else connection_qualified_name
-    tags_parsed = json.loads(tags) if isinstance(tags, str) else tags
-    domain_guids_parsed = json.loads(domain_guids) if isinstance(domain_guids, str) else domain_guids
-    date_range_parsed = json.loads(date_range) if isinstance(date_range, str) else date_range
-    guids_parsed = json.loads(guids) if isinstance(guids, str) else guids
-    term_guids_parsed = json.loads(term_guids) if isinstance(term_guids, str) else term_guids
-    aggregations_parsed = json.loads(aggregations) if isinstance(aggregations, str) else aggregations
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    conditions_parsed = _maybe_json(conditions)
+    negative_conditions_parsed = _maybe_json(negative_conditions)
+    some_conditions_parsed = _maybe_json(some_conditions)
+    include_attributes_parsed = _maybe_json(include_attributes)
+    asset_type_parsed = _maybe_json(asset_type)
+    sort_parsed = _maybe_json(sort)
+    tags_parsed = _maybe_json(tags)
+    domain_guids_parsed = _maybe_json(domain_guids)
+    date_range_parsed = _maybe_json(date_range)
+    guids_parsed = _maybe_json(guids)
+    term_guids_parsed = _maybe_json(term_guids)
+    aggregations_parsed = _maybe_json(aggregations)
 
-    await _call_tool('search_assets_tool', {'conditions': conditions_parsed, 'negative_conditions': negative_conditions_parsed, 'some_conditions': some_conditions_parsed, 'min_somes': min_somes, 'include_attributes': include_attributes_parsed, 'asset_type': asset_type_parsed, 'glossary_qualified_name': glossary_qualified_name_parsed, 'include_archived': include_archived, 'limit': limit, 'offset': offset, 'sort_by': sort_by_parsed, 'sort_order': sort_order, 'sort': sort_parsed, 'connection_qualified_name': connection_qualified_name_parsed, 'tags': tags_parsed, 'directly_tagged': directly_tagged, 'domain_guids': domain_guids_parsed, 'date_range': date_range_parsed, 'guids': guids_parsed, 'term_guids': term_guids_parsed, 'aggregations': aggregations_parsed, 'count_only': count_only, 'scroll': scroll, 'include_readme': include_readme, 'user_query': user_query_parsed})
+    await _call_tool('search_assets_tool', {'conditions': conditions_parsed, 'negative_conditions': negative_conditions_parsed, 'some_conditions': some_conditions_parsed, 'min_somes': min_somes, 'include_attributes': include_attributes_parsed, 'asset_type': asset_type_parsed, 'glossary_qualified_name': glossary_qualified_name, 'include_archived': include_archived, 'limit': limit, 'offset': offset, 'sort_by': sort_by, 'sort_order': sort_order, 'sort': sort_parsed, 'connection_qualified_name': connection_qualified_name, 'tags': tags_parsed, 'directly_tagged': directly_tagged, 'domain_guids': domain_guids_parsed, 'date_range': date_range_parsed, 'guids': guids_parsed, 'term_guids': term_guids_parsed, 'aggregations': aggregations_parsed, 'count_only': count_only, 'scroll': scroll, 'include_readme': include_readme, 'user_query': user_query})
 
 
 @app.command(name='traverse_lineage_tool')
@@ -784,11 +738,8 @@ ETL/transformation processes produced the connection. The lineage widget
 supports progressive loading — leaf nodes show an expand button that
 fetches deeper lineage on demand. Keep size small (5-15) for responsive
 results; do NOT request all lineage at once.'''
-    # Parse JSON parameters
-    include_attributes_parsed = json.loads(include_attributes) if isinstance(include_attributes, str) else include_attributes
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('traverse_lineage_tool', {'guid': guid, 'direction': direction, 'depth': depth, 'size': size, 'immediate_neighbors': immediate_neighbors, 'offset': offset, 'include_attributes': include_attributes_parsed, 'user_query': user_query_parsed})
+    await _call_tool('traverse_lineage_tool', {'guid': guid, 'direction': direction, 'depth': depth, 'size': size, 'immediate_neighbors': immediate_neighbors, 'offset': offset, 'include_attributes': include_attributes, 'user_query': user_query})
 
 
 @app.command(name='query_assets_tool')
@@ -800,11 +751,8 @@ async def query_assets_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Execute SQL queries against Atlan connections to preview data.'''
-    # Parse JSON parameters
-    default_schema_parsed = json.loads(default_schema) if isinstance(default_schema, str) else default_schema
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('query_assets_tool', {'sql': sql, 'connection_qualified_name': connection_qualified_name, 'default_schema': default_schema_parsed, 'user_query': user_query_parsed})
+    await _call_tool('query_assets_tool', {'sql': sql, 'connection_qualified_name': connection_qualified_name, 'default_schema': default_schema, 'user_query': user_query})
 
 
 @app.command(name='resolve_metadata_tool')
@@ -816,10 +764,8 @@ async def resolve_metadata_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Use this to search for users and groups, and to get exact usernames and group names before making updates. Also use for extra discovery on classifications, business_metadata, glossary, and data_domain_and_product when semantic_search doesn\'t return needed results, or before write operations to confirm exact names and GUIDs.'''
-    # Parse JSON parameters
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('resolve_metadata_tool', {'namespace_type': namespace_type, 'query': query, 'limit': limit, 'user_query': user_query_parsed})
+    await _call_tool('resolve_metadata_tool', {'namespace_type': namespace_type, 'query': query, 'limit': limit, 'user_query': user_query})
 
 
 @app.command(name='search_atlan_docs_tool')
@@ -830,10 +776,8 @@ async def search_atlan_docs_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Search Atlan\'s customer-facing documentation and return an LLM-generated answer with source citations. Use for how-to questions about Atlan features — not for searching data assets (use semantic_search_tool for that).'''
-    # Parse JSON parameters
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('search_atlan_docs_tool', {'query': query, 'top_k': top_k, 'user_query': user_query_parsed})
+    await _call_tool('search_atlan_docs_tool', {'query': query, 'top_k': top_k, 'user_query': user_query})
 
 
 @app.command(name='get_groups_tool')
@@ -847,12 +791,8 @@ async def get_groups_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Get workspace groups and their members. Use include_members=True to list users in a group.'''
-    # Parse JSON parameters
-    name_filter_parsed = json.loads(name_filter) if isinstance(name_filter, str) else name_filter
-    group_id_parsed = json.loads(group_id) if isinstance(group_id, str) else group_id
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('get_groups_tool', {'name_filter': name_filter_parsed, 'group_id': group_id_parsed, 'include_members': include_members, 'limit': limit, 'offset': offset, 'user_query': user_query_parsed})
+    await _call_tool('get_groups_tool', {'name_filter': name_filter, 'group_id': group_id, 'include_members': include_members, 'limit': limit, 'offset': offset, 'user_query': user_query})
 
 
 @app.command(name='get_asset_tool')
@@ -867,14 +807,8 @@ async def get_asset_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Get detailed information about a single asset by its GUID or qualified name.'''
-    # Parse JSON parameters
-    guid_parsed = json.loads(guid) if isinstance(guid, str) else guid
-    qualified_name_parsed = json.loads(qualified_name) if isinstance(qualified_name, str) else qualified_name
-    asset_type_parsed = json.loads(asset_type) if isinstance(asset_type, str) else asset_type
-    include_attributes_parsed = json.loads(include_attributes) if isinstance(include_attributes, str) else include_attributes
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('get_asset_tool', {'guid': guid_parsed, 'qualified_name': qualified_name_parsed, 'asset_type': asset_type_parsed, 'include_attributes': include_attributes_parsed, 'include_dq_checks': include_dq_checks, 'include_readme': include_readme, 'user_query': user_query_parsed})
+    await _call_tool('get_asset_tool', {'guid': guid, 'qualified_name': qualified_name, 'asset_type': asset_type, 'include_attributes': include_attributes, 'include_dq_checks': include_dq_checks, 'include_readme': include_readme, 'user_query': user_query})
 
 
 @app.command(name='update_assets_tool')
@@ -885,11 +819,9 @@ async def update_assets_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Update attributes on one or more assets. Each item specifies the asset identity + fields to change. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    updates_parsed = json.loads(updates) if isinstance(updates, str) else updates
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    updates_parsed = _maybe_json(updates)
 
-    await _call_tool('update_assets_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('update_assets_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_glossaries')
@@ -900,11 +832,9 @@ async def create_glossaries(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create one or more glossaries in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    glossaries_parsed = json.loads(glossaries) if isinstance(glossaries, str) else glossaries
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    glossaries_parsed = _maybe_json(glossaries)
 
-    await _call_tool('create_glossaries', {'glossaries': glossaries_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_glossaries', {'glossaries': glossaries_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_glossary_terms')
@@ -915,11 +845,9 @@ async def create_glossary_terms(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create one or more glossary terms in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    terms_parsed = json.loads(terms) if isinstance(terms, str) else terms
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    terms_parsed = _maybe_json(terms)
 
-    await _call_tool('create_glossary_terms', {'terms': terms_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_glossary_terms', {'terms': terms_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_glossary_categories')
@@ -930,11 +858,9 @@ async def create_glossary_categories(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create one or more glossary categories in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    categories_parsed = json.loads(categories) if isinstance(categories, str) else categories
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    categories_parsed = _maybe_json(categories)
 
-    await _call_tool('create_glossary_categories', {'categories': categories_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_glossary_categories', {'categories': categories_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_domains')
@@ -945,11 +871,9 @@ async def create_domains(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create one or more data domains in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    domains_parsed = json.loads(domains) if isinstance(domains, str) else domains
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    domains_parsed = _maybe_json(domains)
 
-    await _call_tool('create_domains', {'domains': domains_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_domains', {'domains': domains_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_data_products')
@@ -960,11 +884,9 @@ async def create_data_products(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create one or more data products in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    products_parsed = json.loads(products) if isinstance(products, str) else products
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    products_parsed = _maybe_json(products)
 
-    await _call_tool('create_data_products', {'products': products_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_data_products', {'products': products_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_dq_rules_tool')
@@ -975,11 +897,9 @@ async def create_dq_rules_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create data quality rules in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    rules_parsed = json.loads(rules) if isinstance(rules, str) else rules
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    rules_parsed = _maybe_json(rules)
 
-    await _call_tool('create_dq_rules_tool', {'rules': rules_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_dq_rules_tool', {'rules': rules_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='schedule_dq_rules_tool')
@@ -990,11 +910,9 @@ async def schedule_dq_rules_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Schedule data quality rule execution on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    schedules_parsed = json.loads(schedules) if isinstance(schedules, str) else schedules
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    schedules_parsed = _maybe_json(schedules)
 
-    await _call_tool('schedule_dq_rules_tool', {'schedules': schedules_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('schedule_dq_rules_tool', {'schedules': schedules_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='update_dq_rules_tool')
@@ -1005,11 +923,9 @@ async def update_dq_rules_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Update existing data quality rules. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    rules_parsed = json.loads(rules) if isinstance(rules, str) else rules
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    rules_parsed = _maybe_json(rules)
 
-    await _call_tool('update_dq_rules_tool', {'rules': rules_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('update_dq_rules_tool', {'rules': rules_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='delete_dq_rules_tool')
@@ -1020,11 +936,9 @@ async def delete_dq_rules_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Delete data quality rules by their GUIDs. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    rule_guids_parsed = json.loads(rule_guids) if isinstance(rule_guids, str) else rule_guids
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    rule_guids_parsed = _maybe_json(rule_guids)
 
-    await _call_tool('delete_dq_rules_tool', {'rule_guids': rule_guids_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('delete_dq_rules_tool', {'rule_guids': rule_guids_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='manage_asset_lifecycle_tool')
@@ -1038,13 +952,8 @@ async def manage_asset_lifecycle_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Manage asset lifecycle: archive, restore, or permanently purge assets. WARNING: PURGE cannot be undone. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    guids_parsed = json.loads(guids) if isinstance(guids, str) else guids
-    asset_type_parsed = json.loads(asset_type) if isinstance(asset_type, str) else asset_type
-    qualified_name_parsed = json.loads(qualified_name) if isinstance(qualified_name, str) else qualified_name
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('manage_asset_lifecycle_tool', {'operation': operation, 'guids': guids_parsed, 'asset_type': asset_type_parsed, 'qualified_name': qualified_name_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('manage_asset_lifecycle_tool', {'operation': operation, 'guids': guids, 'asset_type': asset_type, 'qualified_name': qualified_name, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='manage_announcements_tool')
@@ -1059,13 +968,8 @@ async def manage_announcements_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Add or remove announcements (information, warning, issue) on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    announcement_type_parsed = json.loads(announcement_type) if isinstance(announcement_type, str) else announcement_type
-    title_parsed = json.loads(title) if isinstance(title, str) else title
-    message_parsed = json.loads(message) if isinstance(message, str) else message
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('manage_announcements_tool', {'asset_guids': asset_guids, 'operation': operation, 'announcement_type': announcement_type_parsed, 'title': title_parsed, 'message': message_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('manage_announcements_tool', {'asset_guids': asset_guids, 'operation': operation, 'announcement_type': announcement_type, 'title': title, 'message': message, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='update_custom_metadata_tool')
@@ -1077,11 +981,9 @@ async def update_custom_metadata_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Update custom metadata on one or more assets. Set replace=True for full replacement, False (default) for partial update. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    updates_parsed = json.loads(updates) if isinstance(updates, str) else updates
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    updates_parsed = _maybe_json(updates)
 
-    await _call_tool('update_custom_metadata_tool', {'updates': updates_parsed, 'replace': replace, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('update_custom_metadata_tool', {'updates': updates_parsed, 'replace': replace, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='remove_custom_metadata_tool')
@@ -1093,10 +995,8 @@ async def remove_custom_metadata_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Remove a custom metadata set from an asset. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
 
-    await _call_tool('remove_custom_metadata_tool', {'guid': guid, 'custom_metadata_name': custom_metadata_name, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('remove_custom_metadata_tool', {'guid': guid, 'custom_metadata_name': custom_metadata_name, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='create_custom_metadata_set_tool')
@@ -1107,11 +1007,9 @@ async def create_custom_metadata_set_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Create one or more custom metadata sets with typed attributes. Defines the schema; use update_custom_metadata to set values on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    sets_parsed = json.loads(sets) if isinstance(sets, str) else sets
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    sets_parsed = _maybe_json(sets)
 
-    await _call_tool('create_custom_metadata_set_tool', {'sets': sets_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('create_custom_metadata_set_tool', {'sets': sets_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='delete_custom_metadata_set_tool')
@@ -1122,11 +1020,9 @@ async def delete_custom_metadata_set_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Permanently delete one or more custom metadata sets and all their attribute values from assets. Irreversible. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    sets_parsed = json.loads(sets) if isinstance(sets, str) else sets
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    sets_parsed = _maybe_json(sets)
 
-    await _call_tool('delete_custom_metadata_set_tool', {'sets': sets_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('delete_custom_metadata_set_tool', {'sets': sets_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='add_attributes_to_cm_set_tool')
@@ -1138,11 +1034,9 @@ async def add_attributes_to_cm_set_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Add new typed attributes to an existing custom metadata set. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    attributes_parsed = json.loads(attributes) if isinstance(attributes, str) else attributes
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    attributes_parsed = _maybe_json(attributes)
 
-    await _call_tool('add_attributes_to_cm_set_tool', {'display_name': display_name, 'attributes': attributes_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('add_attributes_to_cm_set_tool', {'display_name': display_name, 'attributes': attributes_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='remove_attributes_from_cm_set_tool')
@@ -1154,11 +1048,9 @@ async def remove_attributes_from_cm_set_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Remove (archive) attributes from an existing custom metadata set. Archived attributes are soft-deleted and their values cleared from all assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    attribute_names_parsed = json.loads(attribute_names) if isinstance(attribute_names, str) else attribute_names
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    attribute_names_parsed = _maybe_json(attribute_names)
 
-    await _call_tool('remove_attributes_from_cm_set_tool', {'display_name': display_name, 'attribute_names': attribute_names_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('remove_attributes_from_cm_set_tool', {'display_name': display_name, 'attribute_names': attribute_names_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='add_atlan_tags_tool')
@@ -1169,11 +1061,9 @@ async def add_atlan_tags_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Add Atlan tags to one or more assets. Pass a dict for single asset, list for batch. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    updates_parsed = json.loads(updates) if isinstance(updates, str) else updates
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    updates_parsed = _maybe_json(updates)
 
-    await _call_tool('add_atlan_tags_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('add_atlan_tags_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='remove_atlan_tag_tool')
@@ -1184,11 +1074,9 @@ async def remove_atlan_tag_tool(
     user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
 ) -> None:
     '''Remove an Atlan tag from one or more assets. Pass a dict for single asset, list for batch. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
-    # Parse JSON parameters
-    updates_parsed = json.loads(updates) if isinstance(updates, str) else updates
-    user_query_parsed = json.loads(user_query) if isinstance(user_query, str) else user_query
+    updates_parsed = _maybe_json(updates)
 
-    await _call_tool('remove_atlan_tag_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query_parsed})
+    await _call_tool('remove_atlan_tag_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query})
 
 
 @app.command(name='get_asset_icons')
