@@ -7,6 +7,10 @@ A standalone CLI for calling Atlan MCP tools directly from your terminal — no 
 Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it, then install the CLI as a global tool:
 
 ```bash
+# From PyPI (once published)
+uv tool install atlan-cli
+
+# From source
 uv tool install /path/to/agent-toolkit/mcp-cli
 ```
 
@@ -19,11 +23,12 @@ export PATH="$HOME/.local/bin:$PATH"
 ## Quick Start
 
 ```bash
-# One-time login — opens browser (OAuth via mcp.atlan.com)
+# One-time login — interactive: choose OAuth or API key
 atlan login
 
-# Or log in with an API key
-atlan login --api-key sk-xxx --tenant https://your-tenant.atlan.com
+# Or skip the prompt and log in directly
+atlan login --oauth                                           # browser login
+atlan login --api-key sk-xxx --tenant https://your-tenant.atlan.com  # API key
 
 # Check your auth status
 atlan status
@@ -32,6 +37,18 @@ atlan status
 atlan semantic_search_tool --user-query "PII tables in Snowflake"
 atlan list-tools
 atlan get_asset_tool --guid "abc-123"
+```
+
+`atlan login` with no flags shows an interactive prompt:
+
+```
+Choose login method:
+  1  OAuth   — browser login via mcp.atlan.com
+  2  API key — paste your Atlan API key
+
+Choice [1/2] (1): 2
+  API key: <paste key and press Enter>
+  Tenant URL (e.g. https://demo.atlan.com): https://your-tenant.atlan.com
 ```
 
 ## Auth Commands
