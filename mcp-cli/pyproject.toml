@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "atlan-mcp-cli"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "cyclopts",
+    "fastmcp",
+    "python-dotenv",
+    "mcp",
+    "keyring",
+    "rich",
+]
+
+[project.scripts]
+atlan = "atlan_cli:main"
+
+[tool.setuptools]
+py-modules = ["atlan_cli"]
