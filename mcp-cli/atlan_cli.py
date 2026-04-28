@@ -13,6 +13,7 @@ from typing import Annotated, Any, Mapping
 
 from dotenv import load_dotenv
 
+load_dotenv(Path.cwd() / ".env", override=False)
 load_dotenv(Path(__file__).parent / ".env", override=False)
 
 import cyclopts
@@ -128,6 +129,11 @@ def _resolve_auth() -> tuple[str, object]:
     _resolved = (client_spec, auth)
     return _resolved
 
+def _client() -> "Client":
+    url, auth = _resolve_auth()
+    return Client(url, auth=auth)
+
+
 app = cyclopts.App(name="atlan", help="CLI for Atlan MCP server")
 
 console = Console()
@@ -169,7 +175,7 @@ async def _call_tool(tool_name: str, arguments: dict) -> None:
         for k, v in arguments.items()
         if v is not None and (not isinstance(v, list) or len(v) > 0)
     }
-    async with Client(*_resolve_auth()) as client:
+    async with _client() as client:
         result = await client.call_tool(tool_name, filtered, raise_on_error=False)
         _print_tool_result(result)
         if result.is_error:
@@ -184,7 +190,7 @@ async def _call_tool(tool_name: str, arguments: dict) -> None:
 @app.command
 async def list_tools() -> None:
     """List available tools."""
-    async with Client(*_resolve_auth()) as client:
+    async with _client() as client:
         tools = await client.list_tools()
         if not tools:
             console.print("[dim]No tools found.[/dim]")
@@ -209,7 +215,7 @@ async def list_tools() -> None:
 @app.command
 async def list_resources() -> None:
     """List available resources."""
-    async with Client(*_resolve_auth()) as client:
+    async with _client() as client:
         resources = await client.list_resources()
         if not resources:
             console.print("[dim]No resources found.[/dim]")
@@ -226,7 +232,7 @@ async def list_resources() -> None:
 @app.command
 async def read_resource(uri: Annotated[str, cyclopts.Parameter(help="Resource URI")]) -> None:
     """Read a resource by URI."""
-    async with Client(*_resolve_auth()) as client:
+    async with _client() as client:
         contents = await client.read_resource(uri)
         for block in contents:
             if isinstance(block, mcp.types.TextResourceContents):
@@ -239,7 +245,7 @@ async def read_resource(uri: Annotated[str, cyclopts.Parameter(help="Resource UR
 @app.command
 async def list_prompts() -> None:
     """List available prompts."""
-    async with Client(*_resolve_auth()) as client:
+    async with _client() as client:
         prompts = await client.list_prompts()
         if not prompts:
             console.print("[dim]No prompts found.[/dim]")
@@ -269,7 +275,7 @@ async def get_prompt(
         key, value = arg.split("=", 1)
         parsed[key] = value
 
-    async with Client(*_resolve_auth()) as client:
+    async with _client() as client:
         result = await client.get_prompt(name, parsed or None)
         for msg in result.messages:
             console.print(f"[bold]{msg.role}:[/bold]")
