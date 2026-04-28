@@ -6,6 +6,10 @@
     "version": "0.1.0"
   },
   "plugins": [
-    { "path": "cursor-plugin" }
+    {
+      "name": "atlan",
+      "source": "./cursor-plugin",
+      "description": "Atlan is the context layer for enterprise AI. Use Atlan agent skills in Cursor — curate your data graph, search & discover, traverse lineage, govern context, manage glossaries and Data Quality, execute SQL and more."
+    }
   ]
 }
