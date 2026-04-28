@@ -198,6 +198,11 @@ def _wipe_credentials() -> None:
     """Wipe all stored credentials. Called ONLY from: refresh failure, logout, login."""
     for account in ("refresh_token", "access_token", "api_key"):
         _keyring_delete(account)
+    # Clear FastMCP's internal token cache so next login --oauth always opens browser.
+    import shutil
+    cache = _ATLAN_DIR / ".fastmcp-cache"
+    if cache.exists():
+        shutil.rmtree(cache)
 
 
 _resolved: tuple[str, object] | None = None
