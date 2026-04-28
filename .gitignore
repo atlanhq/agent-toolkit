@@ -161,7 +161,3 @@ cython_debug/
 .vscode/
 
 .DS_Store
-
-# Plugin build artifacts
-atlan-claude-plugin.tar.gz
-atlan-claude-plugin.zip
