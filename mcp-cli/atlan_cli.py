@@ -510,25 +510,25 @@ async def login(
     use_oauth = oauth or bool(os.environ.get("_ATLAN_OVERRIDE_OAUTH"))
 
     if not use_oauth:
-        # Interactive chooser — falls back to OAuth if questionary not installed.
+        from rich.prompt import Prompt
+        console.print("\n[bold]Choose login method:[/bold]")
+        console.print("  [cyan]1[/cyan]  OAuth   — browser login via mcp.atlan.com")
+        console.print("  [cyan]2[/cyan]  API key — paste your Atlan API key\n")
         try:
-            import questionary  # type: ignore
-            choice = questionary.select(
-                "How would you like to log in?",
-                choices=["OAuth  — browser login via mcp.atlan.com", "API key — paste your Atlan API key"],
-            ).ask()
-            if choice is None:
+            choice = Prompt.ask("Choice", choices=["1", "2"], default="1")
+        except (KeyboardInterrupt, EOFError):
+            sys.exit(0)
+        if choice == "2":
+            try:
+                api_key_in = Prompt.ask("API key", password=True)
+                tenant_in = Prompt.ask("Tenant URL (e.g. https://demo.atlan.com)")
+            except (KeyboardInterrupt, EOFError):
                 sys.exit(0)
-            if choice == "API key — paste your Atlan API key":
-                api_key_in = questionary.password("API key:").ask()
-                tenant_in = questionary.text("Tenant URL (e.g. https://demo.atlan.com):").ask()
-                if not api_key_in or not tenant_in:
-                    _err("API key and tenant are required.")
-                    sys.exit(3)
-                await login(oauth=False, api_key=api_key_in, tenant=tenant_in)
-                return
-        except ImportError:
-            pass
+            if not api_key_in or not tenant_in:
+                _err("API key and tenant are required.")
+                sys.exit(3)
+            await login(oauth=False, api_key=api_key_in, tenant=tenant_in)
+            return
         use_oauth = True
 
     # OAuth browser flow.
