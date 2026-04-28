@@ -1,21 +1,48 @@
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "atlan-mcp-cli"
-version = "0.1.0"
+name = "atlan-cli"
+dynamic = ["version"]
+description = "CLI for calling Atlan MCP tools directly from your terminal"
+readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "cyclopts",
-    "fastmcp>=2.14,<3",
-    "python-dotenv",
-    "keyring",
-    "rich",
+license = { text = "Apache-2.0" }
+keywords = ["atlan", "mcp", "cli", "data-catalog"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
+dependencies = [
+    "cyclopts>=3.0",
+    "fastmcp>=2.14,<3",
+    "python-dotenv>=1.0",
+    "keyring>=25.0",
+    "rich>=13.0",
+    "httpx>=0.27",
+]
+
+[project.urls]
+Homepage = "https://github.com/atlanhq/agent-toolkit"
+Repository = "https://github.com/atlanhq/agent-toolkit"
+"Bug Tracker" = "https://github.com/atlanhq/agent-toolkit/issues"
 
 [project.scripts]
 atlan = "atlan_cli:main"
 
-[tool.setuptools]
-py-modules = ["atlan_cli"]
+[tool.hatch.version]
+path = "atlan_cli.py"
+
+[tool.hatch.build.targets.wheel]
+include = ["atlan_cli.py"]
+
+[tool.hatch.build.targets.sdist]
+include = ["atlan_cli.py", "README.md", "pyproject.toml"]

@@ -10,57 +10,55 @@ Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you d
 uv tool install /path/to/agent-toolkit/mcp-cli
 ```
 
-This gives you the `atlan` command globally. Add `~/.local/bin` to your PATH if prompted:
+Add `~/.local/bin` to your PATH if prompted:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## Configuration
-
-Set your tenant URL and (optionally) an API key — either via environment variables or a `.env` file in the directory where you run `atlan`:
+## Quick Start
 
 ```bash
-# .env
-ATLAN_BASE_URL=https://your-tenant.atlan.com
-ATLAN_API_KEY=your-api-key   # omit to use OAuth browser login
-```
+# One-time login — opens browser for OAuth
+atlan login
 
-## Auth Modes
+# Or log in with an API key
+atlan login --api-key sk-xxx --tenant https://your-tenant.atlan.com
 
-| Mode | How to activate | Endpoint used |
-|------|----------------|---------------|
-| **API key** | `ATLAN_BASE_URL` + `ATLAN_API_KEY` | `{base_url}/mcp/api-key` |
-| **OAuth (PKCE)** | `ATLAN_BASE_URL` only, no `ATLAN_API_KEY` | `{base_url}/mcp` |
-| **Force OAuth** | `--oauth` flag or `ATLAN_AUTH=oauth` | `{base_url}/mcp` |
+# Check your auth status
+atlan status
 
-OAuth tokens are cached in the OS keychain after the first browser login — subsequent runs skip the browser entirely.
-
-The `--oauth` flag forces browser login even when `ATLAN_API_KEY` is set in `.env`.
-
-## Usage
-
-```bash
-# Show all available commands
-atlan --help
-
-# List tools the MCP server exposes
-atlan --oauth list-tools
-
-# Search assets (OAuth)
-atlan --oauth semantic_search_tool --user-query "PII tables in Snowflake"
-
-# Search assets (API key — reads .env automatically)
+# Run tools — no flags needed after login
 atlan semantic_search_tool --user-query "PII tables in Snowflake"
-
-# Traverse lineage
-atlan --oauth traverse_lineage_tool --guid "abc-123" --direction DOWNSTREAM
-
-# Get a specific asset
-atlan --oauth get_asset_tool --guid "abc-123"
+atlan list-tools
+atlan get_asset_tool --guid "abc-123"
 ```
 
-> **Note:** `--oauth` must come before the tool name (it's a global flag, not a tool argument).
+## Auth Commands
+
+| Command | Description |
+|---------|-------------|
+| `atlan login` | OAuth browser login (default) |
+| `atlan login --api-key KEY --tenant URL` | Log in with an API key |
+| `atlan logout` | Remove stored credentials |
+| `atlan status` | Show auth mode, tenant, and token expiry |
+
+## Global Flags (per-call overrides)
+
+These override stored credentials for a single invocation and are not persisted:
+
+| Flag | Description |
+|------|-------------|
+| `--oauth` | Force fresh OAuth browser login this call |
+| `--api-key KEY --tenant URL` | One-shot API key (not saved) |
+| `--json` | Raw JSON to stdout; all logs go to stderr |
+
+```bash
+# One-shot overrides (no stored credentials needed)
+atlan --oauth semantic_search_tool --user-query "PII tables"
+atlan --api-key sk-xxx --tenant https://demo.atlan.com list-tools
+atlan --json get_asset_tool --guid abc-123
+```
 
 ## Available Tools
 
@@ -74,6 +72,17 @@ atlan --oauth get_asset_tool --guid "abc-123"
 - **Tags** — `add_atlan_tags_tool`, `remove_atlan_tag_tool`
 
 Run `atlan --help` to see all commands with their parameters.
+Run `atlan list-tools` to see what the live MCP server exposes (requires auth).
+
+## How Credentials Are Stored
+
+| Storage | Contents |
+|---------|----------|
+| `~/.atlan/config.json` | Auth mode and tenant URL (no secrets) |
+| OS keychain (`atlan-mcp`) | Access token, refresh token, or API key |
+| `~/.atlan/credentials.json` | File fallback when OS keychain is unavailable |
+
+OAuth access tokens auto-refresh via the `mcp.atlan.com` proxy — you rarely need to re-run `atlan login`.
 
 ## Updating
 
@@ -91,4 +100,4 @@ If tool schemas change (new tools added to the server), regenerate with:
 fastmcp generate-cli https://your-tenant.atlan.com/mcp --auth oauth --output atlan_cli.py --force
 ```
 
-Then re-apply the auth/packaging block at the top (everything above `app = cyclopts.App(...)`) — `fastmcp` does not write auth into generated scripts by design.
+Re-apply the auth/packaging block at the top after regeneration — `fastmcp` does not write auth into generated scripts.
