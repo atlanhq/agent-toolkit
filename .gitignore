@@ -121,8 +121,6 @@ celerybeat.pid
 
 # Environments
 .env
-.env.*
-!.env.example
 .venv
 env/
 venv/
@@ -167,9 +165,3 @@ cython_debug/
 # Plugin build artifacts
 atlan-claude-plugin.tar.gz
 atlan-claude-plugin.zip
-
-# uv lockfile (not committed — reproducibility via pyproject.toml)
-uv.lock
-
-# FastMCP OAuth token cache
-.fastmcp-cache/
