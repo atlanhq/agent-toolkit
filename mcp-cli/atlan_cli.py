@@ -32,7 +32,6 @@ _OAUTH_PROXY = "https://mcp.atlan.com"
 _JSON_MODE = False
 
 
-
 class _JsonFileStore:
     """Minimal AsyncKeyValue store that persists tokens as JSON files in a directory.
 
@@ -55,13 +54,24 @@ class _JsonFileStore:
     def _save(self, collection: str, data: dict) -> None:
         self._file(collection).write_text(json.dumps(data))
 
-    async def get(self, key: str, *, collection: str | None = None) -> dict[str, Any] | None:
+    async def get(
+        self, key: str, *, collection: str | None = None
+    ) -> dict[str, Any] | None:
         return self._load(collection or "default").get(key)
 
-    async def ttl(self, key: str, *, collection: str | None = None) -> tuple[dict[str, Any] | None, float | None]:
+    async def ttl(
+        self, key: str, *, collection: str | None = None
+    ) -> tuple[dict[str, Any] | None, float | None]:
         return self._load(collection or "default").get(key), None
 
-    async def put(self, key: str, value: Mapping[str, Any], *, collection: str | None = None, ttl: Any = None) -> None:
+    async def put(
+        self,
+        key: str,
+        value: Mapping[str, Any],
+        *,
+        collection: str | None = None,
+        ttl: Any = None,
+    ) -> None:
         data = self._load(collection or "default")
         data[key] = dict(value)
         self._save(collection or "default", data)
@@ -74,15 +84,17 @@ class _JsonFileStore:
             return True
         return False
 
-    async def get_many(self, keys: list[str], *, collection: str | None = None) -> list[dict[str, Any] | None]:
+    async def get_many(
+        self, keys: list[str], *, collection: str | None = None
+    ) -> list[dict[str, Any] | None]:
         data = self._load(collection or "default")
         return [data.get(k) for k in keys]
-
 
 
 def _keyring_get(account: str) -> str | None:
     try:
         import keyring as kr
+
         val = kr.get_password("atlan-mcp", account)
         if val is not None:
             return val
@@ -99,6 +111,7 @@ def _keyring_get(account: str) -> str | None:
 def _keyring_set(account: str, value: str) -> None:
     try:
         import keyring as kr
+
         kr.set_password("atlan-mcp", account, value)
         return
     except Exception:
@@ -118,6 +131,7 @@ def _keyring_set(account: str, value: str) -> None:
 def _keyring_delete(account: str) -> None:
     try:
         import keyring as kr
+
         kr.delete_password("atlan-mcp", account)
     except Exception:
         pass
@@ -139,13 +153,16 @@ def _maybe_json(v):
     except (json.JSONDecodeError, ValueError):
         return v
 
+
 def _read_config() -> dict | None:
     if not _CONFIG_FILE.exists():
         return None
     try:
         return json.loads(_CONFIG_FILE.read_text())
     except Exception:
-        _stderr.print("[bold red]Error:[/bold red] Malformed ~/.atlan/config.json. Run [cyan]atlan login[/cyan].")
+        _stderr.print(
+            "[bold red]Error:[/bold red] Malformed ~/.atlan/config.json. Run [cyan]atlan login[/cyan]."
+        )
         sys.exit(3)
 
 
@@ -163,6 +180,7 @@ def _wipe_credentials() -> None:
         _keyring_delete(account)
     # Clear FastMCP's internal token cache so next login --oauth always opens browser.
     import shutil
+
     cache = _ATLAN_DIR / ".fastmcp-cache"
     if cache.exists():
         shutil.rmtree(cache)
@@ -213,7 +231,9 @@ def _resolve_auth() -> tuple[str, object]:
     if auth_mode == "api-key":
         tenant = cfg.get("tenant", "").rstrip("/")
         if not tenant:
-            _err("Config error: api-key mode requires tenant URL. Run [cyan]atlan login[/cyan].")
+            _err(
+                "Config error: api-key mode requires tenant URL. Run [cyan]atlan login[/cyan]."
+            )
             sys.exit(3)
         api_key = _keyring_get("api_key")
         if not api_key:
@@ -228,7 +248,10 @@ def _resolve_auth() -> tuple[str, object]:
             try:
                 at_data = json.loads(at_raw)
                 if time.time() < at_data.get("expires_at", 0):
-                    _resolved = (f"{_OAUTH_PROXY}/mcp", BearerAuth(at_data["access_token"]))
+                    _resolved = (
+                        f"{_OAUTH_PROXY}/mcp",
+                        BearerAuth(at_data["access_token"]),
+                    )
                     return _resolved
             except Exception:
                 pass
@@ -239,6 +262,7 @@ def _resolve_auth() -> tuple[str, object]:
             sys.exit(2)
 
         import httpx
+
         try:
             resp = httpx.post(
                 f"{_OAUTH_PROXY}/oauth/token",
@@ -263,10 +287,15 @@ def _resolve_auth() -> tuple[str, object]:
         data = resp.json()
         access_token = data["access_token"]
         expires_in = data.get("expires_in", 300)
-        _keyring_set("access_token", json.dumps({
-            "access_token": access_token,
-            "expires_at": time.time() + expires_in - 30,
-        }))
+        _keyring_set(
+            "access_token",
+            json.dumps(
+                {
+                    "access_token": access_token,
+                    "expires_at": time.time() + expires_in - 30,
+                }
+            ),
+        )
         if "refresh_token" in data:
             _keyring_set("refresh_token", data["refresh_token"])
 
@@ -275,6 +304,7 @@ def _resolve_auth() -> tuple[str, object]:
 
     _err(f"Unknown auth_mode {auth_mode!r}. Run [cyan]atlan login[/cyan].")
     sys.exit(3)
+
 
 def _client() -> "Client":
     url, auth = _resolve_auth()
@@ -357,6 +387,7 @@ async def _call_tool(tool_name: str, arguments: dict) -> None:
 async def list_tools() -> None:
     """List available tools."""
     from rich.table import Table
+
     async with _client() as client:
         tools = await client.list_tools()
     if not tools:
@@ -369,10 +400,7 @@ async def list_tools() -> None:
     for tool in tools:
         props = tool.inputSchema.get("properties", {})
         required = set(tool.inputSchema.get("required", []))
-        params = ", ".join(
-            f"[bold]{n}[/bold]" if n in required else n
-            for n in props
-        )
+        params = ", ".join(f"[bold]{n}[/bold]" if n in required else n for n in props)
         table.add_row(tool.name, tool.description or "", params)
     console.print(table)
     console.print(f"\n[dim]Bold = required  ·  {len(tools)} tools total[/dim]")
@@ -396,7 +424,9 @@ async def list_resources() -> None:
 
 
 @app.command
-async def read_resource(uri: Annotated[str, cyclopts.Parameter(help="Resource URI")]) -> None:
+async def read_resource(
+    uri: Annotated[str, cyclopts.Parameter(help="Resource URI")],
+) -> None:
     """Read a resource by URI."""
     async with _client() as client:
         contents = await client.read_resource(uri)
@@ -436,7 +466,9 @@ async def get_prompt(
     parsed: dict[str, str] = {}
     for arg in arguments:
         if "=" not in arg:
-            console.print(f"[bold red]Error:[/bold red] Invalid argument {arg!r} — expected key=value")
+            console.print(
+                f"[bold red]Error:[/bold red] Invalid argument {arg!r} — expected key=value"
+            )
             sys.exit(1)
         key, value = arg.split("=", 1)
         parsed[key] = value
@@ -449,7 +481,9 @@ async def get_prompt(
                 console.print(f"  {msg.content.text}")
             elif isinstance(msg.content, mcp.types.ImageContent):
                 size = len(msg.content.data) * 3 // 4
-                console.print(f"  [dim][Image: {msg.content.mimeType}, ~{size} bytes][/dim]")
+                console.print(
+                    f"  [dim][Image: {msg.content.mimeType}, ~{size} bytes][/dim]"
+                )
             else:
                 console.print(f"  {msg.content}")
             console.print()
@@ -463,9 +497,16 @@ async def get_prompt(
 @app.command
 async def login(
     *,
-    oauth: Annotated[bool, cyclopts.Parameter("--oauth", help="Force OAuth browser login")] = False,
-    api_key: Annotated[str | None, cyclopts.Parameter("--api-key", help="Atlan API key")] = None,
-    tenant: Annotated[str | None, cyclopts.Parameter("--tenant", help="Tenant URL (required with --api-key)")] = None,
+    oauth: Annotated[
+        bool, cyclopts.Parameter("--oauth", help="Force OAuth browser login")
+    ] = False,
+    api_key: Annotated[
+        str | None, cyclopts.Parameter("--api-key", help="Atlan API key")
+    ] = None,
+    tenant: Annotated[
+        str | None,
+        cyclopts.Parameter("--tenant", help="Tenant URL (required with --api-key)"),
+    ] = None,
 ) -> None:
     """Authenticate with Atlan. Run once; tool calls reuse stored credentials.
 
@@ -485,10 +526,14 @@ async def login(
     if api_key and tenant:
         tenant = tenant.rstrip("/")
         import httpx
+
         try:
             resp = httpx.get(
                 f"{tenant}/api/meta/types/typedefs",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
                 timeout=10,
                 follow_redirects=True,
             )
@@ -496,21 +541,26 @@ async def login(
             _err(f"Network error validating API key: {exc}")
             sys.exit(3)
         if resp.status_code in (401, 403):
-            _err(f"API key validation failed (HTTP {resp.status_code}). Check key and tenant URL.")
+            _err(
+                f"API key validation failed (HTTP {resp.status_code}). Check key and tenant URL."
+            )
             sys.exit(3)
         _keyring_set("api_key", api_key)
         _write_config({"auth_mode": "api-key", "tenant": tenant})
-        console.print(Panel(
-            f"  Mode    [cyan]api-key[/cyan]\n  Tenant  {tenant}\n\nRun [bold]atlan status[/bold] to verify connectivity.",
-            title="[green]● Login successful[/green]",
-            expand=False,
-        ))
+        console.print(
+            Panel(
+                f"  Mode    [cyan]api-key[/cyan]\n  Tenant  {tenant}\n\nRun [bold]atlan status[/bold] to verify connectivity.",
+                title="[green]● Login successful[/green]",
+                expand=False,
+            )
+        )
         return
 
     use_oauth = oauth or bool(os.environ.get("_ATLAN_OVERRIDE_OAUTH"))
 
     if not use_oauth:
         from rich.prompt import Prompt
+
         console.print("\n[bold]Choose login method:[/bold]")
         console.print("  [cyan]1[/cyan]  OAuth   — browser login via mcp.atlan.com")
         console.print("  [cyan]2[/cyan]  API key — paste your Atlan API key\n")
@@ -523,7 +573,9 @@ async def login(
                 # Use input() not getpass — getpass reads char-by-char in raw mode
                 # and stalls on long pasted JWTs (1000+ chars).
                 api_key_in = input("  API key: ").strip()
-                tenant_in = input("  Tenant URL (e.g. https://demo.atlan.com): ").strip()
+                tenant_in = input(
+                    "  Tenant URL (e.g. https://demo.atlan.com): "
+                ).strip()
             except (KeyboardInterrupt, EOFError):
                 sys.exit(0)
             if not api_key_in or not tenant_in:
@@ -551,19 +603,26 @@ async def login(
     tokens = await auth.token_storage_adapter.get_tokens()
     if tokens and tokens.access_token:
         expires_at = time.time() + (tokens.expires_in or 300) - 30
-        _keyring_set("access_token", json.dumps({
-            "access_token": tokens.access_token,
-            "expires_at": expires_at,
-        }))
+        _keyring_set(
+            "access_token",
+            json.dumps(
+                {
+                    "access_token": tokens.access_token,
+                    "expires_at": expires_at,
+                }
+            ),
+        )
         if tokens.refresh_token:
             _keyring_set("refresh_token", tokens.refresh_token)
 
     _write_config({"auth_mode": "oauth", "client_id": "mcp-client"})
-    console.print(Panel(
-        f"  Mode    [cyan]oauth[/cyan]\n  Proxy   {_OAUTH_PROXY}/mcp\n\nRun [bold]atlan status[/bold] to check token validity.",
-        title="[green]● Login successful[/green]",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            f"  Mode    [cyan]oauth[/cyan]\n  Proxy   {_OAUTH_PROXY}/mcp\n\nRun [bold]atlan status[/bold] to check token validity.",
+            title="[green]● Login successful[/green]",
+            expand=False,
+        )
+    )
 
 
 @app.command
@@ -572,7 +631,9 @@ async def logout() -> None:
     _wipe_credentials()
     if _CONFIG_FILE.exists():
         _CONFIG_FILE.unlink()
-    console.print("[green]Logged out.[/green] Run [cyan]atlan login[/cyan] to authenticate again.")
+    console.print(
+        "[green]Logged out.[/green] Run [cyan]atlan login[/cyan] to authenticate again."
+    )
 
 
 @app.command
@@ -585,16 +646,21 @@ async def status() -> None:
 
     auth_mode = cfg.get("auth_mode", "unknown")
 
-
     if auth_mode == "api-key":
         tenant = cfg.get("tenant", "?")
         has_key = bool(_keyring_get("api_key"))
         if has_key:
             lines = [
-                f"  Mode    [cyan]api-key[/cyan]",
+                "  Mode    [cyan]api-key[/cyan]",
                 f"  Tenant  {tenant}",
             ]
-            console.print(Panel("\n".join(lines), title="[green]● Authenticated[/green]", expand=False))
+            console.print(
+                Panel(
+                    "\n".join(lines),
+                    title="[green]● Authenticated[/green]",
+                    expand=False,
+                )
+            )
         else:
             _err("Config present but API key missing. Run [cyan]atlan login[/cyan].")
             sys.exit(2)
@@ -608,21 +674,29 @@ async def status() -> None:
                 remaining = at_data.get("expires_at", 0) - time.time()
                 if remaining > 0:
                     lines = [
-                        f"  Mode    [cyan]oauth[/cyan]",
+                        "  Mode    [cyan]oauth[/cyan]",
                         f"  Proxy   {_OAUTH_PROXY}/mcp",
                         f"  Token   expires in [cyan]{int(remaining)}s[/cyan]",
                         f"  Refresh {'[green]present[/green]' if rt else '[red]missing[/red]'}",
                     ]
-                    console.print(Panel("\n".join(lines), title="[green]● Authenticated[/green]", expand=False))
+                    console.print(
+                        Panel(
+                            "\n".join(lines),
+                            title="[green]● Authenticated[/green]",
+                            expand=False,
+                        )
+                    )
                     return
             except Exception:
                 pass
         if rt:
-            console.print(Panel(
-                f"  Mode    [cyan]oauth[/cyan]\n  Token   [yellow]expired[/yellow] — will auto-refresh on next call\n  Refresh [green]present[/green]",
-                title="[yellow]● Token Expired[/yellow]",
-                expand=False,
-            ))
+            console.print(
+                Panel(
+                    "  Mode    [cyan]oauth[/cyan]\n  Token   [yellow]expired[/yellow] — will auto-refresh on next call\n  Refresh [green]present[/green]",
+                    title="[yellow]● Token Expired[/yellow]",
+                    expand=False,
+                )
+            )
         else:
             _err("Not authenticated. Run [cyan]atlan login[/cyan].")
             sys.exit(2)
@@ -635,73 +709,201 @@ async def status() -> None:
 # Tool commands (generated from server schema)
 # ---------------------------------------------------------------------------
 
-@app.command(name='semantic_search_tool')
+
+@app.command(name="semantic_search_tool")
 async def semantic_search_tool(
     *,
-    user_query: Annotated[str, cyclopts.Parameter(help="Natural language search query")],
-    limit: Annotated[str | None, cyclopts.Parameter(help="Max results to return (default 10, max 20)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"integer\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Max results to return (default 10, max 20)\"\n                          }")] = None,
-    offset: Annotated[str | None, cyclopts.Parameter(help="Skip first N results for pagination\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"integer\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Skip first N results for pagination\"\n                          }")] = None,
-    include_readme: Annotated[bool, cyclopts.Parameter(help="Set true to fetch and return README content for each asset. Only enable when the user explicitly asks for README/documentation content — adds latency.")] = False,
+    user_query: Annotated[
+        str, cyclopts.Parameter(help="Natural language search query")
+    ],
+    limit: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Max results to return (default 10, max 20)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "integer"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Max results to return (default 10, max 20)"\n                          }'
+        ),
+    ] = None,
+    offset: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Skip first N results for pagination\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "integer"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Skip first N results for pagination"\n                          }'
+        ),
+    ] = None,
+    include_readme: Annotated[
+        bool,
+        cyclopts.Parameter(
+            help="Set true to fetch and return README content for each asset. Only enable when the user explicitly asks for README/documentation content — adds latency."
+        ),
+    ] = False,
 ) -> None:
-    '''PREFERRED search tool — use this FIRST for any discovery or lookup query. Handles natural language, fuzzy matching, typos, abbreviations, multi-word names, and glossary term lookups. Covers all asset types: tables, columns, views, schemas, dashboards, glossary terms, categories, domains, data products, and more. NOT for users or groups — use resolve_metadata_tool for those. Only fall back to search_assets_tool if you need exact attribute filtering, aggregations, or structured conditions that semantic search cannot express. This tool accepts ONLY: user_query (required), limit, offset, include_readme. It does NOT accept asset_type, conditions, search_query, or any other parameters.'''
+    """PREFERRED search tool — use this FIRST for any discovery or lookup query. Handles natural language, fuzzy matching, typos, abbreviations, multi-word names, and glossary term lookups. Covers all asset types: tables, columns, views, schemas, dashboards, glossary terms, categories, domains, data products, and more. NOT for users or groups — use resolve_metadata_tool for those. Only fall back to search_assets_tool if you need exact attribute filtering, aggregations, or structured conditions that semantic search cannot express. This tool accepts ONLY: user_query (required), limit, offset, include_readme. It does NOT accept asset_type, conditions, search_query, or any other parameters."""
     limit_parsed = _maybe_json(limit)
     offset_parsed = _maybe_json(offset)
 
-    await _call_tool('semantic_search_tool', {'user_query': user_query, 'limit': limit_parsed, 'offset': offset_parsed, 'include_readme': include_readme})
+    await _call_tool(
+        "semantic_search_tool",
+        {
+            "user_query": user_query,
+            "limit": limit_parsed,
+            "offset": offset_parsed,
+            "include_readme": include_readme,
+        },
+    )
 
 
-@app.command(name='query_deep_sql_tool')
+@app.command(name="query_deep_sql_tool")
 async def query_deep_sql_tool(
     *,
-    sql: Annotated[str, cyclopts.Parameter(help="SELECT SQL query to execute against the Gold Layer.")],
+    sql: Annotated[
+        str,
+        cyclopts.Parameter(help="SELECT SQL query to execute against the Gold Layer."),
+    ],
     limit: Annotated[int, cyclopts.Parameter(help="Max rows to return.")] = 50,
     offset: Annotated[int, cyclopts.Parameter(help="Row offset for pagination.")] = 0,
 ) -> None:
-    '''Execute Gold Layer SQL for pagination in the deep query results widget. Internal tool.'''
-    await _call_tool('query_deep_sql_tool', {'sql': sql, 'limit': limit, 'offset': offset})
+    """Execute Gold Layer SQL for pagination in the deep query results widget. Internal tool."""
+    await _call_tool(
+        "query_deep_sql_tool", {"sql": sql, "limit": limit, "offset": offset}
+    )
 
 
-@app.command(name='search_assets_tool')
+@app.command(name="search_assets_tool")
 async def search_assets_tool(
     *,
-    conditions: Annotated[str | None, cyclopts.Parameter(help="Match filters. Format: {attr: value} or {attr: {operator, value}}. For glossary terms in a category: {\"__categories\": \"<qn>\"} (direct only) or {\"__categories\": {\"operator\": \"within\", \"value\": [qn1, qn2, ...]}} (multiple categories including subcategories). DO NOT use relationship-type attributes (e.g. meanings, atlanTags, parentCategory, seeAlso) as condition keys — they are not searchable. Use term_guids to filter by linked glossary terms and tags to filter by Atlan tags.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Match filters. Format: {attr: value} or {attr: {operator, value}}. For glossary terms in a category: {\\\"__categories\\\": \\\"<qn>\\\"} (direct only) or {\\\"__categories\\\": {\\\"operator\\\": \\\"within\\\", \\\"value\\\": [qn1, qn2, ...]}} (multiple categories including subcategories). DO NOT use relationship-type attributes (e.g. meanings, atlanTags, parentCategory, seeAlso) as condition keys — they are not searchable. Use term_guids to filter by linked glossary terms and tags to filter by Atlan tags.\",\n                            \"examples\": [\n                              {\n                                \"name\": \"customers\"\n                              },\n                              {\n                                \"name\": {\n                                  \"operator\": \"startswith\",\n                                  \"value\": \"dim_\"\n                                }\n                              },\n                              {\n                                \"certificate_status\": \"VERIFIED\"\n                              },\n                              {\n                                \"__typeName\": \"Table\"\n                              },\n                              {\n                                \"__categories\": \"<categoryQualifiedName>\"\n                              },\n                              {\n                                \"__categories\": {\n                                  \"operator\": \"within\",\n                                  \"value\": [\n                                    \"<parentCatQN>\",\n                                    \"<childCatQN1>\",\n                                    \"<childCatQN2>\"\n                                  ]\n                                }\n                              }\n                            ]\n                          }")] = None,
-    negative_conditions: Annotated[str | None, cyclopts.Parameter(help="Exclusion filters (same format as conditions)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Exclusion filters (same format as conditions)\",\n                            \"examples\": [\n                              {\n                                \"certificate_status\": \"DEPRECATED\"\n                              },\n                              {\n                                \"name\": {\n                                  \"operator\": \"contains\",\n                                  \"value\": \"test\"\n                                }\n                              }\n                            ]\n                          }")] = None,
-    some_conditions: Annotated[str | None, cyclopts.Parameter(help="OR-style filters requiring min_somes matches\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"OR-style filters requiring min_somes matches\",\n                            \"examples\": [\n                              {\n                                \"owner_groups\": \"admins\",\n                                \"owner_users\": \"user1\"\n                              }\n                            ]\n                          }")] = None,
-    min_somes: Annotated[int, cyclopts.Parameter(help="Minimum some_conditions to match")] = 1,
-    include_attributes: Annotated[str | None, cyclopts.Parameter(help="Attributes to return (e.g., owner_users, columns, readme). For category hierarchy traversal include parentCategory and qualifiedName.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Attributes to return (e.g., owner_users, columns, readme). For category hierarchy traversal include parentCategory and qualifiedName.\"\n                          }")] = None,
-    asset_type: Annotated[str | None, cyclopts.Parameter(help="Asset type(s) to search. Single type or list of types.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"enum\": [\n                                  \"Table\",\n                                  \"Column\",\n                                  \"View\",\n                                  \"Database\",\n                                  \"Schema\",\n                                  \"MaterializedView\",\n                                  \"AtlasGlossary\",\n                                  \"AtlasGlossaryTerm\",\n                                  \"AtlasGlossaryCategory\",\n                                  \"Connection\",\n                                  \"Process\",\n                                  \"Query\",\n                                  \"Dashboard\",\n                                  \"Report\",\n                                  \"DataDomain\",\n                                  \"DataProduct\",\n                                  \"PowerBIReport\",\n                                  \"PowerBIDataset\",\n                                  \"PowerBIDashboard\",\n                                  \"PowerBIWorkspace\",\n                                  \"PowerBIDataflow\",\n                                  \"PowerBITable\",\n                                  \"PowerBIMeasure\",\n                                  \"PowerBIColumn\",\n                                  \"PowerBIPage\",\n                                  \"DbtModel\",\n                                  \"DbtTest\",\n                                  \"DbtSource\",\n                                  \"DbtMetric\",\n                                  \"DbtModelColumn\",\n                                  \"TableauDashboard\",\n                                  \"TableauCalculatedField\",\n                                  \"TableauWorkbook\",\n                                  \"TableauDatasource\",\n                                  \"TableauProject\",\n                                  \"TableauWorksheet\",\n                                  \"TableauSite\",\n                                  \"TableauFlow\",\n                                  \"LookerDashboard\",\n                                  \"LookerExplore\",\n                                  \"LookerLook\",\n                                  \"LookerView\",\n                                  \"LookerModel\",\n                                  \"LookerProject\",\n                                  \"LookerQuery\",\n                                  \"LookerFolder\",\n                                  \"LookerTile\",\n                                  \"LookerField\",\n                                  \"SigmaWorkbook\",\n                                  \"SigmaDataset\",\n                                  \"SigmaDataElement\",\n                                  \"SigmaPage\",\n                                  \"ThoughtspotLiveboard\",\n                                  \"ThoughtspotAnswer\",\n                                  \"ThoughtspotWorksheet\",\n                                  \"MetabaseDashboard\",\n                                  \"MetabaseQuestion\",\n                                  \"MetabaseCollection\",\n                                  \"QuickSightDashboard\",\n                                  \"QuickSightDataset\",\n                                  \"QuickSightAnalysis\",\n                                  \"PresetDashboard\",\n                                  \"PresetChart\",\n                                  \"PresetDataset\",\n                                  \"MicroStrategyDossier\",\n                                  \"MicroStrategyReport\",\n                                  \"ModeReport\",\n                                  \"ModeQuery\",\n                                  \"ModeWorkspace\",\n                                  \"DomoDashboard\",\n                                  \"DomoDataset\",\n                                  \"DomoCard\",\n                                  \"SisenseDashboard\",\n                                  \"SisenseDatamodel\",\n                                  \"RedashDashboard\",\n                                  \"RedashQuery\",\n                                  \"QlikApp\",\n                                  \"QlikDataset\",\n                                  \"QlikSheet\",\n                                  \"QlikSpace\"\n                                ],\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"items\": {\n                                  \"enum\": [\n                                    \"Table\",\n                                    \"Column\",\n                                    \"View\",\n                                    \"Database\",\n                                    \"Schema\",\n                                    \"MaterializedView\",\n                                    \"AtlasGlossary\",\n                                    \"AtlasGlossaryTerm\",\n                                    \"AtlasGlossaryCategory\",\n                                    \"Connection\",\n                                    \"Process\",\n                                    \"Query\",\n                                    \"Dashboard\",\n                                    \"Report\",\n                                    \"DataDomain\",\n                                    \"DataProduct\",\n                                    \"PowerBIReport\",\n                                    \"PowerBIDataset\",\n                                    \"PowerBIDashboard\",\n                                    \"PowerBIWorkspace\",\n                                    \"PowerBIDataflow\",\n                                    \"PowerBITable\",\n                                    \"PowerBIMeasure\",\n                                    \"PowerBIColumn\",\n                                    \"PowerBIPage\",\n                                    \"DbtModel\",\n                                    \"DbtTest\",\n                                    \"DbtSource\",\n                                    \"DbtMetric\",\n                                    \"DbtModelColumn\",\n                                    \"TableauDashboard\",\n                                    \"TableauCalculatedField\",\n                                    \"TableauWorkbook\",\n                                    \"TableauDatasource\",\n                                    \"TableauProject\",\n                                    \"TableauWorksheet\",\n                                    \"TableauSite\",\n                                    \"TableauFlow\",\n                                    \"LookerDashboard\",\n                                    \"LookerExplore\",\n                                    \"LookerLook\",\n                                    \"LookerView\",\n                                    \"LookerModel\",\n                                    \"LookerProject\",\n                                    \"LookerQuery\",\n                                    \"LookerFolder\",\n                                    \"LookerTile\",\n                                    \"LookerField\",\n                                    \"SigmaWorkbook\",\n                                    \"SigmaDataset\",\n                                    \"SigmaDataElement\",\n                                    \"SigmaPage\",\n                                    \"ThoughtspotLiveboard\",\n                                    \"ThoughtspotAnswer\",\n                                    \"ThoughtspotWorksheet\",\n                                    \"MetabaseDashboard\",\n                                    \"MetabaseQuestion\",\n                                    \"MetabaseCollection\",\n                                    \"QuickSightDashboard\",\n                                    \"QuickSightDataset\",\n                                    \"QuickSightAnalysis\",\n                                    \"PresetDashboard\",\n                                    \"PresetChart\",\n                                    \"PresetDataset\",\n                                    \"MicroStrategyDossier\",\n                                    \"MicroStrategyReport\",\n                                    \"ModeReport\",\n                                    \"ModeQuery\",\n                                    \"ModeWorkspace\",\n                                    \"DomoDashboard\",\n                                    \"DomoDataset\",\n                                    \"DomoCard\",\n                                    \"SisenseDashboard\",\n                                    \"SisenseDatamodel\",\n                                    \"RedashDashboard\",\n                                    \"RedashQuery\",\n                                    \"QlikApp\",\n                                    \"QlikDataset\",\n                                    \"QlikSheet\",\n                                    \"QlikSpace\"\n                                  ],\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Asset type(s) to search. Single type or list of types.\"\n                          }")] = None,
-    glossary_qualified_name: Annotated[str | None, cyclopts.Parameter(help="Glossary qualifiedName to scope search to terms/categories within that glossary\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Glossary qualifiedName to scope search to terms/categories within that glossary\"\n                          }")] = None,
-    include_archived: Annotated[bool, cyclopts.Parameter(help="Include archived/deleted assets")] = False,
-    limit: Annotated[int, cyclopts.Parameter(help="Max results to return (default 10, max 20)")] = 10,
+    conditions: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Match filters. Format: {attr: value} or {attr: {operator, value}}. For glossary terms in a category: {"__categories": "<qn>"} (direct only) or {"__categories": {"operator": "within", "value": [qn1, qn2, ...]}} (multiple categories including subcategories). DO NOT use relationship-type attributes (e.g. meanings, atlanTags, parentCategory, seeAlso) as condition keys — they are not searchable. Use term_guids to filter by linked glossary terms and tags to filter by Atlan tags.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Match filters. Format: {attr: value} or {attr: {operator, value}}. For glossary terms in a category: {\\"__categories\\": \\"<qn>\\"} (direct only) or {\\"__categories\\": {\\"operator\\": \\"within\\", \\"value\\": [qn1, qn2, ...]}} (multiple categories including subcategories). DO NOT use relationship-type attributes (e.g. meanings, atlanTags, parentCategory, seeAlso) as condition keys — they are not searchable. Use term_guids to filter by linked glossary terms and tags to filter by Atlan tags.",\n                            "examples": [\n                              {\n                                "name": "customers"\n                              },\n                              {\n                                "name": {\n                                  "operator": "startswith",\n                                  "value": "dim_"\n                                }\n                              },\n                              {\n                                "certificate_status": "VERIFIED"\n                              },\n                              {\n                                "__typeName": "Table"\n                              },\n                              {\n                                "__categories": "<categoryQualifiedName>"\n                              },\n                              {\n                                "__categories": {\n                                  "operator": "within",\n                                  "value": [\n                                    "<parentCatQN>",\n                                    "<childCatQN1>",\n                                    "<childCatQN2>"\n                                  ]\n                                }\n                              }\n                            ]\n                          }'
+        ),
+    ] = None,
+    negative_conditions: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Exclusion filters (same format as conditions)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Exclusion filters (same format as conditions)",\n                            "examples": [\n                              {\n                                "certificate_status": "DEPRECATED"\n                              },\n                              {\n                                "name": {\n                                  "operator": "contains",\n                                  "value": "test"\n                                }\n                              }\n                            ]\n                          }'
+        ),
+    ] = None,
+    some_conditions: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='OR-style filters requiring min_somes matches\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "OR-style filters requiring min_somes matches",\n                            "examples": [\n                              {\n                                "owner_groups": "admins",\n                                "owner_users": "user1"\n                              }\n                            ]\n                          }'
+        ),
+    ] = None,
+    min_somes: Annotated[
+        int, cyclopts.Parameter(help="Minimum some_conditions to match")
+    ] = 1,
+    include_attributes: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Attributes to return (e.g., owner_users, columns, readme). For category hierarchy traversal include parentCategory and qualifiedName.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Attributes to return (e.g., owner_users, columns, readme). For category hierarchy traversal include parentCategory and qualifiedName."\n                          }'
+        ),
+    ] = None,
+    asset_type: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Asset type(s) to search. Single type or list of types.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "enum": [\n                                  "Table",\n                                  "Column",\n                                  "View",\n                                  "Database",\n                                  "Schema",\n                                  "MaterializedView",\n                                  "AtlasGlossary",\n                                  "AtlasGlossaryTerm",\n                                  "AtlasGlossaryCategory",\n                                  "Connection",\n                                  "Process",\n                                  "Query",\n                                  "Dashboard",\n                                  "Report",\n                                  "DataDomain",\n                                  "DataProduct",\n                                  "PowerBIReport",\n                                  "PowerBIDataset",\n                                  "PowerBIDashboard",\n                                  "PowerBIWorkspace",\n                                  "PowerBIDataflow",\n                                  "PowerBITable",\n                                  "PowerBIMeasure",\n                                  "PowerBIColumn",\n                                  "PowerBIPage",\n                                  "DbtModel",\n                                  "DbtTest",\n                                  "DbtSource",\n                                  "DbtMetric",\n                                  "DbtModelColumn",\n                                  "TableauDashboard",\n                                  "TableauCalculatedField",\n                                  "TableauWorkbook",\n                                  "TableauDatasource",\n                                  "TableauProject",\n                                  "TableauWorksheet",\n                                  "TableauSite",\n                                  "TableauFlow",\n                                  "LookerDashboard",\n                                  "LookerExplore",\n                                  "LookerLook",\n                                  "LookerView",\n                                  "LookerModel",\n                                  "LookerProject",\n                                  "LookerQuery",\n                                  "LookerFolder",\n                                  "LookerTile",\n                                  "LookerField",\n                                  "SigmaWorkbook",\n                                  "SigmaDataset",\n                                  "SigmaDataElement",\n                                  "SigmaPage",\n                                  "ThoughtspotLiveboard",\n                                  "ThoughtspotAnswer",\n                                  "ThoughtspotWorksheet",\n                                  "MetabaseDashboard",\n                                  "MetabaseQuestion",\n                                  "MetabaseCollection",\n                                  "QuickSightDashboard",\n                                  "QuickSightDataset",\n                                  "QuickSightAnalysis",\n                                  "PresetDashboard",\n                                  "PresetChart",\n                                  "PresetDataset",\n                                  "MicroStrategyDossier",\n                                  "MicroStrategyReport",\n                                  "ModeReport",\n                                  "ModeQuery",\n                                  "ModeWorkspace",\n                                  "DomoDashboard",\n                                  "DomoDataset",\n                                  "DomoCard",\n                                  "SisenseDashboard",\n                                  "SisenseDatamodel",\n                                  "RedashDashboard",\n                                  "RedashQuery",\n                                  "QlikApp",\n                                  "QlikDataset",\n                                  "QlikSheet",\n                                  "QlikSpace"\n                                ],\n                                "type": "string"\n                              },\n                              {\n                                "items": {\n                                  "enum": [\n                                    "Table",\n                                    "Column",\n                                    "View",\n                                    "Database",\n                                    "Schema",\n                                    "MaterializedView",\n                                    "AtlasGlossary",\n                                    "AtlasGlossaryTerm",\n                                    "AtlasGlossaryCategory",\n                                    "Connection",\n                                    "Process",\n                                    "Query",\n                                    "Dashboard",\n                                    "Report",\n                                    "DataDomain",\n                                    "DataProduct",\n                                    "PowerBIReport",\n                                    "PowerBIDataset",\n                                    "PowerBIDashboard",\n                                    "PowerBIWorkspace",\n                                    "PowerBIDataflow",\n                                    "PowerBITable",\n                                    "PowerBIMeasure",\n                                    "PowerBIColumn",\n                                    "PowerBIPage",\n                                    "DbtModel",\n                                    "DbtTest",\n                                    "DbtSource",\n                                    "DbtMetric",\n                                    "DbtModelColumn",\n                                    "TableauDashboard",\n                                    "TableauCalculatedField",\n                                    "TableauWorkbook",\n                                    "TableauDatasource",\n                                    "TableauProject",\n                                    "TableauWorksheet",\n                                    "TableauSite",\n                                    "TableauFlow",\n                                    "LookerDashboard",\n                                    "LookerExplore",\n                                    "LookerLook",\n                                    "LookerView",\n                                    "LookerModel",\n                                    "LookerProject",\n                                    "LookerQuery",\n                                    "LookerFolder",\n                                    "LookerTile",\n                                    "LookerField",\n                                    "SigmaWorkbook",\n                                    "SigmaDataset",\n                                    "SigmaDataElement",\n                                    "SigmaPage",\n                                    "ThoughtspotLiveboard",\n                                    "ThoughtspotAnswer",\n                                    "ThoughtspotWorksheet",\n                                    "MetabaseDashboard",\n                                    "MetabaseQuestion",\n                                    "MetabaseCollection",\n                                    "QuickSightDashboard",\n                                    "QuickSightDataset",\n                                    "QuickSightAnalysis",\n                                    "PresetDashboard",\n                                    "PresetChart",\n                                    "PresetDataset",\n                                    "MicroStrategyDossier",\n                                    "MicroStrategyReport",\n                                    "ModeReport",\n                                    "ModeQuery",\n                                    "ModeWorkspace",\n                                    "DomoDashboard",\n                                    "DomoDataset",\n                                    "DomoCard",\n                                    "SisenseDashboard",\n                                    "SisenseDatamodel",\n                                    "RedashDashboard",\n                                    "RedashQuery",\n                                    "QlikApp",\n                                    "QlikDataset",\n                                    "QlikSheet",\n                                    "QlikSpace"\n                                  ],\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Asset type(s) to search. Single type or list of types."\n                          }'
+        ),
+    ] = None,
+    glossary_qualified_name: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Glossary qualifiedName to scope search to terms/categories within that glossary\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Glossary qualifiedName to scope search to terms/categories within that glossary"\n                          }'
+        ),
+    ] = None,
+    include_archived: Annotated[
+        bool, cyclopts.Parameter(help="Include archived/deleted assets")
+    ] = False,
+    limit: Annotated[
+        int, cyclopts.Parameter(help="Max results to return (default 10, max 20)")
+    ] = 10,
     offset: Annotated[int, cyclopts.Parameter(help="Pagination offset")] = 0,
-    sort_by: Annotated[str | None, cyclopts.Parameter(help="Single field to sort by\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Single field to sort by\"\n                          }")] = None,
-    sort_order: Annotated[str, cyclopts.Parameter(help="Sort order")] = 'ASC',
-    sort: Annotated[str | None, cyclopts.Parameter(help="Multi-field sort\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Multi-field sort\",\n                            \"examples\": [\n                              [\n                                {\n                                  \"field\": \"name\",\n                                  \"order\": \"ASC\"\n                                }\n                              ],\n                              [\n                                {\n                                  \"field\": \"createTime\",\n                                  \"order\": \"DESC\"\n                                },\n                                {\n                                  \"field\": \"name\",\n                                  \"order\": \"ASC\"\n                                }\n                              ]\n                            ]\n                          }")] = None,
-    connection_qualified_name: Annotated[str | None, cyclopts.Parameter(help="Filter by connection (e.g., default/snowflake/123)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Filter by connection (e.g., default/snowflake/123)\"\n                          }")] = None,
-    tags: Annotated[str | None, cyclopts.Parameter(help="Filter by Atlan tag names\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Filter by Atlan tag names\"\n                          }")] = None,
-    directly_tagged: Annotated[bool, cyclopts.Parameter(help="Only directly tagged (not inherited)")] = True,
-    domain_guids: Annotated[str | None, cyclopts.Parameter(help="Filter by domain GUIDs. For DataProduct/DataDomain asset types, this recursively includes all sub-domains — e.g. passing a parent domain GUID returns products under that domain AND all its sub-domains at any depth.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Filter by domain GUIDs. For DataProduct/DataDomain asset types, this recursively includes all sub-domains — e.g. passing a parent domain GUID returns products under that domain AND all its sub-domains at any depth.\"\n                          }")] = None,
-    date_range: Annotated[str | None, cyclopts.Parameter(help="Date filters\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Date filters\",\n                            \"examples\": [\n                              {\n                                \"createTime\": {\n                                  \"gte\": 1704067200000\n                                }\n                              },\n                              {\n                                \"updateTime\": {\n                                  \"gte\": 1704067200000,\n                                  \"lte\": 1706745600000\n                                }\n                              }\n                            ]\n                          }")] = None,
-    guids: Annotated[str | None, cyclopts.Parameter(help="Filter by specific asset GUIDs\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Filter by specific asset GUIDs\"\n                          }")] = None,
-    term_guids: Annotated[str | None, cyclopts.Parameter(help="Filter by assigned glossary term GUIDs\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Filter by assigned glossary term GUIDs\"\n                          }")] = None,
-    aggregations: Annotated[str | None, cyclopts.Parameter(help="Aggregations to compute. Use __meanings aggregation to find which glossary terms are linked to assets.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Aggregations to compute. Use __meanings aggregation to find which glossary terms are linked to assets.\",\n                            \"examples\": [\n                              {\n                                \"by_type\": {\n                                  \"field\": \"__typeName\",\n                                  \"size\": 10,\n                                  \"type\": \"terms\"\n                                }\n                              },\n                              {\n                                \"by_owner\": {\n                                  \"field\": \"ownerUsers\",\n                                  \"size\": 20,\n                                  \"type\": \"terms\"\n                                }\n                              },\n                              {\n                                \"linked_terms\": {\n                                  \"field\": \"__meanings\",\n                                  \"size\": 500\n                                }\n                              }\n                            ]\n                          }")] = None,
-    count_only: Annotated[bool, cyclopts.Parameter(help="Return only count, no results")] = False,
-    scroll: Annotated[bool, cyclopts.Parameter(help="Enable scroll mode for >10k results")] = False,
-    include_readme: Annotated[bool, cyclopts.Parameter(help="Set true to fetch and return README content for each asset. Only enable when the user explicitly asks for README/documentation content — adds latency.")] = False,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    sort_by: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Single field to sort by\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Single field to sort by"\n                          }'
+        ),
+    ] = None,
+    sort_order: Annotated[str, cyclopts.Parameter(help="Sort order")] = "ASC",
+    sort: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Multi-field sort\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Multi-field sort",\n                            "examples": [\n                              [\n                                {\n                                  "field": "name",\n                                  "order": "ASC"\n                                }\n                              ],\n                              [\n                                {\n                                  "field": "createTime",\n                                  "order": "DESC"\n                                },\n                                {\n                                  "field": "name",\n                                  "order": "ASC"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ] = None,
+    connection_qualified_name: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Filter by connection (e.g., default/snowflake/123)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Filter by connection (e.g., default/snowflake/123)"\n                          }'
+        ),
+    ] = None,
+    tags: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Filter by Atlan tag names\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Filter by Atlan tag names"\n                          }'
+        ),
+    ] = None,
+    directly_tagged: Annotated[
+        bool, cyclopts.Parameter(help="Only directly tagged (not inherited)")
+    ] = True,
+    domain_guids: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Filter by domain GUIDs. For DataProduct/DataDomain asset types, this recursively includes all sub-domains — e.g. passing a parent domain GUID returns products under that domain AND all its sub-domains at any depth.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Filter by domain GUIDs. For DataProduct/DataDomain asset types, this recursively includes all sub-domains — e.g. passing a parent domain GUID returns products under that domain AND all its sub-domains at any depth."\n                          }'
+        ),
+    ] = None,
+    date_range: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Date filters\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Date filters",\n                            "examples": [\n                              {\n                                "createTime": {\n                                  "gte": 1704067200000\n                                }\n                              },\n                              {\n                                "updateTime": {\n                                  "gte": 1704067200000,\n                                  "lte": 1706745600000\n                                }\n                              }\n                            ]\n                          }'
+        ),
+    ] = None,
+    guids: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Filter by specific asset GUIDs\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Filter by specific asset GUIDs"\n                          }'
+        ),
+    ] = None,
+    term_guids: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Filter by assigned glossary term GUIDs\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Filter by assigned glossary term GUIDs"\n                          }'
+        ),
+    ] = None,
+    aggregations: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Aggregations to compute. Use __meanings aggregation to find which glossary terms are linked to assets.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Aggregations to compute. Use __meanings aggregation to find which glossary terms are linked to assets.",\n                            "examples": [\n                              {\n                                "by_type": {\n                                  "field": "__typeName",\n                                  "size": 10,\n                                  "type": "terms"\n                                }\n                              },\n                              {\n                                "by_owner": {\n                                  "field": "ownerUsers",\n                                  "size": 20,\n                                  "type": "terms"\n                                }\n                              },\n                              {\n                                "linked_terms": {\n                                  "field": "__meanings",\n                                  "size": 500\n                                }\n                              }\n                            ]\n                          }'
+        ),
+    ] = None,
+    count_only: Annotated[
+        bool, cyclopts.Parameter(help="Return only count, no results")
+    ] = False,
+    scroll: Annotated[
+        bool, cyclopts.Parameter(help="Enable scroll mode for >10k results")
+    ] = False,
+    include_readme: Annotated[
+        bool,
+        cyclopts.Parameter(
+            help="Set true to fetch and return README content for each asset. Only enable when the user explicitly asks for README/documentation content — adds latency."
+        ),
+    ] = False,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''BACKUP search tool — only use when the primary search tools (start_deep_query_tool or semantic_search_tool) cannot express what you need. Provides structured asset search with exact filters, conditions, aggregations, sorting, and pagination. Use this ONLY for precise attribute filters (e.g. certificateStatus, connectorName), term_guids, tags, domain_guids, count_only, or aggregations that the primary tools don\'t support.
+    """BACKUP search tool — only use when the primary search tools (start_deep_query_tool or semantic_search_tool) cannot express what you need. Provides structured asset search with exact filters, conditions, aggregations, sorting, and pagination. Use this ONLY for precise attribute filters (e.g. certificateStatus, connectorName), term_guids, tags, domain_guids, count_only, or aggregations that the primary tools don\'t support.
 
-LINKED/UNLINKED TERMS — MANDATORY 2-CALL FLOW:
-When the user asks about linked, unlinked, orphan, or unused glossary terms you MUST make TWO separate calls:
-Call 1: Get terms — search_assets(asset_type="AtlasGlossaryTerm", glossary_qualified_name="<qn>", include_attributes=["qualifiedName","name"], limit=100)
-Call 2: Get linked term QNs — search_assets(aggregations={"linked_terms": {"field": "__meanings", "size": 500}}, limit=1) — NO asset_type, NO glossary filter. This aggregates __meanings across ALL assets in the catalog.
-Then DIFF: terms from Call 1 whose qualifiedName appears in Call 2\'s aggregation buckets are LINKED. Terms absent are UNLINKED.
-IMPORTANT: Call 2 must NOT have asset_type or glossary_qualified_name filters — __meanings lives on regular assets (Tables, Columns), not on terms. Scoping Call 2 to terms returns empty buckets.
+    LINKED/UNLINKED TERMS — MANDATORY 2-CALL FLOW:
+    When the user asks about linked, unlinked, orphan, or unused glossary terms you MUST make TWO separate calls:
+    Call 1: Get terms — search_assets(asset_type="AtlasGlossaryTerm", glossary_qualified_name="<qn>", include_attributes=["qualifiedName","name"], limit=100)
+    Call 2: Get linked term QNs — search_assets(aggregations={"linked_terms": {"field": "__meanings", "size": 500}}, limit=1) — NO asset_type, NO glossary filter. This aggregates __meanings across ALL assets in the catalog.
+    Then DIFF: terms from Call 1 whose qualifiedName appears in Call 2\'s aggregation buckets are LINKED. Terms absent are UNLINKED.
+    IMPORTANT: Call 2 must NOT have asset_type or glossary_qualified_name filters — __meanings lives on regular assets (Tables, Columns), not on terms. Scoping Call 2 to terms returns empty buckets.
 
-GLOSSARY TERM WORKFLOWS:
-- Filter terms by category: conditions={"__categories": "<categoryQualifiedName>"}. NOTE: __categories only stores the DIRECT parent category. To include subcategories, first fetch all categories in the glossary (asset_type="AtlasGlossaryCategory", include_attributes=["qualifiedName","parentCategory"]), walk the parentCategory tree to find all descendants, then use conditions={"__categories": {"operator": "within", "value": [allDescendantQNs]}}.
-NOT for users/groups — use resolve_metadata_tool for those.'''
+    GLOSSARY TERM WORKFLOWS:
+    - Filter terms by category: conditions={"__categories": "<categoryQualifiedName>"}. NOTE: __categories only stores the DIRECT parent category. To include subcategories, first fetch all categories in the glossary (asset_type="AtlasGlossaryCategory", include_attributes=["qualifiedName","parentCategory"]), walk the parentCategory tree to find all descendants, then use conditions={"__categories": {"operator": "within", "value": [allDescendantQNs]}}.
+    NOT for users/groups — use resolve_metadata_tool for those."""
     conditions_parsed = _maybe_json(conditions)
     negative_conditions_parsed = _maybe_json(negative_conditions)
     some_conditions_parsed = _maybe_json(some_conditions)
@@ -715,379 +917,1005 @@ NOT for users/groups — use resolve_metadata_tool for those.'''
     term_guids_parsed = _maybe_json(term_guids)
     aggregations_parsed = _maybe_json(aggregations)
 
-    await _call_tool('search_assets_tool', {'conditions': conditions_parsed, 'negative_conditions': negative_conditions_parsed, 'some_conditions': some_conditions_parsed, 'min_somes': min_somes, 'include_attributes': include_attributes_parsed, 'asset_type': asset_type_parsed, 'glossary_qualified_name': glossary_qualified_name, 'include_archived': include_archived, 'limit': limit, 'offset': offset, 'sort_by': sort_by, 'sort_order': sort_order, 'sort': sort_parsed, 'connection_qualified_name': connection_qualified_name, 'tags': tags_parsed, 'directly_tagged': directly_tagged, 'domain_guids': domain_guids_parsed, 'date_range': date_range_parsed, 'guids': guids_parsed, 'term_guids': term_guids_parsed, 'aggregations': aggregations_parsed, 'count_only': count_only, 'scroll': scroll, 'include_readme': include_readme, 'user_query': user_query})
+    await _call_tool(
+        "search_assets_tool",
+        {
+            "conditions": conditions_parsed,
+            "negative_conditions": negative_conditions_parsed,
+            "some_conditions": some_conditions_parsed,
+            "min_somes": min_somes,
+            "include_attributes": include_attributes_parsed,
+            "asset_type": asset_type_parsed,
+            "glossary_qualified_name": glossary_qualified_name,
+            "include_archived": include_archived,
+            "limit": limit,
+            "offset": offset,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "sort": sort_parsed,
+            "connection_qualified_name": connection_qualified_name,
+            "tags": tags_parsed,
+            "directly_tagged": directly_tagged,
+            "domain_guids": domain_guids_parsed,
+            "date_range": date_range_parsed,
+            "guids": guids_parsed,
+            "term_guids": term_guids_parsed,
+            "aggregations": aggregations_parsed,
+            "count_only": count_only,
+            "scroll": scroll,
+            "include_readme": include_readme,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='traverse_lineage_tool')
+@app.command(name="traverse_lineage_tool")
 async def traverse_lineage_tool(
     *,
     guid: Annotated[str, cyclopts.Parameter(help="GUID of the starting asset")],
     direction: Annotated[str, cyclopts.Parameter(help="Lineage traversal direction")],
-    depth: Annotated[int, cyclopts.Parameter(help="Maximum depth to traverse")] = 1000000,
-    size: Annotated[int, cyclopts.Parameter(help="Maximum number of data assets to show in the lineage graph. The widget supports progressive loading — users can click expand on leaf nodes to load more. Keep this small (5-15). Max 20.")] = 10,
-    immediate_neighbors: Annotated[bool, cyclopts.Parameter(help="Only return immediate neighbors (one hop)")] = True,
-    offset: Annotated[int, cyclopts.Parameter(help="Pagination offset for relations (default 0)")] = 0,
-    include_attributes: Annotated[str | None, cyclopts.Parameter(help="Additional attributes to include\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Additional attributes to include\"\n                          }")] = None,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    depth: Annotated[
+        int, cyclopts.Parameter(help="Maximum depth to traverse")
+    ] = 1000000,
+    size: Annotated[
+        int,
+        cyclopts.Parameter(
+            help="Maximum number of data assets to show in the lineage graph. The widget supports progressive loading — users can click expand on leaf nodes to load more. Keep this small (5-15). Max 20."
+        ),
+    ] = 10,
+    immediate_neighbors: Annotated[
+        bool, cyclopts.Parameter(help="Only return immediate neighbors (one hop)")
+    ] = True,
+    offset: Annotated[
+        int, cyclopts.Parameter(help="Pagination offset for relations (default 0)")
+    ] = 0,
+    include_attributes: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Additional attributes to include\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Additional attributes to include"\n                          }'
+        ),
+    ] = None,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Traverse upstream or downstream lineage from an asset.
+    """Traverse upstream or downstream lineage from an asset.
 
-Returns a widget-ready graph with data assets connected by lineage edges.
-Process connector nodes are bridged in the graph (A -> B instead of
-A -> Process -> B); their entity data is exposed in the ``process_map``
-field and each relation carries ``via_process_guids`` identifying which
-ETL/transformation processes produced the connection. The lineage widget
-supports progressive loading — leaf nodes show an expand button that
-fetches deeper lineage on demand. Keep size small (5-15) for responsive
-results; do NOT request all lineage at once.'''
+    Returns a widget-ready graph with data assets connected by lineage edges.
+    Process connector nodes are bridged in the graph (A -> B instead of
+    A -> Process -> B); their entity data is exposed in the ``process_map``
+    field and each relation carries ``via_process_guids`` identifying which
+    ETL/transformation processes produced the connection. The lineage widget
+    supports progressive loading — leaf nodes show an expand button that
+    fetches deeper lineage on demand. Keep size small (5-15) for responsive
+    results; do NOT request all lineage at once."""
 
-    await _call_tool('traverse_lineage_tool', {'guid': guid, 'direction': direction, 'depth': depth, 'size': size, 'immediate_neighbors': immediate_neighbors, 'offset': offset, 'include_attributes': include_attributes, 'user_query': user_query})
+    await _call_tool(
+        "traverse_lineage_tool",
+        {
+            "guid": guid,
+            "direction": direction,
+            "depth": depth,
+            "size": size,
+            "immediate_neighbors": immediate_neighbors,
+            "offset": offset,
+            "include_attributes": include_attributes,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='query_assets_tool')
+@app.command(name="query_assets_tool")
 async def query_assets_tool(
     *,
-    sql: Annotated[str, cyclopts.Parameter(help="SQL query to execute against the connection")],
-    connection_qualified_name: Annotated[str, cyclopts.Parameter(help="Qualified name of the connection to query")],
-    default_schema: Annotated[str | None, cyclopts.Parameter(help="Default schema for unqualified table references\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Default schema for unqualified table references\"\n                          }")] = None,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    sql: Annotated[
+        str, cyclopts.Parameter(help="SQL query to execute against the connection")
+    ],
+    connection_qualified_name: Annotated[
+        str, cyclopts.Parameter(help="Qualified name of the connection to query")
+    ],
+    default_schema: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Default schema for unqualified table references\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Default schema for unqualified table references"\n                          }'
+        ),
+    ] = None,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Execute SQL queries against Atlan connections to preview data.'''
+    """Execute SQL queries against Atlan connections to preview data."""
 
-    await _call_tool('query_assets_tool', {'sql': sql, 'connection_qualified_name': connection_qualified_name, 'default_schema': default_schema, 'user_query': user_query})
+    await _call_tool(
+        "query_assets_tool",
+        {
+            "sql": sql,
+            "connection_qualified_name": connection_qualified_name,
+            "default_schema": default_schema,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='resolve_metadata_tool')
+@app.command(name="resolve_metadata_tool")
 async def resolve_metadata_tool(
     *,
-    namespace_type: Annotated[str, cyclopts.Parameter(help="Metadata namespace to search. Use 'data_domain_and_product' for BOTH data domains AND data products.")],
-    query: Annotated[str, cyclopts.Parameter(help="Search query - name, description, or natural language")],
-    limit: Annotated[int, cyclopts.Parameter(help="Max results (default 10, max 20)")] = 10,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    namespace_type: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="Metadata namespace to search. Use 'data_domain_and_product' for BOTH data domains AND data products."
+        ),
+    ],
+    query: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="Search query - name, description, or natural language"
+        ),
+    ],
+    limit: Annotated[
+        int, cyclopts.Parameter(help="Max results (default 10, max 20)")
+    ] = 10,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Use this to search for users and groups, and to get exact usernames and group names before making updates. Also use for extra discovery on classifications, business_metadata, glossary, and data_domain_and_product when semantic_search doesn\'t return needed results, or before write operations to confirm exact names and GUIDs.'''
+    """Use this to search for users and groups, and to get exact usernames and group names before making updates. Also use for extra discovery on classifications, business_metadata, glossary, and data_domain_and_product when semantic_search doesn\'t return needed results, or before write operations to confirm exact names and GUIDs."""
 
-    await _call_tool('resolve_metadata_tool', {'namespace_type': namespace_type, 'query': query, 'limit': limit, 'user_query': user_query})
+    await _call_tool(
+        "resolve_metadata_tool",
+        {
+            "namespace_type": namespace_type,
+            "query": query,
+            "limit": limit,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='search_atlan_docs_tool')
+@app.command(name="search_atlan_docs_tool")
 async def search_atlan_docs_tool(
     *,
-    query: Annotated[str, cyclopts.Parameter(help="Question about Atlan features, how-tos, or configuration. E.g. 'How do I connect Snowflake to Atlan?' or 'How do I create a data product?'")],
-    top_k: Annotated[int, cyclopts.Parameter(help="Number of documentation sources to retrieve (1-10)")] = 5,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    query: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="Question about Atlan features, how-tos, or configuration. E.g. 'How do I connect Snowflake to Atlan?' or 'How do I create a data product?'"
+        ),
+    ],
+    top_k: Annotated[
+        int,
+        cyclopts.Parameter(help="Number of documentation sources to retrieve (1-10)"),
+    ] = 5,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Search Atlan\'s customer-facing documentation and return an LLM-generated answer with source citations. Use for how-to questions about Atlan features — not for searching data assets (use semantic_search_tool for that).'''
+    """Search Atlan\'s customer-facing documentation and return an LLM-generated answer with source citations. Use for how-to questions about Atlan features — not for searching data assets (use semantic_search_tool for that)."""
 
-    await _call_tool('search_atlan_docs_tool', {'query': query, 'top_k': top_k, 'user_query': user_query})
+    await _call_tool(
+        "search_atlan_docs_tool",
+        {"query": query, "top_k": top_k, "user_query": user_query},
+    )
 
 
-@app.command(name='get_groups_tool')
+@app.command(name="get_groups_tool")
 async def get_groups_tool(
     *,
-    name_filter: Annotated[str | None, cyclopts.Parameter(help="Filter by name (partial match)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Filter by name (partial match)\"\n                          }")] = None,
-    group_id: Annotated[str | None, cyclopts.Parameter(help="Get specific group by ID (GUID)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Get specific group by ID (GUID)\"\n                          }")] = None,
-    include_members: Annotated[bool, cyclopts.Parameter(help="Include group members in response")] = False,
+    name_filter: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Filter by name (partial match)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Filter by name (partial match)"\n                          }'
+        ),
+    ] = None,
+    group_id: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Get specific group by ID (GUID)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Get specific group by ID (GUID)"\n                          }'
+        ),
+    ] = None,
+    include_members: Annotated[
+        bool, cyclopts.Parameter(help="Include group members in response")
+    ] = False,
     limit: Annotated[int, cyclopts.Parameter(help="Maximum results (1-250)")] = 50,
     offset: Annotated[int, cyclopts.Parameter(help="Pagination offset")] = 0,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Get workspace groups and their members. Use include_members=True to list users in a group.'''
+    """Get workspace groups and their members. Use include_members=True to list users in a group."""
 
-    await _call_tool('get_groups_tool', {'name_filter': name_filter, 'group_id': group_id, 'include_members': include_members, 'limit': limit, 'offset': offset, 'user_query': user_query})
+    await _call_tool(
+        "get_groups_tool",
+        {
+            "name_filter": name_filter,
+            "group_id": group_id,
+            "include_members": include_members,
+            "limit": limit,
+            "offset": offset,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='get_asset_tool')
+@app.command(name="get_asset_tool")
 async def get_asset_tool(
     *,
-    guid: Annotated[str | None, cyclopts.Parameter(help="Asset GUID to retrieve\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Asset GUID to retrieve\"\n                          }")] = None,
-    qualified_name: Annotated[str | None, cyclopts.Parameter(help="Asset qualified name to retrieve (e.g. default/snowflake/1234/DB/SCHEMA/TABLE)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Asset qualified name to retrieve (e.g. default/snowflake/1234/DB/SCHEMA/TABLE)\"\n                          }")] = None,
-    asset_type: Annotated[str | None, cyclopts.Parameter(help="Asset type (required when using qualified_name). e.g. Table, Column, View, Database, Schema\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Asset type (required when using qualified_name). e.g. Table, Column, View, Database, Schema\"\n                          }")] = None,
-    include_attributes: Annotated[str | None, cyclopts.Parameter(help="Additional attributes to include\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Additional attributes to include\"\n                          }")] = None,
-    include_dq_checks: Annotated[bool, cyclopts.Parameter(help="Set true to include linked data quality checks (Soda, Anomalo, Monte Carlo, Atlan native DQ rules) for this asset")] = False,
-    include_readme: Annotated[bool, cyclopts.Parameter(help="Set true to fetch and return README content for the asset. Only enable when the user explicitly asks for README/documentation content — adds latency.")] = False,
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    guid: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Asset GUID to retrieve\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Asset GUID to retrieve"\n                          }'
+        ),
+    ] = None,
+    qualified_name: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Asset qualified name to retrieve (e.g. default/snowflake/1234/DB/SCHEMA/TABLE)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Asset qualified name to retrieve (e.g. default/snowflake/1234/DB/SCHEMA/TABLE)"\n                          }'
+        ),
+    ] = None,
+    asset_type: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Asset type (required when using qualified_name). e.g. Table, Column, View, Database, Schema\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Asset type (required when using qualified_name). e.g. Table, Column, View, Database, Schema"\n                          }'
+        ),
+    ] = None,
+    include_attributes: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Additional attributes to include\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Additional attributes to include"\n                          }'
+        ),
+    ] = None,
+    include_dq_checks: Annotated[
+        bool,
+        cyclopts.Parameter(
+            help="Set true to include linked data quality checks (Soda, Anomalo, Monte Carlo, Atlan native DQ rules) for this asset"
+        ),
+    ] = False,
+    include_readme: Annotated[
+        bool,
+        cyclopts.Parameter(
+            help="Set true to fetch and return README content for the asset. Only enable when the user explicitly asks for README/documentation content — adds latency."
+        ),
+    ] = False,
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Get detailed information about a single asset by its GUID or qualified name.'''
+    """Get detailed information about a single asset by its GUID or qualified name."""
 
-    await _call_tool('get_asset_tool', {'guid': guid, 'qualified_name': qualified_name, 'asset_type': asset_type, 'include_attributes': include_attributes, 'include_dq_checks': include_dq_checks, 'include_readme': include_readme, 'user_query': user_query})
+    await _call_tool(
+        "get_asset_tool",
+        {
+            "guid": guid,
+            "qualified_name": qualified_name,
+            "asset_type": asset_type,
+            "include_attributes": include_attributes,
+            "include_dq_checks": include_dq_checks,
+            "include_readme": include_readme,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='update_assets_tool')
+@app.command(name="update_assets_tool")
 async def update_assets_tool(
     *,
-    updates: Annotated[str, cyclopts.Parameter(help="Asset update(s). Each update is a self-contained dict with asset identity (guid, name, qualified_name, type_name) plus the fields to change: user_description, certificate_status, readme, term, owner_users, owner_groups, category_guids, term_relations. Multiple attributes can be updated per asset in one call. For owner_users/owner_groups: REPLACES the full list — include existing owners to keep them. Use exact usernames from resolve_metadata. For category_guids: list of category GUIDs to assign an AtlasGlossaryTerm to (replaces existing categories). For AtlasGlossaryTerm or AtlasGlossaryCategory: also include glossary_guid (the parent glossary GUID, available as glossaryGuid in search results). For term: operation must be exactly 'append' (link terms), 'remove' (unlink terms), or 'replace' (overwrite all). Do NOT use 'add' or 'delete' — these are invalid and will fail. For term_relations (AtlasGlossaryTerm only): link one term to another using a relation type. Supported types: synonyms, antonyms, see_also (Related to), preferred_terms (Recommended), preferred_to_terms, translated_terms (Translates to), valid_values, valid_values_for, classifies, is_a (Classified by), replaced_by, replacement_terms. Each relation type takes {op, guids} where op is 'append', 'replace', or 'remove' and guids is a list of target term GUIDs. Use search_assets_tool to find GUIDs of both source and target terms before calling this tool.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Asset update(s). Each update is a self-contained dict with asset identity (guid, name, qualified_name, type_name) plus the fields to change: user_description, certificate_status, readme, term, owner_users, owner_groups, category_guids, term_relations. Multiple attributes can be updated per asset in one call. For owner_users/owner_groups: REPLACES the full list — include existing owners to keep them. Use exact usernames from resolve_metadata. For category_guids: list of category GUIDs to assign an AtlasGlossaryTerm to (replaces existing categories). For AtlasGlossaryTerm or AtlasGlossaryCategory: also include glossary_guid (the parent glossary GUID, available as glossaryGuid in search results). For term: operation must be exactly 'append' (link terms), 'remove' (unlink terms), or 'replace' (overwrite all). Do NOT use 'add' or 'delete' — these are invalid and will fail. For term_relations (AtlasGlossaryTerm only): link one term to another using a relation type. Supported types: synonyms, antonyms, see_also (Related to), preferred_terms (Recommended), preferred_to_terms, translated_terms (Translates to), valid_values, valid_values_for, classifies, is_a (Classified by), replaced_by, replacement_terms. Each relation type takes {op, guids} where op is 'append', 'replace', or 'remove' and guids is a list of target term GUIDs. Use search_assets_tool to find GUIDs of both source and target terms before calling this tool.\",\n                            \"examples\": [\n                              {\n                                \"certificate_status\": \"VERIFIED\",\n                                \"guid\": \"abc-123\",\n                                \"name\": \"customers\",\n                                \"qualified_name\": \"default/snowflake/db/schema/customers\",\n                                \"type_name\": \"Table\",\n                                \"user_description\": \"Customer master data\"\n                              },\n                              [\n                                {\n                                  \"guid\": \"abc-123\",\n                                  \"name\": \"t1\",\n                                  \"owner_users\": [\n                                    \"user1\",\n                                    \"user2\"\n                                  ],\n                                  \"qualified_name\": \"qn1\",\n                                  \"type_name\": \"Table\"\n                                },\n                                {\n                                  \"guid\": \"def-456\",\n                                  \"name\": \"t2\",\n                                  \"qualified_name\": \"qn2\",\n                                  \"term\": {\n                                    \"operation\": \"append\",\n                                    \"term_guids\": [\n                                      \"guid1\"\n                                    ]\n                                  },\n                                  \"type_name\": \"Table\"\n                                }\n                              ],\n                              [\n                                {\n                                  \"certificate_status\": \"DRAFT\",\n                                  \"glossary_guid\": \"glossary-guid-123\",\n                                  \"guid\": \"term-456\",\n                                  \"name\": \"Churn Rate\",\n                                  \"qualified_name\": \"abc@glossary-qn\",\n                                  \"type_name\": \"AtlasGlossaryTerm\"\n                                },\n                                {\n                                  \"glossary_guid\": \"glossary-guid-123\",\n                                  \"guid\": \"term-789\",\n                                  \"name\": \"Revenue\",\n                                  \"qualified_name\": \"def@glossary-qn\",\n                                  \"type_name\": \"AtlasGlossaryTerm\",\n                                  \"user_description\": \"Total income\"\n                                }\n                              ],\n                              {\n                                \"category_guids\": [\n                                  \"cat-guid-1\",\n                                  \"cat-guid-2\"\n                                ],\n                                \"glossary_guid\": \"glossary-guid-123\",\n                                \"guid\": \"term-101\",\n                                \"name\": \"Net Revenue\",\n                                \"qualified_name\": \"ghi@glossary-qn\",\n                                \"type_name\": \"AtlasGlossaryTerm\"\n                              },\n                              {\n                                \"glossary_guid\": \"glossary-guid-123\",\n                                \"guid\": \"term-202\",\n                                \"name\": \"Revenue\",\n                                \"qualified_name\": \"jkl@glossary-qn\",\n                                \"term_relations\": {\n                                  \"antonyms\": {\n                                    \"guids\": [\n                                      \"guid-of-cost\"\n                                    ],\n                                    \"op\": \"append\"\n                                  },\n                                  \"synonyms\": {\n                                    \"guids\": [\n                                      \"guid-of-income\",\n                                      \"guid-of-earnings\"\n                                    ],\n                                    \"op\": \"append\"\n                                  }\n                                },\n                                \"type_name\": \"AtlasGlossaryTerm\"\n                              }\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    updates: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Asset update(s). Each update is a self-contained dict with asset identity (guid, name, qualified_name, type_name) plus the fields to change: user_description, certificate_status, readme, term, owner_users, owner_groups, category_guids, term_relations. Multiple attributes can be updated per asset in one call. For owner_users/owner_groups: REPLACES the full list — include existing owners to keep them. Use exact usernames from resolve_metadata. For category_guids: list of category GUIDs to assign an AtlasGlossaryTerm to (replaces existing categories). For AtlasGlossaryTerm or AtlasGlossaryCategory: also include glossary_guid (the parent glossary GUID, available as glossaryGuid in search results). For term: operation must be exactly \'append\' (link terms), \'remove\' (unlink terms), or \'replace\' (overwrite all). Do NOT use \'add\' or \'delete\' — these are invalid and will fail. For term_relations (AtlasGlossaryTerm only): link one term to another using a relation type. Supported types: synonyms, antonyms, see_also (Related to), preferred_terms (Recommended), preferred_to_terms, translated_terms (Translates to), valid_values, valid_values_for, classifies, is_a (Classified by), replaced_by, replacement_terms. Each relation type takes {op, guids} where op is \'append\', \'replace\', or \'remove\' and guids is a list of target term GUIDs. Use search_assets_tool to find GUIDs of both source and target terms before calling this tool.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Asset update(s). Each update is a self-contained dict with asset identity (guid, name, qualified_name, type_name) plus the fields to change: user_description, certificate_status, readme, term, owner_users, owner_groups, category_guids, term_relations. Multiple attributes can be updated per asset in one call. For owner_users/owner_groups: REPLACES the full list — include existing owners to keep them. Use exact usernames from resolve_metadata. For category_guids: list of category GUIDs to assign an AtlasGlossaryTerm to (replaces existing categories). For AtlasGlossaryTerm or AtlasGlossaryCategory: also include glossary_guid (the parent glossary GUID, available as glossaryGuid in search results). For term: operation must be exactly \'append\' (link terms), \'remove\' (unlink terms), or \'replace\' (overwrite all). Do NOT use \'add\' or \'delete\' — these are invalid and will fail. For term_relations (AtlasGlossaryTerm only): link one term to another using a relation type. Supported types: synonyms, antonyms, see_also (Related to), preferred_terms (Recommended), preferred_to_terms, translated_terms (Translates to), valid_values, valid_values_for, classifies, is_a (Classified by), replaced_by, replacement_terms. Each relation type takes {op, guids} where op is \'append\', \'replace\', or \'remove\' and guids is a list of target term GUIDs. Use search_assets_tool to find GUIDs of both source and target terms before calling this tool.",\n                            "examples": [\n                              {\n                                "certificate_status": "VERIFIED",\n                                "guid": "abc-123",\n                                "name": "customers",\n                                "qualified_name": "default/snowflake/db/schema/customers",\n                                "type_name": "Table",\n                                "user_description": "Customer master data"\n                              },\n                              [\n                                {\n                                  "guid": "abc-123",\n                                  "name": "t1",\n                                  "owner_users": [\n                                    "user1",\n                                    "user2"\n                                  ],\n                                  "qualified_name": "qn1",\n                                  "type_name": "Table"\n                                },\n                                {\n                                  "guid": "def-456",\n                                  "name": "t2",\n                                  "qualified_name": "qn2",\n                                  "term": {\n                                    "operation": "append",\n                                    "term_guids": [\n                                      "guid1"\n                                    ]\n                                  },\n                                  "type_name": "Table"\n                                }\n                              ],\n                              [\n                                {\n                                  "certificate_status": "DRAFT",\n                                  "glossary_guid": "glossary-guid-123",\n                                  "guid": "term-456",\n                                  "name": "Churn Rate",\n                                  "qualified_name": "abc@glossary-qn",\n                                  "type_name": "AtlasGlossaryTerm"\n                                },\n                                {\n                                  "glossary_guid": "glossary-guid-123",\n                                  "guid": "term-789",\n                                  "name": "Revenue",\n                                  "qualified_name": "def@glossary-qn",\n                                  "type_name": "AtlasGlossaryTerm",\n                                  "user_description": "Total income"\n                                }\n                              ],\n                              {\n                                "category_guids": [\n                                  "cat-guid-1",\n                                  "cat-guid-2"\n                                ],\n                                "glossary_guid": "glossary-guid-123",\n                                "guid": "term-101",\n                                "name": "Net Revenue",\n                                "qualified_name": "ghi@glossary-qn",\n                                "type_name": "AtlasGlossaryTerm"\n                              },\n                              {\n                                "glossary_guid": "glossary-guid-123",\n                                "guid": "term-202",\n                                "name": "Revenue",\n                                "qualified_name": "jkl@glossary-qn",\n                                "term_relations": {\n                                  "antonyms": {\n                                    "guids": [\n                                      "guid-of-cost"\n                                    ],\n                                    "op": "append"\n                                  },\n                                  "synonyms": {\n                                    "guids": [\n                                      "guid-of-income",\n                                      "guid-of-earnings"\n                                    ],\n                                    "op": "append"\n                                  }\n                                },\n                                "type_name": "AtlasGlossaryTerm"\n                              }\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Update attributes on one or more assets. Each item specifies the asset identity + fields to change. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Update attributes on one or more assets. Each item specifies the asset identity + fields to change. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     updates_parsed = _maybe_json(updates)
 
-    await _call_tool('update_assets_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "update_assets_tool",
+        {"updates": updates_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='create_glossaries')
+@app.command(name="create_glossaries")
 async def create_glossaries(
     *,
-    glossaries: Annotated[str, cyclopts.Parameter(help="Glossary definitions\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Glossary definitions\",\n                            \"examples\": [\n                              {\n                                \"name\": \"Business Glossary\",\n                                \"user_description\": \"Company-wide terms\"\n                              },\n                              [\n                                {\n                                  \"name\": \"Glossary A\"\n                                },\n                                {\n                                  \"certificate_status\": \"VERIFIED\",\n                                  \"name\": \"Glossary B\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    glossaries: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Glossary definitions\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Glossary definitions",\n                            "examples": [\n                              {\n                                "name": "Business Glossary",\n                                "user_description": "Company-wide terms"\n                              },\n                              [\n                                {\n                                  "name": "Glossary A"\n                                },\n                                {\n                                  "certificate_status": "VERIFIED",\n                                  "name": "Glossary B"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create one or more glossaries in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create one or more glossaries in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     glossaries_parsed = _maybe_json(glossaries)
 
-    await _call_tool('create_glossaries', {'glossaries': glossaries_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_glossaries",
+        {"glossaries": glossaries_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='create_glossary_terms')
+@app.command(name="create_glossary_terms")
 async def create_glossary_terms(
     *,
-    terms: Annotated[str, cyclopts.Parameter(help="Term definitions\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Term definitions\",\n                            \"examples\": [\n                              {\n                                \"glossary_guid\": \"glossary-guid-123\",\n                                \"name\": \"Revenue\",\n                                \"user_description\": \"Total income\"\n                              },\n                              [\n                                {\n                                  \"glossary_guid\": \"g-123\",\n                                  \"name\": \"Term A\"\n                                },\n                                {\n                                  \"category_guids\": [\n                                    \"cat-1\"\n                                  ],\n                                  \"glossary_guid\": \"g-123\",\n                                  \"name\": \"Term B\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    terms: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Term definitions\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Term definitions",\n                            "examples": [\n                              {\n                                "glossary_guid": "glossary-guid-123",\n                                "name": "Revenue",\n                                "user_description": "Total income"\n                              },\n                              [\n                                {\n                                  "glossary_guid": "g-123",\n                                  "name": "Term A"\n                                },\n                                {\n                                  "category_guids": [\n                                    "cat-1"\n                                  ],\n                                  "glossary_guid": "g-123",\n                                  "name": "Term B"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create one or more glossary terms in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create one or more glossary terms in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     terms_parsed = _maybe_json(terms)
 
-    await _call_tool('create_glossary_terms', {'terms': terms_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_glossary_terms",
+        {"terms": terms_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='create_glossary_categories')
+@app.command(name="create_glossary_categories")
 async def create_glossary_categories(
     *,
-    categories: Annotated[str, cyclopts.Parameter(help="Category definitions\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Category definitions\",\n                            \"examples\": [\n                              {\n                                \"glossary_guid\": \"glossary-guid-123\",\n                                \"name\": \"Finance Terms\"\n                              },\n                              [\n                                {\n                                  \"glossary_guid\": \"g-123\",\n                                  \"name\": \"Cat A\"\n                                },\n                                {\n                                  \"glossary_guid\": \"g-123\",\n                                  \"name\": \"Cat B\",\n                                  \"parent_category_guid\": \"cat-a-guid\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    categories: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Category definitions\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Category definitions",\n                            "examples": [\n                              {\n                                "glossary_guid": "glossary-guid-123",\n                                "name": "Finance Terms"\n                              },\n                              [\n                                {\n                                  "glossary_guid": "g-123",\n                                  "name": "Cat A"\n                                },\n                                {\n                                  "glossary_guid": "g-123",\n                                  "name": "Cat B",\n                                  "parent_category_guid": "cat-a-guid"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create one or more glossary categories in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create one or more glossary categories in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     categories_parsed = _maybe_json(categories)
 
-    await _call_tool('create_glossary_categories', {'categories': categories_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_glossary_categories",
+        {"categories": categories_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='create_domains')
+@app.command(name="create_domains")
 async def create_domains(
     *,
-    domains: Annotated[str, cyclopts.Parameter(help="Domain definitions\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Domain definitions\",\n                            \"examples\": [\n                              {\n                                \"name\": \"Sales Domain\",\n                                \"user_description\": \"Sales analytics data\"\n                              },\n                              [\n                                {\n                                  \"name\": \"Finance\"\n                                },\n                                {\n                                  \"name\": \"Marketing\",\n                                  \"parent_domain_qualified_name\": \"default/domain/Finance\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    domains: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Domain definitions\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Domain definitions",\n                            "examples": [\n                              {\n                                "name": "Sales Domain",\n                                "user_description": "Sales analytics data"\n                              },\n                              [\n                                {\n                                  "name": "Finance"\n                                },\n                                {\n                                  "name": "Marketing",\n                                  "parent_domain_qualified_name": "default/domain/Finance"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create one or more data domains in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create one or more data domains in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     domains_parsed = _maybe_json(domains)
 
-    await _call_tool('create_domains', {'domains': domains_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_domains",
+        {"domains": domains_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='create_data_products')
+@app.command(name="create_data_products")
 async def create_data_products(
     *,
-    products: Annotated[str, cyclopts.Parameter(help="Product definitions\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Product definitions\",\n                            \"examples\": [\n                              {\n                                \"asset_guids\": [\n                                  \"asset-guid-1\"\n                                ],\n                                \"domain_qualified_name\": \"default/domain/Sales\",\n                                \"name\": \"Customer 360\"\n                              },\n                              [\n                                {\n                                  \"asset_guids\": [\n                                    \"g1\",\n                                    \"g2\"\n                                  ],\n                                  \"domain_qualified_name\": \"default/domain/D1\",\n                                  \"name\": \"Prod A\",\n                                  \"user_description\": \"Product A\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    products: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Product definitions\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Product definitions",\n                            "examples": [\n                              {\n                                "asset_guids": [\n                                  "asset-guid-1"\n                                ],\n                                "domain_qualified_name": "default/domain/Sales",\n                                "name": "Customer 360"\n                              },\n                              [\n                                {\n                                  "asset_guids": [\n                                    "g1",\n                                    "g2"\n                                  ],\n                                  "domain_qualified_name": "default/domain/D1",\n                                  "name": "Prod A",\n                                  "user_description": "Product A"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create one or more data products in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create one or more data products in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     products_parsed = _maybe_json(products)
 
-    await _call_tool('create_data_products', {'products': products_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_data_products",
+        {"products": products_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='create_dq_rules_tool')
+@app.command(name="create_dq_rules_tool")
 async def create_dq_rules_tool(
     *,
-    rules: Annotated[str, cyclopts.Parameter(help="DQ rule definitions. Use EXACTLY these field names: rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number, REQUIRED): threshold for the rule. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). alert_priority (str): URGENT, NORMAL, LOW. column_qualified_name (str): required for column-level rules. custom_sql (str): SQL query, required when rule_type is 'Custom SQL'. rule_name (str): display name, required when rule_type is 'Custom SQL'. dimension (str): required when rule_type is 'Custom SQL': COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. reference_dataset_qualified_name (str): required for Recon and Reference rules. reference_column_qualified_name (str): required for column-level Recon/Reference rules. description (str): optional rule description.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"DQ rule definitions. Use EXACTLY these field names: rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number, REQUIRED): threshold for the rule. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). alert_priority (str): URGENT, NORMAL, LOW. column_qualified_name (str): required for column-level rules. custom_sql (str): SQL query, required when rule_type is 'Custom SQL'. rule_name (str): display name, required when rule_type is 'Custom SQL'. dimension (str): required when rule_type is 'Custom SQL': COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. reference_dataset_qualified_name (str): required for Recon and Reference rules. reference_column_qualified_name (str): required for column-level Recon/Reference rules. description (str): optional rule description.\",\n                            \"examples\": [\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/table\",\n                                \"column_qualified_name\": \"default/snowflake/db/schema/table/column\",\n                                \"rule_type\": \"Null Count\",\n                                \"threshold_compare_operator\": \"EQ\",\n                                \"threshold_value\": 0\n                              },\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/table\",\n                                \"rule_type\": \"Row Count\",\n                                \"threshold_compare_operator\": \"GTE\",\n                                \"threshold_value\": 100\n                              },\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/table\",\n                                \"custom_sql\": \"SELECT COUNT(*) FROM table\",\n                                \"dimension\": \"COMPLETENESS\",\n                                \"rule_name\": \"MyRule\",\n                                \"rule_type\": \"Custom SQL\",\n                                \"threshold_compare_operator\": \"EQ\",\n                                \"threshold_value\": 0\n                              },\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/source_table\",\n                                \"reference_dataset_qualified_name\": \"default/snowflake/db/schema/target_table\",\n                                \"rule_type\": \"Recon Row Count\",\n                                \"threshold_unit\": \"PERCENTAGE\",\n                                \"threshold_value\": 3\n                              },\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/source_table\",\n                                \"column_qualified_name\": \"default/snowflake/db/schema/source_table/col\",\n                                \"reference_column_qualified_name\": \"default/snowflake/db/schema/target_table/col\",\n                                \"reference_dataset_qualified_name\": \"default/snowflake/db/schema/target_table\",\n                                \"rule_type\": \"Recon Unique Count\",\n                                \"threshold_unit\": \"PERCENTAGE\",\n                                \"threshold_value\": 2\n                              },\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/table\",\n                                \"column_qualified_name\": \"default/snowflake/db/schema/table/country\",\n                                \"reference_column_qualified_name\": \"default/snowflake/db/schema/valid_countries/code\",\n                                \"reference_dataset_qualified_name\": \"default/snowflake/db/schema/valid_countries\",\n                                \"rule_type\": \"Valid Values Reference\",\n                                \"threshold_value\": 2\n                              }\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    rules: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='DQ rule definitions. Use EXACTLY these field names: rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number, REQUIRED): threshold for the rule. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). alert_priority (str): URGENT, NORMAL, LOW. column_qualified_name (str): required for column-level rules. custom_sql (str): SQL query, required when rule_type is \'Custom SQL\'. rule_name (str): display name, required when rule_type is \'Custom SQL\'. dimension (str): required when rule_type is \'Custom SQL\': COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. reference_dataset_qualified_name (str): required for Recon and Reference rules. reference_column_qualified_name (str): required for column-level Recon/Reference rules. description (str): optional rule description.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "DQ rule definitions. Use EXACTLY these field names: rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number, REQUIRED): threshold for the rule. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). alert_priority (str): URGENT, NORMAL, LOW. column_qualified_name (str): required for column-level rules. custom_sql (str): SQL query, required when rule_type is \'Custom SQL\'. rule_name (str): display name, required when rule_type is \'Custom SQL\'. dimension (str): required when rule_type is \'Custom SQL\': COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. reference_dataset_qualified_name (str): required for Recon and Reference rules. reference_column_qualified_name (str): required for column-level Recon/Reference rules. description (str): optional rule description.",\n                            "examples": [\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/table",\n                                "column_qualified_name": "default/snowflake/db/schema/table/column",\n                                "rule_type": "Null Count",\n                                "threshold_compare_operator": "EQ",\n                                "threshold_value": 0\n                              },\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/table",\n                                "rule_type": "Row Count",\n                                "threshold_compare_operator": "GTE",\n                                "threshold_value": 100\n                              },\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/table",\n                                "custom_sql": "SELECT COUNT(*) FROM table",\n                                "dimension": "COMPLETENESS",\n                                "rule_name": "MyRule",\n                                "rule_type": "Custom SQL",\n                                "threshold_compare_operator": "EQ",\n                                "threshold_value": 0\n                              },\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/source_table",\n                                "reference_dataset_qualified_name": "default/snowflake/db/schema/target_table",\n                                "rule_type": "Recon Row Count",\n                                "threshold_unit": "PERCENTAGE",\n                                "threshold_value": 3\n                              },\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/source_table",\n                                "column_qualified_name": "default/snowflake/db/schema/source_table/col",\n                                "reference_column_qualified_name": "default/snowflake/db/schema/target_table/col",\n                                "reference_dataset_qualified_name": "default/snowflake/db/schema/target_table",\n                                "rule_type": "Recon Unique Count",\n                                "threshold_unit": "PERCENTAGE",\n                                "threshold_value": 2\n                              },\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/table",\n                                "column_qualified_name": "default/snowflake/db/schema/table/country",\n                                "reference_column_qualified_name": "default/snowflake/db/schema/valid_countries/code",\n                                "reference_dataset_qualified_name": "default/snowflake/db/schema/valid_countries",\n                                "rule_type": "Valid Values Reference",\n                                "threshold_value": 2\n                              }\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create data quality rules in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create data quality rules in Atlan. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     rules_parsed = _maybe_json(rules)
 
-    await _call_tool('create_dq_rules_tool', {'rules': rules_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_dq_rules_tool",
+        {"rules": rules_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='schedule_dq_rules_tool')
+@app.command(name="schedule_dq_rules_tool")
 async def schedule_dq_rules_tool(
     *,
-    schedules: Annotated[str, cyclopts.Parameter(help="Schedule definitions\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Schedule definitions\",\n                            \"examples\": [\n                              {\n                                \"asset_name\": \"customers\",\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/customers\",\n                                \"asset_type\": \"Table\",\n                                \"schedule_crontab\": \"0 6 * * *\",\n                                \"schedule_time_zone\": \"America/New_York\"\n                              },\n                              [\n                                {\n                                  \"asset_name\": \"v1\",\n                                  \"asset_qualified_name\": \"qn1\",\n                                  \"asset_type\": \"View\",\n                                  \"schedule_crontab\": \"0 */4 * * *\",\n                                  \"schedule_time_zone\": \"UTC\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    schedules: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Schedule definitions\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Schedule definitions",\n                            "examples": [\n                              {\n                                "asset_name": "customers",\n                                "asset_qualified_name": "default/snowflake/db/schema/customers",\n                                "asset_type": "Table",\n                                "schedule_crontab": "0 6 * * *",\n                                "schedule_time_zone": "America/New_York"\n                              },\n                              [\n                                {\n                                  "asset_name": "v1",\n                                  "asset_qualified_name": "qn1",\n                                  "asset_type": "View",\n                                  "schedule_crontab": "0 */4 * * *",\n                                  "schedule_time_zone": "UTC"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Schedule data quality rule execution on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Schedule data quality rule execution on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     schedules_parsed = _maybe_json(schedules)
 
-    await _call_tool('schedule_dq_rules_tool', {'schedules': schedules_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "schedule_dq_rules_tool",
+        {"schedules": schedules_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='update_dq_rules_tool')
+@app.command(name="update_dq_rules_tool")
 async def update_dq_rules_tool(
     *,
-    rules: Annotated[str, cyclopts.Parameter(help="DQ rule updates. Use EXACTLY these field names: qualified_name (str, REQUIRED): qualified name of the rule to update. rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number): new threshold value. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. alert_priority (str): URGENT, NORMAL, LOW. custom_sql (str): updated SQL query for Custom SQL rules. rule_name (str): updated display name for Custom SQL rules. dimension (str): for Custom SQL rules: COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. description (str): optional rule description.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"additionalProperties\": true,\n                                  \"type\": \"object\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"DQ rule updates. Use EXACTLY these field names: qualified_name (str, REQUIRED): qualified name of the rule to update. rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number): new threshold value. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. alert_priority (str): URGENT, NORMAL, LOW. custom_sql (str): updated SQL query for Custom SQL rules. rule_name (str): updated display name for Custom SQL rules. dimension (str): for Custom SQL rules: COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. description (str): optional rule description.\",\n                            \"examples\": [\n                              {\n                                \"alert_priority\": \"URGENT\",\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/table\",\n                                \"qualified_name\": \"default/dq/rule-qn\",\n                                \"rule_type\": \"Null Count\",\n                                \"threshold_value\": 5\n                              },\n                              {\n                                \"asset_qualified_name\": \"default/snowflake/db/schema/table\",\n                                \"qualified_name\": \"default/dq/rule-qn\",\n                                \"rule_type\": \"Freshness\",\n                                \"threshold_unit\": \"HOURS\",\n                                \"threshold_value\": 24\n                              }\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    rules: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='DQ rule updates. Use EXACTLY these field names: qualified_name (str, REQUIRED): qualified name of the rule to update. rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number): new threshold value. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. alert_priority (str): URGENT, NORMAL, LOW. custom_sql (str): updated SQL query for Custom SQL rules. rule_name (str): updated display name for Custom SQL rules. dimension (str): for Custom SQL rules: COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. description (str): optional rule description.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "additionalProperties": true,\n                                  "type": "object"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "DQ rule updates. Use EXACTLY these field names: qualified_name (str, REQUIRED): qualified name of the rule to update. rule_type (str, REQUIRED): Null Count, Null Percentage, Blank Count, Blank Percentage, Min Value, Max Value, Average, Standard Deviation, Unique Count, Duplicate Count, Regex, String Length, Valid Values, Valid Values Reference, Freshness, Row Count, Custom SQL, Recon Row Count, Recon Average, Recon Sum, Recon Duplicate Count, Recon Unique Count. asset_qualified_name (str, REQUIRED): qualified name of the table/view. threshold_value (number): new threshold value. threshold_compare_operator (str): EQUAL (EQ), GREATER_THAN_EQUAL (GTE), LESS_THAN_EQUAL (LTE), BETWEEN (BETWEEN), GREATER_THAN (GT), LESS_THAN (LT). threshold_unit (str): PERCENTAGE, SECONDS, MINUTES, HOURS, DAYS, WEEKS, MONTHS, YEARS, ABSOLUTE. alert_priority (str): URGENT, NORMAL, LOW. custom_sql (str): updated SQL query for Custom SQL rules. rule_name (str): updated display name for Custom SQL rules. dimension (str): for Custom SQL rules: COMPLETENESS, TIMELINESS, ACCURACY, CONSISTENCY, UNIQUENESS, VALIDITY, VOLUME. description (str): optional rule description.",\n                            "examples": [\n                              {\n                                "alert_priority": "URGENT",\n                                "asset_qualified_name": "default/snowflake/db/schema/table",\n                                "qualified_name": "default/dq/rule-qn",\n                                "rule_type": "Null Count",\n                                "threshold_value": 5\n                              },\n                              {\n                                "asset_qualified_name": "default/snowflake/db/schema/table",\n                                "qualified_name": "default/dq/rule-qn",\n                                "rule_type": "Freshness",\n                                "threshold_unit": "HOURS",\n                                "threshold_value": 24\n                              }\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Update existing data quality rules. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Update existing data quality rules. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     rules_parsed = _maybe_json(rules)
 
-    await _call_tool('update_dq_rules_tool', {'rules': rules_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "update_dq_rules_tool",
+        {"rules": rules_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='delete_dq_rules_tool')
+@app.command(name="delete_dq_rules_tool")
 async def delete_dq_rules_tool(
     *,
-    rule_guids: Annotated[str, cyclopts.Parameter(help="GUIDs of DQ rules to delete\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {\n                                  \"type\": \"string\"\n                                },\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"GUIDs of DQ rules to delete\"\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    rule_guids: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='GUIDs of DQ rules to delete\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {\n                                  "type": "string"\n                                },\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "GUIDs of DQ rules to delete"\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Delete data quality rules by their GUIDs. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Delete data quality rules by their GUIDs. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     rule_guids_parsed = _maybe_json(rule_guids)
 
-    await _call_tool('delete_dq_rules_tool', {'rule_guids': rule_guids_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "delete_dq_rules_tool",
+        {"rule_guids": rule_guids_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='manage_asset_lifecycle_tool')
+@app.command(name="manage_asset_lifecycle_tool")
 async def manage_asset_lifecycle_tool(
     *,
-    operation: Annotated[str, cyclopts.Parameter(help="Lifecycle operation to perform")],
-    guids: Annotated[str | None, cyclopts.Parameter(help="Asset GUIDs (required for ARCHIVE/PURGE)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Asset GUIDs (required for ARCHIVE/PURGE)\"\n                          }")] = None,
-    asset_type: Annotated[str | None, cyclopts.Parameter(help="Asset type (required for RESTORE)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"enum\": [\n                                  \"Table\",\n                                  \"Column\",\n                                  \"View\",\n                                  \"Database\",\n                                  \"Schema\",\n                                  \"MaterializedView\",\n                                  \"AtlasGlossary\",\n                                  \"AtlasGlossaryTerm\",\n                                  \"AtlasGlossaryCategory\",\n                                  \"Connection\",\n                                  \"Process\",\n                                  \"Query\",\n                                  \"Dashboard\",\n                                  \"Report\",\n                                  \"DataDomain\",\n                                  \"DataProduct\",\n                                  \"PowerBIReport\",\n                                  \"PowerBIDataset\",\n                                  \"PowerBIDashboard\",\n                                  \"PowerBIWorkspace\",\n                                  \"PowerBIDataflow\",\n                                  \"PowerBITable\",\n                                  \"PowerBIMeasure\",\n                                  \"PowerBIColumn\",\n                                  \"PowerBIPage\",\n                                  \"DbtModel\",\n                                  \"DbtTest\",\n                                  \"DbtSource\",\n                                  \"DbtMetric\",\n                                  \"DbtModelColumn\",\n                                  \"TableauDashboard\",\n                                  \"TableauCalculatedField\",\n                                  \"TableauWorkbook\",\n                                  \"TableauDatasource\",\n                                  \"TableauProject\",\n                                  \"TableauWorksheet\",\n                                  \"TableauSite\",\n                                  \"TableauFlow\",\n                                  \"LookerDashboard\",\n                                  \"LookerExplore\",\n                                  \"LookerLook\",\n                                  \"LookerView\",\n                                  \"LookerModel\",\n                                  \"LookerProject\",\n                                  \"LookerQuery\",\n                                  \"LookerFolder\",\n                                  \"LookerTile\",\n                                  \"LookerField\",\n                                  \"SigmaWorkbook\",\n                                  \"SigmaDataset\",\n                                  \"SigmaDataElement\",\n                                  \"SigmaPage\",\n                                  \"ThoughtspotLiveboard\",\n                                  \"ThoughtspotAnswer\",\n                                  \"ThoughtspotWorksheet\",\n                                  \"MetabaseDashboard\",\n                                  \"MetabaseQuestion\",\n                                  \"MetabaseCollection\",\n                                  \"QuickSightDashboard\",\n                                  \"QuickSightDataset\",\n                                  \"QuickSightAnalysis\",\n                                  \"PresetDashboard\",\n                                  \"PresetChart\",\n                                  \"PresetDataset\",\n                                  \"MicroStrategyDossier\",\n                                  \"MicroStrategyReport\",\n                                  \"ModeReport\",\n                                  \"ModeQuery\",\n                                  \"ModeWorkspace\",\n                                  \"DomoDashboard\",\n                                  \"DomoDataset\",\n                                  \"DomoCard\",\n                                  \"SisenseDashboard\",\n                                  \"SisenseDatamodel\",\n                                  \"RedashDashboard\",\n                                  \"RedashQuery\",\n                                  \"QlikApp\",\n                                  \"QlikDataset\",\n                                  \"QlikSheet\",\n                                  \"QlikSpace\"\n                                ],\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Asset type (required for RESTORE)\"\n                          }")] = None,
-    qualified_name: Annotated[str | None, cyclopts.Parameter(help="Qualified name (required for RESTORE)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Qualified name (required for RESTORE)\"\n                          }")] = None,
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    operation: Annotated[
+        str, cyclopts.Parameter(help="Lifecycle operation to perform")
+    ],
+    guids: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Asset GUIDs (required for ARCHIVE/PURGE)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Asset GUIDs (required for ARCHIVE/PURGE)"\n                          }'
+        ),
+    ] = None,
+    asset_type: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Asset type (required for RESTORE)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "enum": [\n                                  "Table",\n                                  "Column",\n                                  "View",\n                                  "Database",\n                                  "Schema",\n                                  "MaterializedView",\n                                  "AtlasGlossary",\n                                  "AtlasGlossaryTerm",\n                                  "AtlasGlossaryCategory",\n                                  "Connection",\n                                  "Process",\n                                  "Query",\n                                  "Dashboard",\n                                  "Report",\n                                  "DataDomain",\n                                  "DataProduct",\n                                  "PowerBIReport",\n                                  "PowerBIDataset",\n                                  "PowerBIDashboard",\n                                  "PowerBIWorkspace",\n                                  "PowerBIDataflow",\n                                  "PowerBITable",\n                                  "PowerBIMeasure",\n                                  "PowerBIColumn",\n                                  "PowerBIPage",\n                                  "DbtModel",\n                                  "DbtTest",\n                                  "DbtSource",\n                                  "DbtMetric",\n                                  "DbtModelColumn",\n                                  "TableauDashboard",\n                                  "TableauCalculatedField",\n                                  "TableauWorkbook",\n                                  "TableauDatasource",\n                                  "TableauProject",\n                                  "TableauWorksheet",\n                                  "TableauSite",\n                                  "TableauFlow",\n                                  "LookerDashboard",\n                                  "LookerExplore",\n                                  "LookerLook",\n                                  "LookerView",\n                                  "LookerModel",\n                                  "LookerProject",\n                                  "LookerQuery",\n                                  "LookerFolder",\n                                  "LookerTile",\n                                  "LookerField",\n                                  "SigmaWorkbook",\n                                  "SigmaDataset",\n                                  "SigmaDataElement",\n                                  "SigmaPage",\n                                  "ThoughtspotLiveboard",\n                                  "ThoughtspotAnswer",\n                                  "ThoughtspotWorksheet",\n                                  "MetabaseDashboard",\n                                  "MetabaseQuestion",\n                                  "MetabaseCollection",\n                                  "QuickSightDashboard",\n                                  "QuickSightDataset",\n                                  "QuickSightAnalysis",\n                                  "PresetDashboard",\n                                  "PresetChart",\n                                  "PresetDataset",\n                                  "MicroStrategyDossier",\n                                  "MicroStrategyReport",\n                                  "ModeReport",\n                                  "ModeQuery",\n                                  "ModeWorkspace",\n                                  "DomoDashboard",\n                                  "DomoDataset",\n                                  "DomoCard",\n                                  "SisenseDashboard",\n                                  "SisenseDatamodel",\n                                  "RedashDashboard",\n                                  "RedashQuery",\n                                  "QlikApp",\n                                  "QlikDataset",\n                                  "QlikSheet",\n                                  "QlikSpace"\n                                ],\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Asset type (required for RESTORE)"\n                          }'
+        ),
+    ] = None,
+    qualified_name: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Qualified name (required for RESTORE)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Qualified name (required for RESTORE)"\n                          }'
+        ),
+    ] = None,
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Manage asset lifecycle: archive, restore, or permanently purge assets. WARNING: PURGE cannot be undone. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Manage asset lifecycle: archive, restore, or permanently purge assets. WARNING: PURGE cannot be undone. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
 
-    await _call_tool('manage_asset_lifecycle_tool', {'operation': operation, 'guids': guids, 'asset_type': asset_type, 'qualified_name': qualified_name, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "manage_asset_lifecycle_tool",
+        {
+            "operation": operation,
+            "guids": guids,
+            "asset_type": asset_type,
+            "qualified_name": qualified_name,
+            "mode": mode,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='manage_announcements_tool')
+@app.command(name="manage_announcements_tool")
 async def manage_announcements_tool(
     *,
-    asset_guids: Annotated[str, cyclopts.Parameter(help="Asset GUIDs to update (comma-separated or JSON array)")],
+    asset_guids: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="Asset GUIDs to update (comma-separated or JSON array)"
+        ),
+    ],
     operation: Annotated[str, cyclopts.Parameter(help="Announcement operation")],
-    announcement_type: Annotated[str | None, cyclopts.Parameter(help="Announcement type (required for SET)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"enum\": [\n                                  \"information\",\n                                  \"warning\",\n                                  \"issue\"\n                                ],\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Announcement type (required for SET)\"\n                          }")] = None,
-    title: Annotated[str | None, cyclopts.Parameter(help="Announcement title (required for SET)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Announcement title (required for SET)\"\n                          }")] = None,
-    message: Annotated[str | None, cyclopts.Parameter(help="Announcement message (optional)\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"Announcement message (optional)\"\n                          }")] = None,
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    announcement_type: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Announcement type (required for SET)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "enum": [\n                                  "information",\n                                  "warning",\n                                  "issue"\n                                ],\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Announcement type (required for SET)"\n                          }'
+        ),
+    ] = None,
+    title: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Announcement title (required for SET)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Announcement title (required for SET)"\n                          }'
+        ),
+    ] = None,
+    message: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='Announcement message (optional)\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "Announcement message (optional)"\n                          }'
+        ),
+    ] = None,
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Add or remove announcements (information, warning, issue) on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Add or remove announcements (information, warning, issue) on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
 
-    await _call_tool('manage_announcements_tool', {'asset_guids': asset_guids, 'operation': operation, 'announcement_type': announcement_type, 'title': title, 'message': message, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "manage_announcements_tool",
+        {
+            "asset_guids": asset_guids,
+            "operation": operation,
+            "announcement_type": announcement_type,
+            "title": title,
+            "message": message,
+            "mode": mode,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='update_custom_metadata_tool')
+@app.command(name="update_custom_metadata_tool")
 async def update_custom_metadata_tool(
     *,
-    updates: Annotated[str, cyclopts.Parameter(help="Single update (dict) or batch updates (list of dicts). Each item requires: guid, custom_metadata_name, attributes. Single: {\"guid\": \"...\", \"custom_metadata_name\": \"CM\", \"attributes\": {\"k\": \"v\"}}. Batch: [{\"guid\": \"g1\", ...}, {\"guid\": \"g2\", ...}]\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Single update (dict) or batch updates (list of dicts). Each item requires: guid, custom_metadata_name, attributes. Single: {\\\"guid\\\": \\\"...\\\", \\\"custom_metadata_name\\\": \\\"CM\\\", \\\"attributes\\\": {\\\"k\\\": \\\"v\\\"}}. Batch: [{\\\"guid\\\": \\\"g1\\\", ...}, {\\\"guid\\\": \\\"g2\\\", ...}]\"\n                          }")],
-    replace: Annotated[bool, cyclopts.Parameter(help="If False (default): partial update — only specified attributes are changed. If True: full replacement — ALL attributes in the CM set are replaced; unspecified attributes are cleared. replace=True only supported for single asset (dict input), not batch.")] = False,
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    updates: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Single update (dict) or batch updates (list of dicts). Each item requires: guid, custom_metadata_name, attributes. Single: {"guid": "...", "custom_metadata_name": "CM", "attributes": {"k": "v"}}. Batch: [{"guid": "g1", ...}, {"guid": "g2", ...}]\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Single update (dict) or batch updates (list of dicts). Each item requires: guid, custom_metadata_name, attributes. Single: {\\"guid\\": \\"...\\", \\"custom_metadata_name\\": \\"CM\\", \\"attributes\\": {\\"k\\": \\"v\\"}}. Batch: [{\\"guid\\": \\"g1\\", ...}, {\\"guid\\": \\"g2\\", ...}]"\n                          }'
+        ),
+    ],
+    replace: Annotated[
+        bool,
+        cyclopts.Parameter(
+            help="If False (default): partial update — only specified attributes are changed. If True: full replacement — ALL attributes in the CM set are replaced; unspecified attributes are cleared. replace=True only supported for single asset (dict input), not batch."
+        ),
+    ] = False,
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Update custom metadata on one or more assets. Set replace=True for full replacement, False (default) for partial update. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Update custom metadata on one or more assets. Set replace=True for full replacement, False (default) for partial update. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     updates_parsed = _maybe_json(updates)
 
-    await _call_tool('update_custom_metadata_tool', {'updates': updates_parsed, 'replace': replace, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "update_custom_metadata_tool",
+        {
+            "updates": updates_parsed,
+            "replace": replace,
+            "mode": mode,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='remove_custom_metadata_tool')
+@app.command(name="remove_custom_metadata_tool")
 async def remove_custom_metadata_tool(
     *,
     guid: Annotated[str, cyclopts.Parameter(help="GUID of the asset")],
-    custom_metadata_name: Annotated[str, cyclopts.Parameter(help="Name of the custom metadata set to remove")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    custom_metadata_name: Annotated[
+        str, cyclopts.Parameter(help="Name of the custom metadata set to remove")
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Remove a custom metadata set from an asset. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Remove a custom metadata set from an asset. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
 
-    await _call_tool('remove_custom_metadata_tool', {'guid': guid, 'custom_metadata_name': custom_metadata_name, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "remove_custom_metadata_tool",
+        {
+            "guid": guid,
+            "custom_metadata_name": custom_metadata_name,
+            "mode": mode,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='create_custom_metadata_set_tool')
+@app.command(name="create_custom_metadata_set_tool")
 async def create_custom_metadata_set_tool(
     *,
-    sets: Annotated[str, cyclopts.Parameter(help="Single CM set (dict) or multiple CM sets (list of dicts). Each requires: display_name (str), attributes (list). Optional: description (str). Each attribute requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional per attribute: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Single: {\"display_name\": \"Data Quality\", \"attributes\": [{\"display_name\": \"Score\", \"attribute_type\": \"int\"}, {\"display_name\": \"Dimension\", \"attribute_type\": \"enum\", \"enum_values\": [\"Accuracy\", \"Completeness\"]}]}. Batch: [{\"display_name\": \"CM1\", \"attributes\": [...]}, {\"display_name\": \"CM2\", \"attributes\": [...]}]\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Single CM set (dict) or multiple CM sets (list of dicts). Each requires: display_name (str), attributes (list). Optional: description (str). Each attribute requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional per attribute: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Single: {\\\"display_name\\\": \\\"Data Quality\\\", \\\"attributes\\\": [{\\\"display_name\\\": \\\"Score\\\", \\\"attribute_type\\\": \\\"int\\\"}, {\\\"display_name\\\": \\\"Dimension\\\", \\\"attribute_type\\\": \\\"enum\\\", \\\"enum_values\\\": [\\\"Accuracy\\\", \\\"Completeness\\\"]}]}. Batch: [{\\\"display_name\\\": \\\"CM1\\\", \\\"attributes\\\": [...]}, {\\\"display_name\\\": \\\"CM2\\\", \\\"attributes\\\": [...]}]\"\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    sets: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Single CM set (dict) or multiple CM sets (list of dicts). Each requires: display_name (str), attributes (list). Optional: description (str). Each attribute requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional per attribute: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Single: {"display_name": "Data Quality", "attributes": [{"display_name": "Score", "attribute_type": "int"}, {"display_name": "Dimension", "attribute_type": "enum", "enum_values": ["Accuracy", "Completeness"]}]}. Batch: [{"display_name": "CM1", "attributes": [...]}, {"display_name": "CM2", "attributes": [...]}]\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Single CM set (dict) or multiple CM sets (list of dicts). Each requires: display_name (str), attributes (list). Optional: description (str). Each attribute requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional per attribute: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Single: {\\"display_name\\": \\"Data Quality\\", \\"attributes\\": [{\\"display_name\\": \\"Score\\", \\"attribute_type\\": \\"int\\"}, {\\"display_name\\": \\"Dimension\\", \\"attribute_type\\": \\"enum\\", \\"enum_values\\": [\\"Accuracy\\", \\"Completeness\\"]}]}. Batch: [{\\"display_name\\": \\"CM1\\", \\"attributes\\": [...]}, {\\"display_name\\": \\"CM2\\", \\"attributes\\": [...]}]"\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Create one or more custom metadata sets with typed attributes. Defines the schema; use update_custom_metadata to set values on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Create one or more custom metadata sets with typed attributes. Defines the schema; use update_custom_metadata to set values on assets. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     sets_parsed = _maybe_json(sets)
 
-    await _call_tool('create_custom_metadata_set_tool', {'sets': sets_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "create_custom_metadata_set_tool",
+        {"sets": sets_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='delete_custom_metadata_set_tool')
+@app.command(name="delete_custom_metadata_set_tool")
 async def delete_custom_metadata_set_tool(
     *,
-    sets: Annotated[str, cyclopts.Parameter(help="Single CM set display name (string) or list of display names for batch deletion. WARNING: Irreversible — deletes the schema and all stored attribute values on assets. Single: \"Data Quality\". Batch: [\"Data Quality\", \"Governance\"]\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              }\n                            ],\n                            \"description\": \"Single CM set display name (string) or list of display names for batch deletion. WARNING: Irreversible — deletes the schema and all stored attribute values on assets. Single: \\\"Data Quality\\\". Batch: [\\\"Data Quality\\\", \\\"Governance\\\"]\"\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    sets: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Single CM set display name (string) or list of display names for batch deletion. WARNING: Irreversible — deletes the schema and all stored attribute values on assets. Single: "Data Quality". Batch: ["Data Quality", "Governance"]\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "items": {},\n                                "type": "array"\n                              }\n                            ],\n                            "description": "Single CM set display name (string) or list of display names for batch deletion. WARNING: Irreversible — deletes the schema and all stored attribute values on assets. Single: \\"Data Quality\\". Batch: [\\"Data Quality\\", \\"Governance\\"]"\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Permanently delete one or more custom metadata sets and all their attribute values from assets. Irreversible. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Permanently delete one or more custom metadata sets and all their attribute values from assets. Irreversible. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     sets_parsed = _maybe_json(sets)
 
-    await _call_tool('delete_custom_metadata_set_tool', {'sets': sets_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "delete_custom_metadata_set_tool",
+        {"sets": sets_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='add_attributes_to_cm_set_tool')
+@app.command(name="add_attributes_to_cm_set_tool")
 async def add_attributes_to_cm_set_tool(
     *,
-    display_name: Annotated[str, cyclopts.Parameter(help="Display name of the existing CM set")],
-    attributes: Annotated[str, cyclopts.Parameter(help="Attributes to add. Each requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Example: [{\"display_name\": \"Risk Score\", \"attribute_type\": \"int\"}, {\"display_name\": \"Status\", \"attribute_type\": \"enum\", \"enum_values\": [\"Draft\", \"Approved\", \"Rejected\"]}]\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Attributes to add. Each requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Example: [{\\\"display_name\\\": \\\"Risk Score\\\", \\\"attribute_type\\\": \\\"int\\\"}, {\\\"display_name\\\": \\\"Status\\\", \\\"attribute_type\\\": \\\"enum\\\", \\\"enum_values\\\": [\\\"Draft\\\", \\\"Approved\\\", \\\"Rejected\\\"]}]\"\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    display_name: Annotated[
+        str, cyclopts.Parameter(help="Display name of the existing CM set")
+    ],
+    attributes: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Attributes to add. Each requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Example: [{"display_name": "Risk Score", "attribute_type": "int"}, {"display_name": "Status", "attribute_type": "enum", "enum_values": ["Draft", "Approved", "Rejected"]}]\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Attributes to add. Each requires: display_name, attribute_type (string|int|float|boolean|date|enum|users|groups|url|SQL|long). Optional: multi_valued (bool), description (str). For enum attributes: provide enum_values (list of allowed strings) to create a new enum, OR options_name (str) to reference an existing Atlan enum. Example: [{\\"display_name\\": \\"Risk Score\\", \\"attribute_type\\": \\"int\\"}, {\\"display_name\\": \\"Status\\", \\"attribute_type\\": \\"enum\\", \\"enum_values\\": [\\"Draft\\", \\"Approved\\", \\"Rejected\\"]}]"\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Add new typed attributes to an existing custom metadata set. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Add new typed attributes to an existing custom metadata set. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     attributes_parsed = _maybe_json(attributes)
 
-    await _call_tool('add_attributes_to_cm_set_tool', {'display_name': display_name, 'attributes': attributes_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "add_attributes_to_cm_set_tool",
+        {
+            "display_name": display_name,
+            "attributes": attributes_parsed,
+            "mode": mode,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='remove_attributes_from_cm_set_tool')
+@app.command(name="remove_attributes_from_cm_set_tool")
 async def remove_attributes_from_cm_set_tool(
     *,
-    display_name: Annotated[str, cyclopts.Parameter(help="Display name of the existing CM set")],
-    attribute_names: Annotated[str, cyclopts.Parameter(help="Display name(s) of attributes to remove (archive). Archived attributes are soft-deleted: values are cleared from assets and hidden in UI. Example: [\"Score\", \"Reviewed By\"] or a JSON string of the list.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Display name(s) of attributes to remove (archive). Archived attributes are soft-deleted: values are cleared from assets and hidden in UI. Example: [\\\"Score\\\", \\\"Reviewed By\\\"] or a JSON string of the list.\"\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    display_name: Annotated[
+        str, cyclopts.Parameter(help="Display name of the existing CM set")
+    ],
+    attribute_names: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Display name(s) of attributes to remove (archive). Archived attributes are soft-deleted: values are cleared from assets and hidden in UI. Example: ["Score", "Reviewed By"] or a JSON string of the list.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Display name(s) of attributes to remove (archive). Archived attributes are soft-deleted: values are cleared from assets and hidden in UI. Example: [\\"Score\\", \\"Reviewed By\\"] or a JSON string of the list."\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Remove (archive) attributes from an existing custom metadata set. Archived attributes are soft-deleted and their values cleared from all assets. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Remove (archive) attributes from an existing custom metadata set. Archived attributes are soft-deleted and their values cleared from all assets. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     attribute_names_parsed = _maybe_json(attribute_names)
 
-    await _call_tool('remove_attributes_from_cm_set_tool', {'display_name': display_name, 'attribute_names': attribute_names_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "remove_attributes_from_cm_set_tool",
+        {
+            "display_name": display_name,
+            "attribute_names": attribute_names_parsed,
+            "mode": mode,
+            "user_query": user_query,
+        },
+    )
 
 
-@app.command(name='add_atlan_tags_tool')
+@app.command(name="add_atlan_tags_tool")
 async def add_atlan_tags_tool(
     *,
-    updates: Annotated[str, cyclopts.Parameter(help="Single tag addition (dict) or batch (list of dicts). Each item: {guid, tag_names, propagate (default true), remove_on_delete (default true), restrict_lineage_propagation (default false), restrict_hierarchy_propagation (default false)}. Single: {\"guid\": \"...\", \"tag_names\": [\"PII\"]}. Batch: [{\"guid\": \"g1\", \"tag_names\": [\"PII\"]}, ...]\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Single tag addition (dict) or batch (list of dicts). Each item: {guid, tag_names, propagate (default true), remove_on_delete (default true), restrict_lineage_propagation (default false), restrict_hierarchy_propagation (default false)}. Single: {\\\"guid\\\": \\\"...\\\", \\\"tag_names\\\": [\\\"PII\\\"]}. Batch: [{\\\"guid\\\": \\\"g1\\\", \\\"tag_names\\\": [\\\"PII\\\"]}, ...]\"\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    updates: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Single tag addition (dict) or batch (list of dicts). Each item: {guid, tag_names, propagate (default true), remove_on_delete (default true), restrict_lineage_propagation (default false), restrict_hierarchy_propagation (default false)}. Single: {"guid": "...", "tag_names": ["PII"]}. Batch: [{"guid": "g1", "tag_names": ["PII"]}, ...]\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Single tag addition (dict) or batch (list of dicts). Each item: {guid, tag_names, propagate (default true), remove_on_delete (default true), restrict_lineage_propagation (default false), restrict_hierarchy_propagation (default false)}. Single: {\\"guid\\": \\"...\\", \\"tag_names\\": [\\"PII\\"]}. Batch: [{\\"guid\\": \\"g1\\", \\"tag_names\\": [\\"PII\\"]}, ...]"\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Add Atlan tags to one or more assets. Pass a dict for single asset, list for batch. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Add Atlan tags to one or more assets. Pass a dict for single asset, list for batch. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     updates_parsed = _maybe_json(updates)
 
-    await _call_tool('add_atlan_tags_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "add_atlan_tags_tool",
+        {"updates": updates_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='remove_atlan_tag_tool')
+@app.command(name="remove_atlan_tag_tool")
 async def remove_atlan_tag_tool(
     *,
-    updates: Annotated[str, cyclopts.Parameter(help="Single tag removal (dict) or batch (list of dicts). Each item: {guid, tag_name}. Single: {\"guid\": \"...\", \"tag_name\": \"PII\"}. Batch: [{\"guid\": \"g1\", \"tag_name\": \"PII\"}, ...]\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"additionalProperties\": true,\n                                \"type\": \"object\"\n                              },\n                              {\n                                \"items\": {},\n                                \"type\": \"array\"\n                              },\n                              {\n                                \"type\": \"string\"\n                              }\n                            ],\n                            \"description\": \"Single tag removal (dict) or batch (list of dicts). Each item: {guid, tag_name}. Single: {\\\"guid\\\": \\\"...\\\", \\\"tag_name\\\": \\\"PII\\\"}. Batch: [{\\\"guid\\\": \\\"g1\\\", \\\"tag_name\\\": \\\"PII\\\"}, ...]\",\n                            \"examples\": [\n                              {\n                                \"guid\": \"asset-guid-1\",\n                                \"tag_name\": \"PII\"\n                              },\n                              [\n                                {\n                                  \"guid\": \"g1\",\n                                  \"tag_name\": \"Sensitive\"\n                                },\n                                {\n                                  \"guid\": \"g2\",\n                                  \"tag_name\": \"Confidential\"\n                                }\n                              ]\n                            ]\n                          }")],
-    mode: Annotated[str, cyclopts.Parameter(help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved.")] = 'propose',
-    user_query: Annotated[str | None, cyclopts.Parameter(help="REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            \"anyOf\": [\n                              {\n                                \"type\": \"string\"\n                              },\n                              {\n                                \"type\": \"null\"\n                              }\n                            ],\n                            \"default\": null,\n                            \"description\": \"REQUIRED: Always pass the user's exact question/prompt that triggered this tool call. Used for tracing and observability.\"\n                          }")] = None,
+    updates: Annotated[
+        str,
+        cyclopts.Parameter(
+            help='Single tag removal (dict) or batch (list of dicts). Each item: {guid, tag_name}. Single: {"guid": "...", "tag_name": "PII"}. Batch: [{"guid": "g1", "tag_name": "PII"}, ...]\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "additionalProperties": true,\n                                "type": "object"\n                              },\n                              {\n                                "items": {},\n                                "type": "array"\n                              },\n                              {\n                                "type": "string"\n                              }\n                            ],\n                            "description": "Single tag removal (dict) or batch (list of dicts). Each item: {guid, tag_name}. Single: {\\"guid\\": \\"...\\", \\"tag_name\\": \\"PII\\"}. Batch: [{\\"guid\\": \\"g1\\", \\"tag_name\\": \\"PII\\"}, ...]",\n                            "examples": [\n                              {\n                                "guid": "asset-guid-1",\n                                "tag_name": "PII"\n                              },\n                              [\n                                {\n                                  "guid": "g1",\n                                  "tag_name": "Sensitive"\n                                },\n                                {\n                                  "guid": "g2",\n                                  "tag_name": "Confidential"\n                                }\n                              ]\n                            ]\n                          }'
+        ),
+    ],
+    mode: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="ALWAYS use 'propose'. Returns a preview for user review. NEVER use 'execute' unless the user has explicitly approved."
+        ),
+    ] = "propose",
+    user_query: Annotated[
+        str | None,
+        cyclopts.Parameter(
+            help='REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability.\\nJSON Schema: {\n                            "anyOf": [\n                              {\n                                "type": "string"\n                              },\n                              {\n                                "type": "null"\n                              }\n                            ],\n                            "default": null,\n                            "description": "REQUIRED: Always pass the user\'s exact question/prompt that triggered this tool call. Used for tracing and observability."\n                          }'
+        ),
+    ] = None,
 ) -> None:
-    '''Remove an Atlan tag from one or more assets. Pass a dict for single asset, list for batch. Always uses propose mode — STOP after proposing and wait for user approval before executing.'''
+    """Remove an Atlan tag from one or more assets. Pass a dict for single asset, list for batch. Always uses propose mode — STOP after proposing and wait for user approval before executing."""
     updates_parsed = _maybe_json(updates)
 
-    await _call_tool('remove_atlan_tag_tool', {'updates': updates_parsed, 'mode': mode, 'user_query': user_query})
+    await _call_tool(
+        "remove_atlan_tag_tool",
+        {"updates": updates_parsed, "mode": mode, "user_query": user_query},
+    )
 
 
-@app.command(name='get_asset_icons')
+@app.command(name="get_asset_icons")
 async def get_asset_icons(
     *,
     icon_names: Annotated[list[str], cyclopts.Parameter(help="")],
 ) -> None:
-    '''Fetch SVG icons for asset types. Internal tool used by widgets.'''
-    await _call_tool('get_asset_icons', {'icon_names': icon_names})
+    """Fetch SVG icons for asset types. Internal tool used by widgets."""
+    await _call_tool("get_asset_icons", {"icon_names": icon_names})
 
 
 def main() -> None:
