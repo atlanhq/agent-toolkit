@@ -2,14 +2,14 @@
   "name": "atlan",
   "owner": { "name": "Atlan", "email": "support@atlan.com" },
   "metadata": {
-    "description": "Atlan is the context layer for enterprise AI. Use Atlan agent skills in Cursor — curate your data graph, search & discover, traverse lineage, govern context, manage glossaries and Data Quality, execute SQL and more.",
+    "description": "Atlan is the context layer for enterprise AI. Connect Cursor to your organization's context repos — the knowledge, data, and semantics your AI agents need to build effectively. Use Atlan's agent skills to search & discover enterprise context, traverse end-to-end lineage, access governed data definitions and glossaries, execute SQL, curate your metadata graph, and ensure data quality — so every coding task in Cursor is grounded in trusted organizational context.",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "atlan",
       "source": "./cursor-plugin",
-      "description": "Atlan is the context layer for enterprise AI. Use Atlan agent skills in Cursor — curate your data graph, search & discover, traverse lineage, govern context, manage glossaries and Data Quality, execute SQL and more."
+      "description": "Atlan is the context layer for enterprise AI. Connect Cursor to your organization's context repos — the knowledge, data, and semantics your AI agents need to build effectively. Use Atlan's agent skills to search & discover enterprise context, traverse end-to-end lineage, access governed data definitions and glossaries, execute SQL, curate your metadata graph, and ensure data quality — so every coding task in Cursor is grounded in trusted organizational context."
     }
   ]
 }
