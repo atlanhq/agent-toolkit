@@ -1,29 +1,135 @@
-name: Publish atlan-cli to PyPI
+name: Publish atlan-cli
 
 on:
-  release:
-    types: [published]
+  pull_request:
+    types: [closed]
+    branches:
+      - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write  # required for PyPI Trusted Publisher (OIDC)
-
 jobs:
-  publish:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+  prepare-release:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'release-cli'))
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      should_release: ${{ steps.check_tag.outputs.exists == 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep -m 1 "__version__" mcp-cli/atlan_cli.py | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG_NAME="mcp-cli-v${{ steps.get_version.outputs.version }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists, stopping workflow"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG_NAME does not exist, continuing"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          set +e
+          VERSION="${{ steps.get_version.outputs.version }}"
+          RELEASE_DATE=$(date +"%Y-%m-%d")
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD)
+            RANGE="$FIRST_COMMIT..HEAD"
+          else
+            RANGE="$PREV_TAG..HEAD"
+          fi
+
+          echo "## [$VERSION] - $RELEASE_DATE" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+
+          git log $RANGE --format="* %s (%h)" --grep="^feat" --perl-regexp --no-merges 2>/dev/null > features.txt || touch features.txt
+          git log $RANGE --format="* %s (%h)" --grep="^fix" --perl-regexp --no-merges 2>/dev/null > fixes.txt || touch fixes.txt
+
+          if [ -s features.txt ]; then
+            echo "### Added" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            sed 's/^\* feat[[:space:]]*\([^:]*\):[[:space:]]*/\* /' features.txt >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+          fi
+
+          if [ -s fixes.txt ]; then
+            echo "### Fixed" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            sed 's/^\* fix[[:space:]]*\([^:]*\):[[:space:]]*/\* /' fixes.txt >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+          fi
+
+          if [ ! -s features.txt ] && [ ! -s fixes.txt ]; then
+            echo "### Changed" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            echo "* Release version $VERSION" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+          fi
+
+          rm -f features.txt fixes.txt
+          cat RELEASE_NOTES.md
+
+      - name: Create tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git tag mcp-cli-v${{ steps.get_version.outputs.version }}
+          git push --tags
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mcp-cli-v${{ steps.get_version.outputs.version }}
+          name: atlan-cli v${{ steps.get_version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
+
+      - name: Upload release notes
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: RELEASE_NOTES.md
+          retention-days: 1
+
+  publish:
+    needs: prepare-release
+    if: needs.prepare-release.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # required for PyPI Trusted Publisher (OIDC)
     defaults:
       run:
         working-directory: mcp-cli
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          python-version: "3.12"
+          ref: mcp-cli-v${{ needs.prepare-release.outputs.version }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
