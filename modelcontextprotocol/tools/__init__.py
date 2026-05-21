@@ -15,6 +15,10 @@ from .glossary import (
     create_glossary_term_assets,
 )
 from .domain import create_data_domain_assets, create_data_product_assets
+from .context_repo import (
+    create_context_repository_assets,
+    create_skill_assets,
+)
 from .models import (
     CertificateStatus,
     UpdatableAttribute,
@@ -31,6 +35,10 @@ from .models import (
     ScheduledAssetInfo,
     DQRuleInfo,
     DQRuleDeleteResponse,
+    ContextBundleArtifactSpec,
+    ContextInputAssetRef,
+    ContextRepositorySpec,
+    SkillSpec,
 )
 
 __all__ = [
@@ -44,6 +52,8 @@ __all__ = [
     "create_glossary_term_assets",
     "create_data_domain_assets",
     "create_data_product_assets",
+    "create_context_repository_assets",
+    "create_skill_assets",
     "CertificateStatus",
     "UpdatableAttribute",
     "UpdatableAsset",
@@ -63,4 +73,8 @@ __all__ = [
     "ScheduledAssetInfo",
     "DQRuleInfo",
     "DQRuleDeleteResponse",
+    "ContextBundleArtifactSpec",
+    "ContextInputAssetRef",
+    "ContextRepositorySpec",
+    "SkillSpec",
 ]
