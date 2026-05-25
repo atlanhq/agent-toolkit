@@ -4,27 +4,29 @@ Connects Atlan's hosted MCP server (`https://mcp.atlan.com/mcp`) to [OpenAI Code
 
 ## Install
 
-### From the official Codex Plugin Directory (when listed)
+> **Note:** OpenAI's official Codex Plugin Directory is not yet GA. The build docs state: *"Adding plugins to the official Plugin Directory is coming soon. Self-serve plugin publishing and management are coming soon."* — see [developers.openai.com/codex/plugins/build](https://developers.openai.com/codex/plugins/build). Until then, Atlan customers install this plugin by registering Atlan's own marketplace — the steps below.
 
-Once accepted into OpenAI's curated Plugin Directory, install via **Codex.app → Plugins → search "Atlan" → Install**, or:
-
-```bash
-codex plugin add atlan@openai-curated
-```
-
-### Sideload for local development
+### Sideload from this repository
 
 The repository root ships a marketplace manifest at `.agents/plugins/marketplace.json` that exposes the plugin as `atlan@atlan`.
 
 ```bash
-# Register the marketplace (path = repo root containing .agents/plugins/marketplace.json)
-codex plugin marketplace add /path/to/agent-toolkit
+# Register Atlan's marketplace (point at the GitHub repo, or a local clone's root)
+codex plugin marketplace add https://github.com/atlanhq/agent-toolkit
 
 # Install the plugin from that marketplace
 codex plugin add atlan@atlan
 ```
 
-Quit and relaunch **Codex.app** — the Atlan plugin appears under **Plugins → Manage** (enabled, with the bundled MCP server registered).
+Quit and relaunch **Codex.app** — the Atlan plugin appears under **Plugins → Manage** (enabled, with the bundled MCP server registered). On first tool call, Codex runs OAuth against `mcp.atlan.com` to authenticate against your Atlan tenant.
+
+### From the official Codex Plugin Directory (once GA)
+
+When OpenAI opens self-serve publishing and Atlan is accepted into the curated Plugin Directory, install via **Codex.app → Plugins → search "Atlan" → Install**, or:
+
+```bash
+codex plugin add atlan@openai-curated
+```
 
 ### Direct MCP server install (CLI only, no plugin)
 
