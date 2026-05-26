@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Type, List, Optional, Union, Dict, Any
 
 from client import get_atlan_client
@@ -13,20 +14,26 @@ logger = logging.getLogger(__name__)
 
 _UNKNOWN_ATTR_HINTS: Dict[str, str] = {
     "PARENTQUALIFIEDNAME": (
-        " To find columns of a View, use 'viewQualifiedName'."
-        " To find columns of a Table, use 'tableQualifiedName'."
-        " Alternatively, use 'qualifiedName' with operator 'startsWith'"
-        " and value '<parent_qualified_name>/'."
+        " '__parentQualifiedName' is an internal Elasticsearch field and cannot be used"
+        " as a search condition. To find columns of a View or Table, filter by"
+        " 'qualified_name' with operator 'startsWith' and value '<parent_qualified_name>/'."
+        " Example: conditions={'qualified_name': {'operator': 'startsWith',"
+        " 'value': 'default/databricks/123/schema/vw_card/'}}."
     ),
 }
 
 
 def _unknown_attr_hint(attr_name: str) -> str:
     normalized = attr_name.strip("_").upper()
+    # camelCase normalisation to match keys (viewQualifiedName -> VIEWQUALIFIEDNAME)
+    camel_key = re.sub(r"_", "", normalized)
     return _UNKNOWN_ATTR_HINTS.get(
         normalized,
-        " Check the attribute name — use camelCase pyatlan field names"
-        " (e.g. 'qualifiedName', 'name', 'description', 'viewQualifiedName').",
+        _UNKNOWN_ATTR_HINTS.get(
+            camel_key,
+            " Check the attribute name — use snake_case or camelCase pyatlan field names"
+            " (e.g. 'qualified_name', 'name', 'description').",
+        ),
     )
 
 
