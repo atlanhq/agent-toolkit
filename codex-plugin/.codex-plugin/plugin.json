@@ -1,0 +1,44 @@
+{
+  "name": "atlan",
+  "version": "0.1.0",
+  "description": "Atlan is the context layer for enterprise AI. Connect Codex to your organization's context repos — the knowledge, data, and semantics your AI agents need to build effectively. Use Atlan's agent skills to search & discover enterprise context, traverse end-to-end lineage, access governed data definitions and glossaries, execute SQL, curate your metadata graph, and ensure data quality — so every coding task in Codex is grounded in trusted organizational context.",
+  "author": {
+    "name": "Atlan",
+    "email": "engineering@atlan.com",
+    "url": "https://atlan.com"
+  },
+  "homepage": "https://atlan.com",
+  "repository": "https://github.com/atlanhq/agent-toolkit",
+  "license": "Apache-2.0",
+  "keywords": [
+    "atlan",
+    "mcp",
+    "data-catalog",
+    "data-governance",
+    "metadata",
+    "lineage",
+    "data-quality",
+    "semantic-search",
+    "glossary"
+  ],
+  "mcpServers": ".mcp.json",
+  "interface": {
+    "displayName": "Atlan",
+    "shortDescription": "The context layer for enterprise AI — search, govern, and reason about your data assets from inside Codex.",
+    "longDescription": "Atlan is the context layer for enterprise AI. This plugin connects OpenAI Codex to your organization's Atlan tenant via Atlan's hosted MCP server, giving the agent access to your full metadata graph — tables, columns, dashboards, glossaries, domains, lineage, and data quality rules. Use it to ground coding tasks in trusted organizational context: semantic search across assets, end-to-end lineage traversal, governed data definitions, SQL execution on connected sources, and curated metadata writes. Authentication is OAuth-based against `mcp.atlan.com` — no API keys to manage.",
+    "developerName": "Atlan",
+    "category": "data-tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://atlan.com",
+    "privacyPolicyURL": "https://atlan.com/privacy",
+    "termsOfServiceURL": "https://atlan.com/terms",
+    "defaultPrompt": [
+      "Find tables related to customer data in my Atlan catalog and summarize their lineage.",
+      "List glossary terms tagged as PII in my catalog.",
+      "Show upstream lineage for the orders fact table."
+    ],
+    "brandColor": "#0066FF",
+    "logo": "./assets/atlan-logo.png",
+    "composerIcon": "./assets/atlan-logo.png"
+  }
+}
