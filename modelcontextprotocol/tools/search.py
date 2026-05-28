@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Type, List, Optional, Union, Dict, Any
 
 from client import get_atlan_client
@@ -10,6 +11,30 @@ from utils.constants import DEFAULT_SEARCH_ATTRIBUTES, VALID_RELATIONSHIPS
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+_UNKNOWN_ATTR_HINTS: Dict[str, str] = {
+    "PARENTQUALIFIEDNAME": (
+        " '__parentQualifiedName' is an internal Elasticsearch field and cannot be used"
+        " as a search condition. To find columns of a View or Table, filter by"
+        " 'qualified_name' with operator 'startsWith' and value '<parent_qualified_name>/'."
+        " Example: conditions={'qualified_name': {'operator': 'startsWith',"
+        " 'value': 'default/databricks/123/schema/vw_card/'}}."
+    ),
+}
+
+
+def _unknown_attr_hint(attr_name: str) -> str:
+    normalized = attr_name.strip("_").upper()
+    # camelCase normalisation to match keys (viewQualifiedName -> VIEWQUALIFIEDNAME)
+    camel_key = re.sub(r"_", "", normalized)
+    return _UNKNOWN_ATTR_HINTS.get(
+        normalized,
+        _UNKNOWN_ATTR_HINTS.get(
+            camel_key,
+            " Check the attribute name — use snake_case or camelCase pyatlan field names"
+            " (e.g. 'qualified_name', 'name', 'description').",
+        ),
+    )
 
 
 def search_assets(
@@ -137,10 +162,13 @@ def search_assets(
             for attr_name, condition in conditions.items():
                 attr = SearchUtils._get_asset_attribute(attr_name)
                 if attr is None:
-                    logger.warning(
-                        f"Unknown attribute: {attr_name}, skipping condition"
-                    )
-                    continue
+                    hint = _unknown_attr_hint(attr_name)
+                    logger.error(f"Unknown search attribute: '{attr_name}'{hint}")
+                    return {
+                        "results": [],
+                        "aggregations": {},
+                        "error": f"Unknown search attribute: '{attr_name}'.{hint}",
+                    }
 
                 logger.debug(f"Processing condition for attribute: {attr_name}")
 
@@ -272,7 +300,8 @@ def search_assets(
         if offset > 0:
             search = search.from_offset(offset)
 
-        # Set sorting
+        # Set sorting — keep a pre-sort reference for bulk search fallback
+        search_without_sort = search
         if sort_by:
             sort_attr = SearchUtils._get_asset_attribute(sort_by)
             if sort_attr is not None:
@@ -293,7 +322,20 @@ def search_assets(
 
         logger.info("Executing search request")
         client = get_atlan_client()
-        search_response = client.asset.search(request)
+        try:
+            search_response = client.asset.search(request)
+        except Exception as e:
+            # Bulk search API rejects user-defined sort orders (ATLAN-PYTHON-400-063).
+            # Retry transparently without sort so the caller still gets results.
+            if sort_by and ("400-063" in str(e) or "bulk search" in str(e).lower()):
+                logger.warning(
+                    f"sort_by='{sort_by}' is incompatible with bulk search, "
+                    f"retrying without sort: {e}"
+                )
+                request = search_without_sort.to_request()
+                search_response = client.asset.search(request)
+            else:
+                raise
         processed_results = SearchUtils.process_results(search_response)
         logger.info(
             f"Search completed, returned {len(processed_results['results'])} results"

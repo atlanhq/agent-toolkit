@@ -74,6 +74,10 @@ def search_assets_tool(
     Args:
         conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
+            Use snake_case or camelCase pyatlan field names. For Column assets: to retrieve
+            all columns of a View or Table, use 'qualified_name' with operator 'startsWith'
+            and value '<parent_qualified_name>/'.
+            Note: '__parentQualifiedName' is an internal ES field and is not valid here.
         negative_conditions (Dict[str, Any], optional): Dictionary of attribute conditions to exclude.
             Format: {"attribute_name": value} or {"attribute_name": {"operator": operator, "value": value}}
         some_conditions (Dict[str, Any], optional): Conditions for where_some() queries that require min_somes of them to match.
@@ -87,6 +91,8 @@ def search_assets_tool(
         limit (int, optional): Maximum number of results to return. Defaults to 10.
         offset (int, optional): Offset for pagination. Defaults to 0.
         sort_by (str, optional): Attribute to sort by. Defaults to None.
+            Note: sort_by is silently dropped for large result sets that require bulk
+            search (e.g. Column searches). Results are still returned correctly.
         sort_order (str, optional): Sort order, "ASC" or "DESC". Defaults to "ASC".
         connection_qualified_name (str, optional): Connection qualified name to filter by. ex: default/snowflake/123456/abc
         tags (List[str], optional): List of tags to filter by.
