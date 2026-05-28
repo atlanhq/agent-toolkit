@@ -61,7 +61,7 @@ python server.py --transport streamable-http --host 0.0.0.0 --port 8000
 - `MCP_TRANSPORT`: Transport mode (stdio/sse/streamable-http)
 - `MCP_HOST`: Host address for network transports (default: 0.0.0.0)
 - `MCP_PORT`: Port number for network transports (default: 8000)
-- `MCP_PATH`: Path for streamable-http transport (default: /)
+- `MCP_PATH`: Path for streamable-http transport (default: /mcp/)
 
 ### Optional
 - `ATLAN_AGENT_ID`: Agent identifier
