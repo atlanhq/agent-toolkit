@@ -50,6 +50,11 @@ mcp.add_middleware(tool_restriction)
 
 @mcp.tool()
 def search_assets_tool(
+    search_query=None,
+    attributes=None,
+    filters=None,
+    dsl=None,
+    convex_context=None,
     conditions=None,
     negative_conditions=None,
     some_conditions=None,
@@ -70,6 +75,13 @@ def search_assets_tool(
 ):
     """
     Advanced asset search using FluentSearch with flexible conditions.
+
+    IMPORTANT — COMMON MISTAKES:
+    • This tool does NOT accept `search_query` or `query`. For natural-language search, use `semantic_search_tool(query=...)` instead.
+    • This tool does NOT accept `attributes`. Use `include_attributes` to specify which attributes to return.
+    • This tool does NOT accept `filters`. Use `conditions`, `negative_conditions`, or `some_conditions` for filtering.
+    • This tool does NOT accept `dsl`. For DSL queries, use `get_assets_by_dsl_tool(dsl_query=...)` instead.
+    • This tool does NOT accept `convex_context`. This parameter does not exist on any tool.
 
     Args:
         conditions (Dict[str, Any], optional): Dictionary of attribute conditions to match.
@@ -302,6 +314,37 @@ def search_assets_tool(
         - readme
         - owner_users
     """
+    # ── Trap wrong parameters and redirect the LLM ──
+    if search_query is not None:
+        return {
+            "error": "Wrong tool: `search_query` is not a parameter of search_assets_tool. "
+            "For natural-language search, call semantic_search_tool(query=...) instead. "
+            "search_assets_tool uses structured `conditions` for attribute-based filtering."
+        }
+    if attributes is not None:
+        return {
+            "error": "Wrong parameter name: `attributes` is not valid. "
+            "Use `include_attributes` instead to specify which attributes to return in results. "
+            'Example: search_assets_tool(include_attributes=["owner_users", "description"])'
+        }
+    if filters is not None:
+        return {
+            "error": "Wrong parameter name: `filters` is not valid. "
+            "Use `conditions` for positive filters, `negative_conditions` for exclusions, "
+            "or `some_conditions` for OR-style matching. "
+            'Example: search_assets_tool(conditions={"name": {"operator": "contains", "value": "my_table"}})'
+        }
+    if dsl is not None:
+        return {
+            "error": "Wrong tool: `dsl` is not a parameter of search_assets_tool. "
+            "For DSL queries, call get_assets_by_dsl_tool(dsl_query=...) instead."
+        }
+    if convex_context is not None:
+        return {
+            "error": "Invalid parameter: `convex_context` does not exist on any Atlan MCP tool. "
+            "Remove it and retry your request with valid parameters only."
+        }
+
     try:
         # Parse JSON string parameters if needed
         conditions = parse_json_parameter(conditions)
