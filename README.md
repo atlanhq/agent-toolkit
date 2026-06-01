@@ -1,11 +1,11 @@
 # Atlan Agent Toolkit
 
 > [!WARNING]
-> **The local Atlan MCP server in this repository is deprecated.** Use the hosted Atlan MCP at **[mcp.atlan.com](https://mcp.atlan.com)** instead.
+> **The local Atlan MCP server in this repository is deprecated.** Use the hosted Atlan MCP at **[mcp.atlan.com/mcp](https://mcp.atlan.com/mcp)** instead.
 >
 > The local install path (cloning this repo or `pip install atlan-mcp-server`) is in maintenance-only mode — no new features, support not guaranteed. The hosted endpoint is the recommended way to integrate Atlan with Claude Desktop, Cursor, Codex, Databricks UC, and other MCP clients.
 >
-> See the [Atlan MCP overview](https://docs.atlan.com/product/capabilities/atlan-ai/how-tos/atlan-mcp-overview) for migration instructions.
+> See the [Atlan MCP overview](https://docs.atlan.com/product/capabilities/atlan-ai/how-tos/remote-mcp-overview) for migration instructions.
 
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
 [![PyPI - Version](https://img.shields.io/pypi/v/atlan-mcp-server.svg)](https://pypi.org/project/atlan-mcp-server)

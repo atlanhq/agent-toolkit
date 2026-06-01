@@ -1,9 +1,9 @@
 # Atlan MCP Server
 
 > [!WARNING]
-> **This local MCP server is deprecated.** Use the hosted Atlan MCP at **[mcp.atlan.com](https://mcp.atlan.com)** instead.
+> **This local MCP server is deprecated.** Use the hosted Atlan MCP at **[mcp.atlan.com/mcp](https://mcp.atlan.com/mcp)** instead.
 >
-> The local install path (Docker, uv, or `pip install atlan-mcp-server`) is in maintenance-only mode — no new features, support not guaranteed. The hosted endpoint is the recommended way to integrate Atlan with Claude Desktop, Cursor, Codex, Databricks UC, and other MCP clients. See the [Atlan MCP overview](https://docs.atlan.com/product/capabilities/atlan-ai/how-tos/atlan-mcp-overview) for setup.
+> The local install path (Docker, uv, or `pip install atlan-mcp-server`) is in maintenance-only mode — no new features, support not guaranteed. The hosted endpoint is the recommended way to integrate Atlan with Claude Desktop, Cursor, Codex, Databricks UC, and other MCP clients. See the [Atlan MCP overview](https://docs.atlan.com/product/capabilities/atlan-ai/how-tos/remote-mcp-overview) for setup.
 
 The Atlan [Model Context Protocol](https://modelcontextprotocol.io/introduction) server allows your AI agents to interact with Atlan services.
 
