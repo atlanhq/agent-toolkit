@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
@@ -32,7 +33,19 @@ from middleware import ToolRestrictionMiddleware
 from settings import get_settings
 
 
-mcp = FastMCP("Atlan MCP Server")
+# AICHAT-1153: This local MCP server is deprecated in favor of the hosted MCP at
+# mcp.atlan.com. The `instructions` string below is surfaced to MCP clients in the
+# `serverInfo` field returned during `initialize`, so the user sees the notice
+# once per session in the client UI (Claude Desktop, Cursor, Codex, etc.).
+_DEPRECATION_NOTICE = (
+    "DEPRECATED: This local Atlan MCP server is deprecated. Use the hosted "
+    "Atlan MCP at https://mcp.atlan.com instead. The local install path is in "
+    "maintenance-only mode (no new features, support not guaranteed). See "
+    "https://docs.atlan.com/product/capabilities/atlan-ai/how-tos/atlan-mcp-overview "
+    "for setup instructions."
+)
+
+mcp = FastMCP("Atlan MCP Server", instructions=_DEPRECATION_NOTICE)
 
 # Get restricted tools from environment variable or use default
 restricted_tools_env = os.getenv("RESTRICTED_TOOLS", "")
@@ -1305,8 +1318,36 @@ def update_dq_rules_tool(rules):
         }
 
 
+def _print_deprecation_banner() -> None:
+    """Print the deprecation banner to stderr on startup.
+
+    stderr (never stdout) because stdio transport uses stdout as the JSON-RPC
+    channel — anything on stdout breaks the protocol. Most MCP clients capture
+    stderr to their own log file, which is the right place for this notice.
+    """
+    banner = (
+        "\n"
+        "==============================================================\n"
+        " DEPRECATION NOTICE\n"
+        "--------------------------------------------------------------\n"
+        " This local Atlan MCP server is deprecated.\n"
+        " Use the hosted Atlan MCP at https://mcp.atlan.com instead.\n"
+        "\n"
+        " The local install path (clone / pip install atlan-mcp-server)\n"
+        " is in maintenance-only mode:\n"
+        "   - No new features\n"
+        "   - Support not guaranteed\n"
+        "\n"
+        " Migration: https://docs.atlan.com/product/capabilities/\n"
+        "   atlan-ai/how-tos/atlan-mcp-overview\n"
+        "==============================================================\n"
+    )
+    print(banner, file=sys.stderr, flush=True)
+
+
 def main():
     """Main entry point for the Atlan MCP Server."""
+    _print_deprecation_banner()
 
     settings = get_settings()
 
