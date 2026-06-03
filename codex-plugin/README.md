@@ -4,40 +4,30 @@ Connects Atlan's hosted MCP server (`https://mcp.atlan.com/mcp`) to [OpenAI Code
 
 ## Install
 
-> **Note:** OpenAI's official Codex Plugin Directory is not yet GA. The build docs state: *"Adding plugins to the official Plugin Directory is coming soon. Self-serve plugin publishing and management are coming soon."* — see [developers.openai.com/codex/plugins/build](https://developers.openai.com/codex/plugins/build). Until then, Atlan customers install this plugin by registering Atlan's own marketplace — the steps below.
-
-### Sideload from this repository
-
-The repository root ships a marketplace manifest at `.agents/plugins/marketplace.json` that exposes the plugin as `atlan@atlan`.
+Install via Atlan's marketplace on GitHub:
 
 ```bash
-# Register Atlan's marketplace (point at the GitHub repo, or a local clone's root)
+# 1. Register Atlan's marketplace from this repo
 codex plugin marketplace add https://github.com/atlanhq/agent-toolkit
 
-# Install the plugin from that marketplace
+# 2. Install the plugin (registers in Plugins → Manage)
 codex plugin add atlan@atlan
+
+# 3. Register the MCP server (auto-launches OAuth against mcp.atlan.com)
+codex mcp add atlan --url https://mcp.atlan.com/mcp
 ```
 
-Quit and relaunch **Codex.app** — the Atlan plugin appears under **Plugins → Manage** (enabled, with the bundled MCP server registered). On first tool call, Codex runs OAuth against `mcp.atlan.com` to authenticate against your Atlan tenant.
+Step 3 is needed today because Codex CLI's `plugin add` does not yet populate `[mcp_servers.<name>]` from a plugin's bundled `.mcp.json`. The plugin entry alone is not enough to wire up the MCP server — `codex mcp add` does the actual registration and launches the OAuth flow. Quit and relaunch Codex (Cmd+Q the desktop app, or exit and re-run the CLI) after the auth completes so the new server is loaded into the session.
 
-### From the official Codex Plugin Directory (once GA)
+### Once OpenAI's Plugin Directory is GA
 
-When OpenAI opens self-serve publishing and Atlan is accepted into the curated Plugin Directory, install via **Codex.app → Plugins → search "Atlan" → Install**, or:
+OpenAI's [Codex Plugin Directory](https://developers.openai.com/codex/plugins/build) is not yet generally available. When self-serve publishing opens and Atlan is accepted, install via **Codex.app → Plugins → search "Atlan" → Install**, or:
 
 ```bash
 codex plugin add atlan@openai-curated
 ```
 
-### Direct MCP server install (CLI only, no plugin)
-
-If you only need the MCP server in the Codex CLI and don't care about the desktop-app plugin entry, run:
-
-```bash
-codex mcp add atlan --url https://mcp.atlan.com/mcp
-codex mcp login atlan
-```
-
-This appends `[mcp_servers.atlan]` to `~/.codex/config.toml` without going through the plugin system.
+The marketplace and plugin steps will collapse into a single install flow; step 3 (`codex mcp add`) won't be needed once Codex CLI honours the plugin's bundled `.mcp.json`.
 
 ## Verify
 
@@ -47,6 +37,26 @@ codex mcp list                      # atlan ✓
 ```
 
 Inside a Codex session, run `/mcp` to inspect connected servers, then ask anything Atlan-related — e.g. *"find all tables in the snowflake connection"*, *"trace lineage upstream from this asset"*.
+
+## Uninstall
+
+Reverse each install step in the opposite order. Run these from any shell:
+
+```bash
+# 1. Sign out of the MCP server (clears the OAuth token from ~/.codex/auth.json)
+codex mcp logout atlan
+
+# 2. Remove the MCP server registration ([mcp_servers.atlan] section in ~/.codex/config.toml)
+codex mcp remove atlan
+
+# 3. Remove the plugin from Plugins → Manage
+codex plugin remove atlan@atlan
+
+# 4. (Optional) Remove Atlan's marketplace itself
+codex plugin marketplace remove atlan
+```
+
+Then quit and relaunch Codex so the change takes effect in any open session. After all four steps, `~/.codex/config.toml` should have no `[marketplaces.atlan]` or `[mcp_servers.atlan]` sections and `~/.codex/auth.json` should no longer carry an Atlan OAuth token. An empty `~/.codex/plugins/cache/atlan/` directory may remain — harmless; `rm -rf` it if you want a fully clean wipe.
 
 ## Available tools
 
