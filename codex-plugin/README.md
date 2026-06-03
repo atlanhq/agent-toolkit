@@ -20,6 +20,19 @@ codex plugin add atlan@atlan
 
 Quit and relaunch **Codex.app** — the Atlan plugin appears under **Plugins → Manage** (enabled, with the bundled MCP server registered). On first tool call, Codex runs OAuth against `mcp.atlan.com` to authenticate against your Atlan tenant.
 
+> **Known Codex CLI issue — verify `type = "http"` in your config.** As of current Codex CLI versions, `codex plugin add` does not preserve the `type` field from the plugin's bundled `.mcp.json` when writing to `~/.codex/config.toml`. Without `type = "http"`, Codex tries to launch the URL as a subprocess instead of opening an HTTP/OAuth connection — tool discovery returns zero tools, and the agent silently falls back to spawning `codex exec` child processes instead of calling MCP tools directly.
+>
+> After running `codex plugin add atlan@atlan`, open `~/.codex/config.toml` and confirm the section looks like this — manually add the `type` line if it's missing:
+>
+> ```toml
+> [mcp_servers.atlan]
+> type = "http"
+> url = "https://mcp.atlan.com/mcp"
+> enabled = true
+> ```
+>
+> **Fully quit and relaunch Codex** after editing — config is read once at process start, so hot edits won't take effect mid-session.
+
 ### From the official Codex Plugin Directory (once GA)
 
 When OpenAI opens self-serve publishing and Atlan is accepted into the curated Plugin Directory, install via **Codex.app → Plugins → search "Atlan" → Install**, or:
