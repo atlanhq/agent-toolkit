@@ -22,6 +22,7 @@ class UpdatableAttribute(str, Enum):
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
     TERM = "term"
+    ATLAN_TAG = "atlanTag"
 
 
 class TermOperation(str, Enum):
