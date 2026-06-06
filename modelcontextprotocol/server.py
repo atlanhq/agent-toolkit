@@ -15,6 +15,8 @@ from tools import (
     create_glossary_term_assets,
     create_data_domain_assets,
     create_data_product_assets,
+    create_context_repository_assets,
+    create_skill_assets,
     create_dq_rules,
     schedule_dq_rules,
     delete_dq_rules,
@@ -1059,6 +1061,138 @@ def create_data_products(products) -> List[Dict[str, Any]]:
         return {"error": f"Invalid JSON format for products parameter: {str(e)}"}
 
     return create_data_product_assets(products)
+
+
+@mcp.tool()
+def create_context_repos(repos) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple ContextRepository BUNDLES (repo + linked Skill +
+    bundled files) in Atlan. Implements the canonical agent-bundle flow:
+
+        ContextRepository (DRAFT)
+          ├─ contextRepositoryAgentInstructions: <markdown>
+          ├─ contextInputAssets[]: Tables + Glossary terms (links)
+          └─ contextOutputSkill (1:1) → ONE Skill (skillType=CONTEXT_REPO)
+                └─ skillArtifacts[]: one per file in `artifacts`
+
+    Each file (`artifacts[i]`) is persisted as a SkillArtifact entity AND
+    uploaded as bytes to object storage via a presigned URL. The UI reads
+    `filePath: s3://atlan-bucket/context-repos/<repo_guid>/<displayName>` to
+    build the file tree; both bytes and inline `description` are populated so
+    the UI preview renders even if the storage layer is slow.
+
+    To discover existing repositories use semantic_search_tool or
+    search_assets_tool with asset_type="ContextRepository".
+
+    Args:
+        repos (Union[Dict[str, Any], List[Dict[str, Any]]]): A single
+            ContextRepositorySpec or a list. Each spec:
+            - name (str, required): Repo/Skill name (shared by convention).
+            - user_description (str, optional): Repo description.
+            - agent_instructions (str, optional): Markdown body stored on
+              contextRepositoryAgentInstructions (LLM guidance).
+            - target_connection_qualified_name (str, optional): Connection
+              qualified name used as the query execution engine
+              (e.g. "default/snowflake/1657275059").
+            - input_assets (List[Dict], optional): Assets linked via
+              contextInputAssets. Each item: {"guid", "type_name"} where
+              type_name is e.g. "Table", "AtlasGlossaryTerm", "DataProduct".
+            - artifacts (List[Dict], optional): Files in the bundle. Each:
+                - display_name (str, required): full relative path with
+                  extension, e.g. "soul.md", "skills/refunds/SKILL.md",
+                  "semantic_models/orders.yaml". The UI's file-tree folders
+                  come from the slashes in this path.
+                - content (str, required): the actual file body. Uploaded to
+                  object storage AND stored on description for inline preview.
+            - activate (bool, optional, default False): if True, flip the
+              ContextRepository to ACTIVE and certificateStatus to VERIFIED
+              on both repo and Skill at the end.
+
+    Returns:
+        List[Dict[str, Any]]: a flat list of dicts describing every created
+            or updated asset:
+            - operation: "CREATE" or "UPDATE"
+            - guid: <asset-guid>
+            - name: <asset-name>
+            - qualified_name: <asset-qualified-name>
+            - type_name: "ContextRepository" | "Skill" | "SkillArtifact"
+
+    Example:
+        create_context_repos({
+            "name": "Refunds Agent",
+            "user_description": "Tier-1 refunds + escalations bundle.",
+            "agent_instructions": "Default currency USD; always cite policy.",
+            "target_connection_qualified_name": "default/snowflake/1657275059",
+            "input_assets": [
+                {"guid": "abc-...", "type_name": "Table"},
+                {"guid": "def-...", "type_name": "AtlasGlossaryTerm"}
+            ],
+            "artifacts": [
+                {"display_name": "soul.md", "content": "# Voice & Tone\n..."},
+                {"display_name": "skills/skill_index.md",
+                 "content": "- refunds: process customer refunds..."},
+                {"display_name": "skills/refunds/SKILL.md",
+                 "content": "# Refunds\n## When to use..."},
+                {"display_name": "semantic_models/orders.yaml",
+                 "content": "version: 1\nmetrics: ...\n"}
+            ],
+            "activate": False
+        })
+    """
+    try:
+        repos = parse_json_parameter(repos)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for repos parameter: {str(e)}"}
+
+    return create_context_repository_assets(repos)
+
+
+@mcp.tool()
+def create_skills(skills) -> List[Dict[str, Any]]:
+    """
+    Create one or multiple standalone Skill assets in Atlan.
+
+    Skills bundle instructions and artifacts consumed by an AI agent at runtime.
+    A Skill can be standalone (SYSTEM / CUSTOM) or the output of a
+    ContextRepository (CONTEXT_REPO). To discover existing skills use
+    semantic_search_tool or search_assets_tool with asset_type="Skill" (or
+    asset_type="SkillArtifact" for the contained files).
+
+    For Skills that belong to a ContextRepository bundle (the common case), use
+    `create_context_repos` instead — it creates the repo + paired Skill + the
+    bundled SkillArtifacts (with object-storage upload) atomically. This tool
+    is only for SYSTEM/CUSTOM skills that exist independently of any repo.
+
+    IMPORTANT BUSINESS RULES & CONSTRAINTS:
+    - Use clear, capability-oriented names ("Refund Policy", "Fabric Care").
+    - skill_version is a free-form version label (e.g., "1.0.0").
+
+    Args:
+        skills (Union[Dict[str, Any], List[Dict[str, Any]]]): A single skill
+            specification or a list. Each specification can contain:
+            - name (str): Name of the skill (required)
+            - user_description (str, optional): Detailed description
+            - certificate_status (str, optional): "VERIFIED", "DRAFT", or "DEPRECATED"
+            - skill_version (str, optional): Free-form version label
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries with details for each
+            created Skill: guid, name, qualified_name, operation.
+
+    Example:
+        create_skills({
+            "name": "Voice and Tone",
+            "user_description": "Org-wide voice-and-tone policy applied to every agent.",
+            "skill_version": "1.0.0",
+            "certificate_status": "VERIFIED"
+        })
+    """
+    try:
+        skills = parse_json_parameter(skills)
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON format for skills parameter: {str(e)}"}
+
+    return create_skill_assets(skills)
 
 
 @mcp.tool()

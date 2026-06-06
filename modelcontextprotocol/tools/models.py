@@ -111,6 +111,61 @@ class DataProductSpec(BaseModel):
         return v
 
 
+class ContextBundleArtifactSpec(BaseModel):
+    """One file inside a ContextRepository bundle.
+
+    `display_name` is the relative path the Atlan UI renders in its file tree
+    (e.g. "soul.md", "skills/refunds/SKILL.md", "semantic_models/orders.yaml").
+    `content` is the UTF-8 file body — it is uploaded to object storage AND
+    stored on the SkillArtifact's `description` so the UI inline preview
+    works regardless of storage state.
+    """
+
+    display_name: str
+    content: str
+
+
+class ContextInputAssetRef(BaseModel):
+    """Reference to an Atlas asset linked to a ContextRepository as input context."""
+
+    guid: str
+    type_name: str  # e.g. "Table", "AtlasGlossaryTerm", "DataProduct"
+
+
+class ContextRepositorySpec(BaseModel):
+    """Payload model for creating a ContextRepository bundle.
+
+    A bundle is a ContextRepository + a paired Skill (contextOutputSkill,
+    skillType="CONTEXT_REPO") + a set of SkillArtifacts (the bundled files).
+    Files are persisted both as Atlas entities and as bytes in object storage
+    via a presigned-URL upload, matching the canonical agent-bundle flow.
+    """
+
+    name: str
+    user_description: Optional[str] = None
+    # Markdown body stored on ContextRepository.contextRepositoryAgentInstructions.
+    agent_instructions: Optional[str] = None
+    # Connection qualified_name used as the query execution engine.
+    target_connection_qualified_name: Optional[str] = None
+    # Input assets linked via contextInputAssets ({"guid","type_name"} pairs).
+    input_assets: Optional[List[ContextInputAssetRef]] = None
+    # File bundle (each becomes a SkillArtifact + an object-storage upload).
+    artifacts: Optional[List[ContextBundleArtifactSpec]] = None
+    # If True, flip lifecycle to ACTIVE and certificateStatus to VERIFIED at
+    # the end. `owner_user` (if given) is set as the only entry in ownerUsers.
+    activate: bool = False
+    owner_user: Optional[str] = None
+
+
+class SkillSpec(BaseModel):
+    """Payload model for creating a standalone Skill asset."""
+
+    name: str
+    user_description: Optional[str] = None
+    certificate_status: Optional[CertificateStatus] = None
+    skill_version: Optional[str] = None
+
+
 class DQRuleCondition(BaseModel):
     """Model representing a single data quality rule condition."""
 
