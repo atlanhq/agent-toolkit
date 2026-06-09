@@ -33,7 +33,7 @@
     "privacyPolicyURL": "https://atlan.com/privacy",
     "termsOfServiceURL": "https://atlan.com/terms",
     "defaultPrompt": [
-      "Find tables related to customer data in my Atlan catalog and summarize their lineage.",
+      "Find tables related to customer data in my Atlan context layer and summarize their lineage.",
       "List glossary terms tagged as PII in my catalog.",
       "Show upstream lineage for the orders fact table."
     ],

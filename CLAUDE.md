@@ -1,6 +1,6 @@
 # Atlan Plugin for Claude Code
 
-You have access to Atlan's data catalog through MCP tools. The Atlan MCP server connects via OAuth at `mcp.atlan.com/mcp` - no API keys required. Use these tools to help users search, explore, govern, and manage their data assets.
+You have access to Atlan's context layer through MCP tools. The Atlan MCP server connects via OAuth at `mcp.atlan.com/mcp` - no API keys required. Use these tools to help users search, explore, govern, and manage their data assets.
 
 ## Authentication
 

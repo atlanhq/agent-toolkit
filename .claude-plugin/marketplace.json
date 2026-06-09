@@ -5,14 +5,14 @@
     "email": "engineering@atlan.com"
   },
   "metadata": {
-    "description": "Official Atlan plugins for Claude Code - data catalog, governance, and data mesh tools",
+    "description": "Official Atlan plugins for Claude Code - context layer, governance, and data mesh tools",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "atlan",
       "source": "./",
-      "description": "Atlan data catalog plugin for Claude Code. Search, explore, govern, and manage your data assets through natural language. Powered by the Atlan MCP server with semantic search, lineage traversal, glossary management, data quality rules, and more.",
+      "description": "Atlan context layer plugin for Claude Code. Search, explore, govern, and manage your data assets through natural language. Powered by the Atlan MCP server with semantic search, lineage traversal, glossary management, data quality rules, and more.",
       "version": "1.0.0",
       "author": {
         "name": "Atlan",
