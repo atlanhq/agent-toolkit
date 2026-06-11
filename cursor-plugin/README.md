@@ -1,6 +1,6 @@
 # Atlan Cursor Plugin
 
-Registers Atlan's hosted MCP server (`https://mcp.atlan.com/mcp`) with Cursor so AI assistants can query your Atlan data catalog. OAuth is handled by Cursor against the server's discovery endpoint on first tool call — no API key or extra setup required.
+Registers Atlan's hosted MCP server (`https://mcp.atlan.com/mcp`) with Cursor so AI assistants can query your Atlan context layer. OAuth is handled by Cursor against the server's discovery endpoint on first tool call — no API key or extra setup required.
 
 ## Install
 
