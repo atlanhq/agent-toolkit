@@ -1,0 +1,11 @@
+name: Verify Snyk Status
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+jobs:
+  verify-snyk:
+    uses: atlanhq/.github/.github/workflows/verify-snyk-status.yml@main
+    secrets: inherit
