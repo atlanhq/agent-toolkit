@@ -156,6 +156,8 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 | `schedule_dq_rules` | Schedule data quality rule execution for assets using cron expressions |
 | `delete_dq_rules`   | Delete one or multiple data quality rules by GUID                 |
 | `query_asset`       | Execute SQL queries on table/view assets                          |
+| `create_context_repos` | Create a ContextRepository bundle (repo + paired Skill + SkillArtifacts uploaded to object storage) so the bundle renders in the Atlan UI |
+| `create_skills`     | Create standalone Skill assets (for SYSTEM/CUSTOM skills independent of any repo) |
 
 ## Tool Access Control
 
@@ -225,6 +227,8 @@ You can restrict any of the following tools:
 - `update_dq_rules_tool` - Data quality rule updates
 - `schedule_dq_rules_tool` - Data quality rule scheduling
 - `delete_dq_rules_tool` - Data quality rule deletion
+- `create_context_repos` - ContextRepository bundle creation
+- `create_skills` - Standalone Skill creation
 
 ### Common Use Cases
 
