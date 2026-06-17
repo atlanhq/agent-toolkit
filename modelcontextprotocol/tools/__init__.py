@@ -32,6 +32,11 @@ from .models import (
     DQRuleInfo,
     DQRuleDeleteResponse,
 )
+from .workflows import (
+    get_workflow_package_names,
+    get_workflows,
+    get_workflow_runs,
+)
 
 __all__ = [
     "search_assets",
@@ -42,6 +47,9 @@ __all__ = [
     "create_glossary_category_assets",
     "create_glossary_assets",
     "create_glossary_term_assets",
+    "get_workflow_package_names",
+    "get_workflows",
+    "get_workflow_runs",
     "create_data_domain_assets",
     "create_data_product_assets",
     "CertificateStatus",
