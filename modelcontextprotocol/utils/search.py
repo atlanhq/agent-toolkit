@@ -89,7 +89,20 @@ class SearchUtils:
         elif operator == "has_any_value":
             return attr.has_any_value()
         elif operator == "contains":
-            return attr.contains(value, case_insensitive=case_insensitive)
+            contains_method = getattr(attr, "contains", None)
+            if contains_method is not None:
+                return contains_method(value, case_insensitive=case_insensitive)
+
+            match_method = getattr(attr, "match", None)
+            if match_method is not None:
+                logger.debug(
+                    "Attribute does not support contains(); falling back to match()"
+                )
+                return match_method(value)
+
+            raise ValueError(
+                f"Operator 'contains' is not supported for attribute type {type(attr).__name__}"
+            )
         elif operator == "between":
             # Expecting value to be a list/tuple with [start, end]
             if isinstance(value, (list, tuple)) and len(value) == 2:
