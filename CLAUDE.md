@@ -8,12 +8,11 @@ The Atlan MCP server uses OAuth 2.1 authentication. Users authenticate via the `
 
 ## Available MCP Tools
 
-12 tools are enabled by default for most customers. 3 additional tools are available but require enablement per tenant via feature flags.
+12 tools are enabled by default for most customers. 2 additional tools are available but require enablement per tenant via feature flags.
 
 ### Search & Discovery
 - **`semantic_search_tool`** - Natural language search across all data assets using AI-powered semantic understanding.
 - **`search_assets_tool`** *(not enabled by default)* - Search assets using structured filters and conditions.
-- **`get_assets_by_dsl_tool`** *(not enabled by default)* - Query assets using Atlan's DSL (Domain Specific Language) for advanced filtering.
 
 ### Lineage
 - **`traverse_lineage_tool`** - Trace data flow upstream (where data comes from) or downstream (where data goes).
