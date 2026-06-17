@@ -1,5 +1,6 @@
 from typing import Dict, Any
 import logging
+import re
 from pyatlan.model.assets import Asset
 
 logger = logging.getLogger(__name__)
@@ -44,8 +45,16 @@ class SearchUtils:
     def _get_asset_attribute(attr_name: str):
         """
         Get Asset attribute by name.
+
+        Accepts snake_case ('qualified_name') or camelCase ('qualifiedName').
+        Leading underscores (ES internal prefix like '__') are stripped before lookup.
+        camelCase is converted to UPPER_SNAKE_CASE before getattr lookup.
         """
-        return getattr(Asset, attr_name.upper(), None)
+        # Strip ES-internal leading underscores (e.g. __parentQualifiedName -> parentQualifiedName)
+        stripped = attr_name.lstrip("_")
+        # Convert camelCase to UPPER_SNAKE_CASE; snake_case is unchanged by this substitution
+        upper_snake = re.sub(r"(?<=[a-z])(?=[A-Z])", "_", stripped).upper()
+        return getattr(Asset, upper_snake, None)
 
     @staticmethod
     def _apply_operator_condition(
