@@ -24,17 +24,16 @@ You can find the documentation and setup instructions for the MCP server [here](
 
 ### Claude Code Plugin
 
-The official Atlan plugin for Claude Code. Search, explore, govern, and manage your data assets through natural language, powered by the Atlan MCP server.
+The official Atlan plugin for Claude Code — the context layer for enterprise AI. Connect Claude Code to your organization's data, metadata, and semantics so every coding task is grounded in trusted organizational context, powered by the Atlan MCP server.
 
 Connects to Atlan via OAuth at `mcp.atlan.com/mcp` - no API keys required.
 
-**Features:**
-- 15 MCP tools (12 enabled by default, 3 via feature flags)
-- **Search**: AI-powered semantic search across data assets
-- **Lineage**: Trace data flow upstream and downstream
-- **Governance**: Manage glossaries, terms, certifications
-- **Data Quality**: Create and schedule validation rules
-- **Data Mesh**: Organize domains and data products
+**Capabilities:**
+- **Search & discovery**: find and explore your enterprise context through semantic search
+- **Lineage**: trace data flow upstream and downstream
+- **Governance**: work with governed definitions, glossaries, terms, and certifications
+- **Data quality**: define and manage data quality rules
+- **Data mesh**: organize domains and data products
 
 **Setup:**
 ```bash
