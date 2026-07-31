@@ -28,10 +28,15 @@ cursor-plugin/
 ├── .cursor-plugin/
 │   └── plugin.json       # Manifest
 ├── mcp.json              # MCP server registration (mirrors manifest for default discovery)
+├── skills -> ../skills   # symlink: the same skills the Claude Code plugin ships
 ├── assets/
 │   └── atlan-logo.png    # Logo
 └── README.md
 ```
+
+`skills/` is a symlink to the repo-root `skills/` directory so a skill is
+authored once and shipped to both Cursor and Claude Code. See
+[`../skills/atlan-search/SKILL.md`](../skills/atlan-search/SKILL.md).
 
 ## Related
 

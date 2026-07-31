@@ -41,6 +41,23 @@ claude --plugin-dir ./claude-plugin
 
 For detailed plugin documentation, see [claude-plugin/README.md](claude-plugin/README.md).
 
+### Skills
+
+`skills/` holds the agent skills both plugins ship. A skill is instructions, not
+code: it teaches the agent how to use the tool surface well, and loads only when
+the task calls for it.
+
+| Skill | What it covers |
+|---|---|
+| [`atlan-search`](skills/atlan-search/SKILL.md) | Which discovery tool to reach for, and the filter rules that make each one return the right answer — types, tags, custom metadata, owners, glossary, domains and products, data quality, lineage, BI and pipelines, counts and breakdowns |
+
+Both plugins read the same directory (`cursor-plugin/skills` is a symlink), so a
+skill is authored once and shipped to Claude Code and Cursor together.
+
+Skills are measured, not assumed: the golden-eval harness runs the same dataset
+with and without them and diffs the scorecard per case. Adding or editing a
+skill means running that A/B and quoting the delta.
+
 
 ## 🔍 DeepWiki: Ask Questions About This Project
 
