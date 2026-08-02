@@ -19,7 +19,7 @@ The Atlan MCP server uses OAuth 2.1 authentication. Users authenticate via the `
 - **`traverse_lineage_tool`** - Trace data flow upstream (where data comes from) or downstream (where data goes).
 
 ### Asset Management
-- **`update_assets_tool`** - Update asset descriptions, certificates, README, terms, or custom metadata.
+- **`update_assets_tool`** - Update asset descriptions, certificates, README, terms, tags (classifications), or custom metadata.
 
 ### Query
 - **`query_assets_tool`** *(not enabled by default)* - Execute SQL queries against connected data sources.
