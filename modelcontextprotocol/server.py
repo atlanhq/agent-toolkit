@@ -6,6 +6,9 @@ from typing import Any, Dict, List
 from fastmcp import FastMCP
 from tools import (
     search_assets,
+    get_context,
+    get_metric,
+    search_metrics,
     get_assets_by_dsl,
     traverse_lineage,
     update_assets,
@@ -1392,6 +1395,76 @@ def main():
         }
     # Run the server with the specified transport and host/port/path
     mcp.run(**kwargs)
+
+
+@mcp.tool()
+def get_context_tool(
+    question: str,
+    tables: list = None,
+    pack: str = None,
+    k: int = 5,
+    tiers: list = None,
+    include_history: bool = True,
+):
+    """Retrieve ALL the analyst context needed to answer a business question about this data
+    estate correctly, BEFORE writing SQL. One call returns one block:
+      1. Analyst conventions — population filters, metric formulas, naming rules and platform
+         vocabulary that apply to every query over these tables. Authoritative.
+      2. The top matching CERTIFIED METRIC INDEX cards — each with the concept's decisions, ONE
+         canonical execution-verified SQL, and [[guid]] wikilinks to its variants (the
+         customer's BI definitions, real analyst queries) and sibling metrics — plus a one-line
+         shortlist of other matching metrics.
+      3. Real analyst queries — the top matching queries from this estate's own history.
+         Entries marked CANONICAL carry the authoritative recipe.
+
+    Call this FIRST for every question that will be answered with SQL, then open any [[guid]]
+    you need with get_metric_tool (a different variant's grain/filter, or — for questions
+    spanning several metric families, like a full funnel — EACH relevant sibling index). The
+    conventions routinely change the answer: they encode rules that are not present in table or
+    column names, so a query written without them can run cleanly and still return the wrong
+    population.
+
+    Args:
+        question: The business question, verbatim.
+        tables: Fully-qualified tables to scope to, if known. Omit to search the whole pack.
+        pack: Context pack id. Defaults to the server's configured pack.
+        k: How many real analyst queries to include (default 5).
+        tiers: Glossary tiers: conventions, governed, mined. Defaults to conventions+governed.
+        include_history: Set False for conventions and definitions only.
+
+    Returns:
+        dict: `context` (give this to the model), plus `counts`, `layers`, `corpus_manifest` and
+        `warnings` describing what was actually retrieved.
+    """
+    return get_context(
+        question=question,
+        tables=parse_list_parameter(tables) if tables else None,
+        pack=pack,
+        k=k,
+        tiers=parse_list_parameter(tiers) if tiers else None,
+        include_history=include_history,
+    )
+
+
+
+
+@mcp.tool()
+def get_metric_tool(id_or_name: str):
+    """Get ONE governed glossary term's README by GUID (from search_metrics_tool or a [[guid]]
+    wikilink) or exact name.
+
+    An INDEX term returns the concept's definition, population/grain decisions, ONE canonical
+    execution-verified SQL, and 'Related variants' / 'Related metrics' wikilinks. A VARIANT term
+    returns that variant's exact definition (a Power BI DAX measure or a real analyst query).
+    Open a variant only when its grain/filter/time-intelligence fits the question better than
+    the index's primary example. For questions spanning several metric families (e.g. a full
+    funnel of sends AND opens AND bounces), open EACH relevant sibling index — their populations
+    and channel scopings differ and must come from their own canonical SQL.
+
+    Args:
+        id_or_name: Term GUID or exact term name.
+    """
+    return get_metric(id_or_name=id_or_name)
 
 
 if __name__ == "__main__":

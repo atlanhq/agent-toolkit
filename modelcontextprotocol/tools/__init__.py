@@ -3,6 +3,7 @@ from .dsl import get_assets_by_dsl
 from .lineage import traverse_lineage
 from .assets import update_assets
 from .query import query_asset
+from .context import get_context, get_metric, search_metrics
 from .dq_rules import (
     create_dq_rules,
     schedule_dq_rules,
@@ -34,6 +35,9 @@ from .models import (
 )
 
 __all__ = [
+    "get_context",
+    "get_metric",
+    "search_metrics",
     "search_assets",
     "get_assets_by_dsl",
     "traverse_lineage",
