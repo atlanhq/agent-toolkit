@@ -63,6 +63,19 @@ else:
     # Default configuration - modify this list to restrict specific tools
     restricted_tools = []
 
+# Feature flag (settings.ENABLE_CONTEXT_TOOLS, default off): the Context Studio-backed
+# context tools are opt-in per deployment — they need APP_SEMANTIC_EVALS_BASE_URL and a
+# seeded context glossary on the tenant. Gating rides the existing restriction middleware,
+# so flagged-off tools are hidden from tool listings and blocked from calls.
+_CONTEXT_TOOLS = ["get_context_tool", "get_metric_tool"]
+try:
+    _context_tools_enabled = get_settings().ENABLE_CONTEXT_TOOLS
+except Exception:
+    # settings need ATLAN_* env vars; if they can't load at import time, stay flag-off
+    _context_tools_enabled = False
+if not _context_tools_enabled:
+    restricted_tools = list(restricted_tools) + _CONTEXT_TOOLS
+
 tool_restriction = ToolRestrictionMiddleware(restricted_tools=restricted_tools)
 mcp.add_middleware(tool_restriction)
 

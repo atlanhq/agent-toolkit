@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     MCP_HOST: str = "0.0.0.0"
     MCP_PORT: int = 8000
     MCP_PATH: str = "/"
+    # Feature flag: the Context Studio-backed context tools (get_context_tool /
+    # get_metric_tool). Default OFF — they need a deployed Context Studio backend
+    # (APP_SEMANTIC_EVALS_BASE_URL) and a seeded context glossary on the tenant; on a server
+    # without those the tools would only ever error. When off they are fed into the existing
+    # ToolRestrictionMiddleware, so they are hidden from tool listings and blocked from calls.
+    ENABLE_CONTEXT_TOOLS: bool = False
 
     @property
     def headers(self) -> dict:
