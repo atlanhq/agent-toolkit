@@ -106,12 +106,22 @@ anyone relies on the output:
   `dropped_metrics` section. The vendor formats do not, and a count of zero is common and fine.
   Entries dropped because they refer to tables outside this model are expected and can be ignored.
 
-**One thing the build cannot check for you.** Whether the target engine actually accepts the file is
-a separate question from whether the model is well formed. For Snowflake there is a documented dry
-run, `SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(..., TRUE)`, which validates without creating anything;
-Atlan attempts it during the build but it is deliberately non-fatal, so a build succeeds whether it
-ran, was skipped, or could not be reached. **Run that dry run yourself, or deploy to somewhere
-disposable first, before trusting the file in anything that matters.**
+**Did the target engine accept it?** That is a separate question from whether the model is well
+formed, and the reply answers it in a `validation` field. For Snowflake there is a documented dry run,
+`SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(..., TRUE)`, which validates without creating anything, and
+Atlan attempts it during the build. Read the status rather than assuming:
+
+| `validation.status` | what it means |
+|---|---|
+| `valid` | Snowflake compiled the model. Tables, identifiers and expressions all resolved |
+| `invalid` | Snowflake **rejected** it, and `error` carries what it said. The build reports failure and still returns the file so you can see what was wrong |
+| `unverified` | the connection's role lacks the privilege to run the compile. `error` names the grant needed. Not a defect in the model |
+| `skipped` | the check could not run at all, for example the verify service was unreachable. Not a defect in the model |
+| `not_available` | this engine offers no such check. True of every format except Snowflake Cortex |
+
+The states other than `valid` and `invalid` are deliberately not failures, so **a successful build does
+not on its own mean the file was checked.** For anything other than `valid`, run the dry run yourself
+or deploy somewhere disposable first, before trusting the file in anything that matters.
 
 ## Time and cost
 
