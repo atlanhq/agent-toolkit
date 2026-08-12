@@ -6,6 +6,14 @@ You have access to Atlan's context layer through MCP tools. The Atlan MCP server
 
 The Atlan MCP server uses OAuth 2.1 authentication. Users authenticate via the `/mcp` command in Claude Code, which opens a browser-based login flow. No API keys or environment variables are needed.
 
+The one exception is the build-semantic-view skill, which calls an Atlan HTTP endpoint directly and needs an Atlan API key in `ATLAN_API_KEY` plus the tenant in `ATLAN_BASE_URL`. Everything else on this page works with the browser sign-in alone.
+
+## Skills
+
+Skills carry procedures that no single tool covers. Load one when the user's request matches it, and follow it rather than improvising the sequence.
+
+- **build-semantic-view** - build a semantic model for a confirmed set of Atlan tables, in Snowflake Cortex Analyst, Databricks metric view, Databricks Genie, dbt MetricFlow, or Atlan's own form. Atlan builds the file and returns it; nothing is created in the tenant. Use it once the user has confirmed which tables to model, never to pick the tables for them. Needs an API key, per Authentication above.
+
 ## Available MCP Tools
 
 12 tools are enabled by default for most customers. 3 additional tools are available but require enablement per tenant via feature flags.
