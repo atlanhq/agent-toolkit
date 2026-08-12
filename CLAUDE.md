@@ -6,14 +6,21 @@ You have access to Atlan's context layer through MCP tools. The Atlan MCP server
 
 The Atlan MCP server uses OAuth 2.1 authentication. Users authenticate via the `/mcp` command in Claude Code, which opens a browser-based login flow. No API keys or environment variables are needed.
 
+The one exception is the build-semantic-view skill, which calls an Atlan HTTP endpoint directly and needs an Atlan API key in `ATLAN_API_KEY` plus the tenant in `ATLAN_BASE_URL`. Everything else on this page works with the browser sign-in alone.
+
+## Skills
+
+Skills carry procedures that no single tool covers. Load one when the user's request matches it, and follow it rather than improvising the sequence.
+
+- **build-semantic-view** - build a semantic model for a confirmed set of Atlan tables, in Snowflake Cortex Analyst, Databricks metric view, Databricks Genie, dbt MetricFlow, or Atlan's own form. Atlan builds the file and returns it; nothing is created in the tenant. Use it once the user has confirmed which tables to model, never to pick the tables for them. Needs an API key, per Authentication above.
+
 ## Available MCP Tools
 
 12 tools are enabled by default for most customers. 3 additional tools are available but require enablement per tenant via feature flags.
 
 ### Search & Discovery
 - **`semantic_search_tool`** - Natural language search across all data assets using AI-powered semantic understanding.
-- **`search_assets_tool`** *(not enabled by default)* - Search assets using structured filters and conditions.
-- **`get_assets_by_dsl_tool`** *(not enabled by default)* - Query assets using Atlan's DSL (Domain Specific Language) for advanced filtering.
+- **`search_assets_tool`** *(not enabled by default)* - Search assets using structured filters and conditions, including `conditions`, `any_conditions`, `negative_conditions`, `aggregations` and `sort` for advanced filtering.
 
 ### Lineage
 - **`traverse_lineage_tool`** - Trace data flow upstream (where data comes from) or downstream (where data goes).
