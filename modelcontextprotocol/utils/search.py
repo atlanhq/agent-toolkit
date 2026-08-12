@@ -1,8 +1,26 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
+import re
 from pyatlan.model.assets import Asset
 
 logger = logging.getLogger(__name__)
+
+# Matches a pattern that is a plain substring wrapped in leading/trailing "*", e.g.
+# "*ACCOUNT_MANAGER*" or "*MANAGER". Patterns with interior "*"/"?" are left alone
+# because a phrase match cannot express them.
+_SUBSTRING_WILDCARD = re.compile(r"^\*+(?P<term>[^*?]+?)\**$")
+
+# The substring must span a token boundary, e.g. "ACCOUNT_MANAGER" but not "MANAGER".
+# A delimited substring can only occur where those tokens are adjacent, which is exactly
+# what a phrase match expresses; a single-token substring asks for a match *inside* a
+# token ("MANAGER" within "MANAGERS"), which token matching cannot reproduce.
+_TOKEN_DELIMITER = re.compile(r"[^A-Za-z0-9]")
+
+# Only human-readable name fields are rewritten. Identifier-shaped fields are excluded
+# deliberately: a qualifiedName is a path, and a fragment such as "default/snowfl" cuts
+# a token in half, which a phrase match cannot match at all — measured as 372,759 hits
+# under a wildcard versus 0 under a phrase match.
+_SUBSTRING_REWRITE_FIELDS = frozenset({"name", "displayName"})
 
 
 class SearchUtils:
@@ -48,6 +66,41 @@ class SearchUtils:
         return getattr(Asset, attr_name.upper(), None)
 
     @staticmethod
+    def _rewrite_substring_wildcard(attr, value: Any) -> Optional[Any]:
+        """
+        Return a phrase-match condition equivalent to a plain substring wildcard, or None
+        when the pattern or the field cannot be rewritten safely.
+
+        A pattern beginning with "*" cannot seek into the term dictionary, so Lucene
+        enumerates every term for the field and tests each one. The cost scales with
+        catalog size rather than with the number of matches, so it degrades as a tenant
+        grows. Matching the same text against the field's analyzed sibling is served by
+        the inverted index instead.
+
+        Rewriting is skipped for fields outside _SUBSTRING_REWRITE_FIELDS, when the field
+        has no analyzed sibling, when the pattern contains interior wildcards (a phrase
+        match cannot express those), when the pattern only anchors a prefix such as
+        "ACCOUNT*" (those already seek directly into the term dictionary), and when the
+        substring does not span a token boundary.
+        """
+        if not isinstance(value, str):
+            return None
+        if getattr(attr, "atlan_field_name", None) not in _SUBSTRING_REWRITE_FIELDS:
+            return None
+        if not getattr(attr, "text_field_name", None):
+            return None
+        match_phrase = getattr(attr, "match_phrase", None)
+        if match_phrase is None:
+            return None
+        matched = _SUBSTRING_WILDCARD.match(value)
+        if not matched:
+            return None
+        term = matched.group("term")
+        if not _TOKEN_DELIMITER.search(term):
+            return None
+        return match_phrase(term)
+
+    @staticmethod
     def _apply_operator_condition(
         attr, operator: str, value: Any, case_insensitive: bool = False
     ):
@@ -90,6 +143,15 @@ class SearchUtils:
             return attr.has_any_value()
         elif operator == "contains":
             return attr.contains(value, case_insensitive=case_insensitive)
+        elif operator == "wildcard":
+            rewritten = SearchUtils._rewrite_substring_wildcard(attr, value)
+            if rewritten is not None:
+                logger.info(
+                    f"Rewrote substring wildcard '{value}' on "
+                    f"'{getattr(attr, 'atlan_field_name', '?')}' to a phrase match"
+                )
+                return rewritten
+            return attr.wildcard(value)
         elif operator == "between":
             # Expecting value to be a list/tuple with [start, end]
             if isinstance(value, (list, tuple)) and len(value) == 2:
