@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional
 import logging
 import re
 from pyatlan.model.assets import Asset
+from pyatlan.model.search import Bool, MatchPhrase
 
 logger = logging.getLogger(__name__)
 
@@ -10,16 +11,10 @@ logger = logging.getLogger(__name__)
 # because a phrase match cannot express them.
 _SUBSTRING_WILDCARD = re.compile(r"^\*+(?P<term>[^*?]+?)\**$")
 
-# The substring must span a token boundary, e.g. "ACCOUNT_MANAGER" but not "MANAGER".
-# A delimited substring can only occur where those tokens are adjacent, which is exactly
-# what a phrase match expresses; a single-token substring asks for a match *inside* a
-# token ("MANAGER" within "MANAGERS"), which token matching cannot reproduce.
-_TOKEN_DELIMITER = re.compile(r"[^A-Za-z0-9]")
-
 # Only human-readable name fields are rewritten. Identifier-shaped fields are excluded
-# deliberately: a qualifiedName is a path, and a fragment such as "default/snowfl" cuts
-# a token in half, which a phrase match cannot match at all — measured as 372,759 hits
-# under a wildcard versus 0 under a phrase match.
+# deliberately: a qualifiedName is a path, and matching it through an analyzer loses the
+# anchor — "*vJm9k6ARmG" returns 1 document as a wildcard and 155 as a phrase, because
+# the analyzer splits the id into tokens that then match anywhere in the path.
 _SUBSTRING_REWRITE_FIELDS = frozenset({"name", "displayName"})
 
 
@@ -66,6 +61,28 @@ class SearchUtils:
         return getattr(Asset, attr_name.upper(), None)
 
     @staticmethod
+    def _analyzed_siblings(attr) -> list:
+        """
+        Analyzed fields to phrase-match a name against, most specific first.
+
+        The delimiter sibling is what makes a single-token substring work: it indexes
+        each token, the whole delimited string, and the concatenation, so "MANAGER"
+        still reaches "ACCOUNT_MANAGER". Without it recall drops to 75% (2,939 of 3,902
+        documents on a production index). A sibling that does not exist on the index
+        simply matches nothing, so listing it is safe.
+        """
+        base = getattr(attr, "atlan_field_name", None)
+        fields = []
+        for candidate in (
+            getattr(attr, "text_field_name", None),
+            f"{base}.delimiter" if base else None,
+            getattr(attr, "stemmed_field_name", None),
+        ):
+            if candidate and candidate not in fields:
+                fields.append(candidate)
+        return fields
+
+    @staticmethod
     def _rewrite_substring_wildcard(attr, value: Any) -> Optional[Any]:
         """
         Return a phrase-match condition equivalent to a plain substring wildcard, or None
@@ -74,14 +91,15 @@ class SearchUtils:
         A pattern beginning with "*" cannot seek into the term dictionary, so Lucene
         enumerates every term for the field and tests each one. The cost scales with
         catalog size rather than with the number of matches, so it degrades as a tenant
-        grows. Matching the same text against the field's analyzed sibling is served by
-        the inverted index instead.
+        grows. Phrase-matching the same text against the field's analyzed siblings is
+        served by the inverted index instead, and also matches inputs the wildcard misses
+        entirely: "account manager" finds nothing as a wildcard and all 348 documents as
+        a phrase, because the analyzer folds case and delimiters.
 
         Rewriting is skipped for fields outside _SUBSTRING_REWRITE_FIELDS, when the field
         has no analyzed sibling, when the pattern contains interior wildcards (a phrase
-        match cannot express those), when the pattern only anchors a prefix such as
-        "ACCOUNT*" (those already seek directly into the term dictionary), and when the
-        substring does not span a token boundary.
+        match cannot express those), and when the pattern only anchors a prefix such as
+        "ACCOUNT*" — those already seek directly into the term dictionary.
         """
         if not isinstance(value, str):
             return None
@@ -89,16 +107,17 @@ class SearchUtils:
             return None
         if not getattr(attr, "text_field_name", None):
             return None
-        match_phrase = getattr(attr, "match_phrase", None)
-        if match_phrase is None:
-            return None
         matched = _SUBSTRING_WILDCARD.match(value)
         if not matched:
             return None
-        term = matched.group("term")
-        if not _TOKEN_DELIMITER.search(term):
+        fields = SearchUtils._analyzed_siblings(attr)
+        if not fields:
             return None
-        return match_phrase(term)
+        term = matched.group("term")
+        return Bool(
+            should=[MatchPhrase(field=field, query=term) for field in fields],
+            minimum_should_match=1,
+        )
 
     @staticmethod
     def _apply_operator_condition(
