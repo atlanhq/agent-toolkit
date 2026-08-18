@@ -83,41 +83,53 @@ class SearchUtils:
         return fields
 
     @staticmethod
+    def _substring_phrase(attr, term: str) -> Optional[Any]:
+        """
+        Phrase-match a plain substring against a name field's analyzed siblings, or None
+        when the field is not an eligible name field or exposes no analyzed sibling.
+
+        A leading-"*" wildcard cannot seek into the term dictionary, so Lucene enumerates
+        every term for the field and tests each one; the cost scales with catalog size
+        rather than with the number of matches, so it degrades as a tenant grows. Phrasing
+        the same text against the analyzed siblings is served by the inverted index
+        instead, and also matches inputs the wildcard misses entirely: "account manager"
+        finds nothing as a wildcard and all 348 documents as a phrase, because the analyzer
+        folds case and delimiters. The delimiter sibling is what lets a single-token
+        substring ("MANAGER") still reach a delimited name ("ACCOUNT_MANAGER").
+
+        Only human-readable name fields are eligible (_SUBSTRING_REWRITE_FIELDS);
+        identifier-shaped fields like qualifiedName are excluded because analyzing a path
+        loses the anchor.
+        """
+        if not isinstance(term, str) or not term.strip():
+            return None
+        if getattr(attr, "atlan_field_name", None) not in _SUBSTRING_REWRITE_FIELDS:
+            return None
+        fields = SearchUtils._analyzed_siblings(attr)
+        if not fields:
+            return None
+        return Bool(
+            should=[MatchPhrase(field=field, query=term) for field in fields],
+            minimum_should_match=1,
+        )
+
+    @staticmethod
     def _rewrite_substring_wildcard(attr, value: Any) -> Optional[Any]:
         """
         Return a phrase-match condition equivalent to a plain substring wildcard, or None
         when the pattern or the field cannot be rewritten safely.
 
-        A pattern beginning with "*" cannot seek into the term dictionary, so Lucene
-        enumerates every term for the field and tests each one. The cost scales with
-        catalog size rather than with the number of matches, so it degrades as a tenant
-        grows. Phrase-matching the same text against the field's analyzed siblings is
-        served by the inverted index instead, and also matches inputs the wildcard misses
-        entirely: "account manager" finds nothing as a wildcard and all 348 documents as
-        a phrase, because the analyzer folds case and delimiters.
-
-        Rewriting is skipped for fields outside _SUBSTRING_REWRITE_FIELDS, when the field
-        has no analyzed sibling, when the pattern contains interior wildcards (a phrase
-        match cannot express those), and when the pattern only anchors a prefix such as
-        "ACCOUNT*" — those already seek directly into the term dictionary.
+        Rewriting is skipped when the pattern contains interior wildcards (a phrase match
+        cannot express those) and when it only anchors a prefix such as "ACCOUNT*" — those
+        already seek directly into the term dictionary. Field eligibility and the analyzed
+        siblings are decided by _substring_phrase.
         """
         if not isinstance(value, str):
-            return None
-        if getattr(attr, "atlan_field_name", None) not in _SUBSTRING_REWRITE_FIELDS:
-            return None
-        if not getattr(attr, "text_field_name", None):
             return None
         matched = _SUBSTRING_WILDCARD.match(value)
         if not matched:
             return None
-        fields = SearchUtils._analyzed_siblings(attr)
-        if not fields:
-            return None
-        term = matched.group("term")
-        return Bool(
-            should=[MatchPhrase(field=field, query=term) for field in fields],
-            minimum_should_match=1,
-        )
+        return SearchUtils._substring_phrase(attr, matched.group("term").strip())
 
     @staticmethod
     def _apply_operator_condition(
@@ -161,7 +173,23 @@ class SearchUtils:
         elif operator == "has_any_value":
             return attr.has_any_value()
         elif operator == "contains":
-            return attr.contains(value, case_insensitive=case_insensitive)
+            # "contains" is a substring match, i.e. the same intent as wildcard "*value*".
+            # pyatlan's KeywordText fields expose no .contains(), so calling it raised
+            # AttributeError; route through the same path instead. Name fields are served
+            # from the analyzed siblings (fast); other fields fall back to a "*value*"
+            # wildcard, which is what contains means.
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"Invalid value for 'contains' operator: {value}, expected a string"
+                )
+            phrase = SearchUtils._substring_phrase(attr, value)
+            if phrase is not None:
+                logger.info(
+                    f"Served 'contains' on "
+                    f"'{getattr(attr, 'atlan_field_name', '?')}' as a phrase match"
+                )
+                return phrase
+            return attr.wildcard(f"*{value}*")
         elif operator == "wildcard":
             rewritten = SearchUtils._rewrite_substring_wildcard(attr, value)
             if rewritten is not None:

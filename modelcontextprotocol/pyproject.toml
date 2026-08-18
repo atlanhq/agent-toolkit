@@ -24,6 +24,14 @@ dependencies = [
 [project.scripts]
 atlan-mcp-server = "server:main"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.uv]
 constraint-dependencies = [
     "authlib>=1.6.6",
