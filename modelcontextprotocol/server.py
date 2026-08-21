@@ -681,6 +681,8 @@ def query_asset_tool(
     to execute SQL against connected data sources.
 
     CRITICAL: Use READ-ONLY queries to retrieve data. Write and modify queries are not supported by this tool.
+    This is enforced: SELECT/WITH/SHOW/DESCRIBE/EXPLAIN/VALUES statements are allowed, everything else
+    (INSERT, UPDATE, DELETE, DDL, multi-statement SQL, etc.) is rejected before execution.
 
 
     Args:
