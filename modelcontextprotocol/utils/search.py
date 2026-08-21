@@ -89,7 +89,9 @@ class SearchUtils:
         elif operator == "has_any_value":
             return attr.has_any_value()
         elif operator == "contains":
-            return attr.contains(value, case_insensitive=case_insensitive)
+            # Asset attributes (e.g. KeywordTextStemmedField) have no `.contains()` method;
+            # a substring match is expressed as a wildcard query instead.
+            return attr.wildcard(f"*{value}*", case_insensitive=case_insensitive)
         elif operator == "between":
             # Expecting value to be a list/tuple with [start, end]
             if isinstance(value, (list, tuple)) and len(value) == 2:
