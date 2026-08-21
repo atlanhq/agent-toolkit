@@ -225,6 +225,7 @@ You can restrict any of the following tools:
 - `update_dq_rules_tool` - Data quality rule updates
 - `schedule_dq_rules_tool` - Data quality rule scheduling
 - `delete_dq_rules_tool` - Data quality rule deletion
+- `query_asset_tool` - SQL query execution against connected data sources
 
 ### Common Use Cases
 
@@ -233,6 +234,10 @@ Restrict all write operations:
 ```
 RESTRICTED_TOOLS=update_assets_tool,create_glossaries,create_glossary_categories,create_glossary_terms,create_dq_rules_tool,update_dq_rules_tool,schedule_dq_rules_tool,delete_dq_rules_tool
 ```
+Note: `query_asset_tool` itself already rejects non-SELECT/WITH/SHOW/DESCRIBE/EXPLAIN/VALUES SQL
+(INSERT, UPDATE, DELETE, DDL, multi-statement queries, etc. are all rejected before execution).
+Add `query_asset_tool` to `RESTRICTED_TOOLS` above if you want to disable SQL execution entirely,
+for example in a deployment where even read-only SQL access to source systems is undesirable.
 
 #### Disable DSL Queries
 For security or performance reasons:
