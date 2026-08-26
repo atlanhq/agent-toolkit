@@ -16,7 +16,8 @@ hosted endpoint requires it; the local mock ignores it). Never prints the value.
 
 Usage:
   build_model.py --tables @tables.json --engine cortex --name gtm --out model.yaml
-  build_model.py --tables A,B,C --engine cortex --name gtm --out model.yaml
+  # --tables entries are Atlan qualifiedNames WITH the connection prefix (not DB/SCHEMA/TABLE):
+  build_model.py --tables default/snowflake/<conn>/DB/SCHEMA/DIM_ACCOUNTS --engine cortex --name gtm --out model.yaml
 """
 
 import argparse
@@ -106,11 +107,32 @@ def main():
 
     open(a.out, "w").write(resp["content"])
     val = resp.get("validation", {})
+
+    # `dropped` is a structured list (per-entry section / entry_name / reason).
+    # build-view ends at the handoff, so the caller won't come back for a diagnosis
+    # pass — the reasons are what they need to act (fix the source SQL or accept the
+    # gap). Print a per-section count and write the full list next to --out so
+    # nothing is lost while the summary stays short.
+    dropped = resp.get("dropped", []) or []
+    counts = {}
+    for d in dropped:
+        sec = (d.get("section") or "?") if isinstance(d, dict) else "?"
+        counts[sec] = counts.get(sec, 0) + 1
+    dropped_by_section = (
+        ", ".join(f"{n} {s}" for s, n in sorted(counts.items())) or "none"
+    )
+    if dropped:
+        with open(a.out + ".dropped.json", "w") as f:
+            json.dump(dropped, f, indent=2)
+
     print(
         f"built {a.engine} model → {a.out}  "
         f"tables_modelled={len(resp.get('tables_modelled', []))}  "
-        f"dropped={len(resp.get('dropped', []))}  "
         f"validation={val.get('status', '?') if isinstance(val, dict) else val}"
+    )
+    print(
+        f"  dropped ({len(dropped)}): {dropped_by_section}"
+        + (f"  · full list → {a.out}.dropped.json" if dropped else "")
     )
     if isinstance(val, dict) and val.get("status") == "skipped":
         print(
