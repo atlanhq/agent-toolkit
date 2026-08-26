@@ -10,6 +10,58 @@
 {"certificate_status": "VERIFIED"}
 ```
 
+## Operators
+
+| Operator | Value | Use for |
+|---|---|---|
+| *(omitted)* | literal | exact match |
+| `eq` / `neq` | literal | equals / not equals |
+| `startswith` / `endswith` | string | prefix / suffix — exact, not analyzed |
+| `contains` | string | substring |
+| `within` | **list** | one field, several accepted values |
+| `gte` / `lte` / `gt` / `lt` | number | ranges; dates are epoch millis |
+| `between` | `[start, end]` | bounded range |
+| `wildcard` / `regexp` | pattern | globs, regex |
+| `match` / `match_phrase` | string | analyzed text, phrase order |
+| `fuzzy` | string | typo-tolerant |
+| `has_any_value` (aka `not_null`, `exists`, `not_empty`) | — | field is populated |
+
+An unknown field name is a hard error, not an empty result — the tool replies
+with the nearest valid names.
+
+**One field, several values, is `within`.** A JSON object cannot repeat a key,
+so `{"name": ..., "name2": ...}` is a natural-looking dead end: `name2` is not
+a field and the call errors. Neither is one call per value the answer.
+
+```json
+{"name": {"operator": "within", "value": ["ORDERS", "ORDER_ITEMS", "RETURNS"]}}
+```
+
+`any_conditions` is for OR across *different* fields, not several values of
+one field.
+
+**"Missing a description" and friends** are `negative_conditions` on presence:
+
+```json
+{"conditions": {"__typeName": "Table"},
+ "negative_conditions": {"userDescription": {"operator": "has_any_value"}}}
+```
+
+## Resolving one specific table
+
+The reliable shape — narrow by container rather than hoping the name is
+unique:
+
+```json
+{"asset_type": "Table",
+ "conditions": {"name": "ORDERS", "databaseName": "ANALYTICS", "schemaName": "PUBLIC"}}
+```
+
+A fully-qualified dotted name the user pasted (`db.schema.table`) is
+deterministic — split it into those three conditions instead of sending it to
+`semantic_search` as prose. If you only have the tail, use `endswith` on
+`qualifiedName`.
+
 Other slots, because they are *not* `conditions`:
 
 | Slot | Use for |

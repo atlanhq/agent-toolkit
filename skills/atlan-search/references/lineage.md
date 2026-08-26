@@ -22,6 +22,9 @@ Databricks, Redshift — and only some of them have lineage tracked.
 
 `traverse_lineage(guid=…, direction="upstream" | "downstream")`.
 
+One direction per call — there is no `BOTH`. "What does this touch in both
+directions?" is two calls, merged.
+
 **One hop by default.** `immediate_neighbors=true` is the default, and `depth`
 is ignored while it is set. Nothing in the response flags that the traversal
 stopped at one hop — `has_more` stays false either way. For anything spanning

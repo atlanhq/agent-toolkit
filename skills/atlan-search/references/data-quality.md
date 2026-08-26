@@ -49,6 +49,34 @@ So "which checks cover table T?" is:
 `DataQualityRuleTemplate` describes a reusable template; its rules link back
 via the template's rule list or the shared template name.
 
+## Finding rules by what they check
+
+Users name the *check*, not the rule: "the row count rule on ORDERS", "which
+rules use the Max Value template", "freshness on the customer table". The
+field is `dqRuleTemplateName`, and its value is the template's screaming-snake
+identifier — never the UI label:
+
+```json
+{"asset_type": "DataQualityRule",
+ "conditions": {"dqRuleTemplateName": "ROW_COUNT",
+                "dqRuleBaseDatasetQualifiedName": "<table qualifiedName>"}}
+```
+
+Observed identifiers include `ROW_COUNT`, `BLANK_COUNT`, `NULL_PERCENTAGE`,
+`DUPLICATE_COUNT`, `MAX_VALUE`, `FRESHNESS`, `CUSTOM_SQL`. Two traps:
+
+- Do not invent compounds. `CUSTOM_SQL_QUERY` and `CUSTOM_SQL_ROW_COUNT` are
+  not templates; the template is `CUSTOM_SQL` and the SQL itself lives in
+  `dqRuleCustomSQL`.
+- Do not pass the human label (`"Standard Deviation"`, `"Row Count"`) as a
+  filter value. If you are unsure of the identifier, list the tenant's
+  templates (`asset_type="DataQualityRuleTemplate"`) or search
+  `asset_type="DataQualityRule"` by dataset first and read the values back.
+
+Useful `attributes` for rule questions: `dqRuleTemplateName`,
+`dqRuleBaseDatasetQualifiedName`, `dqRuleCustomSQL`, `dqRuleConfigArguments`,
+`dqRuleDimension`, `dqRuleLatestResult`.
+
 ## Common asks
 
 - *"What's failing right now?"* — search the DQ types present on the tenant,
