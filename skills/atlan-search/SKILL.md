@@ -32,61 +32,45 @@ question; `search_assets` when you already know the precise filter.
 
 ## The rules that decide whether you get the right answer
 
-**1. Pass the user's wording verbatim to `semantic_search`.** Copy their exact
-phrase. Do not reduce it to keywords, add synonyms, expand abbreviations, or
-fix spelling — the engine tolerates all of that, and a keyword pile degrades
-results.
-
-> Good: `which table contains customer retention rate?`
-> Bad: `customer retention rate table metric KPI churn`
-
-**2. When results miss, relax — never pile on keywords.** Drop or loosen one
-constraint, or send the exact asset name alone. `limit` is a page cap, not a
-relevance dial; re-running with more terms makes it worse.
-
-**3. Be precise about asset type.** "tables" means `asset_type="Table"` — not
+**1. Be precise about asset type.** "tables" means `asset_type="Table"` — not
 Views, not Columns. "dashboards" means the BI dashboard types. Only go broad
 when the user says "all assets", and when you do, exclude the internal
 plumbing types (see `references/filters.md`).
 
-**4. Never report absence from one narrow search.** The same table name often
+**2. Never report absence from one narrow search.** The same table name often
 exists in several connectors, and a filter you added yourself can hide the
 answer. Widen once, then say what you actually checked.
 
-**5. Archived assets are excluded by default.** Leave `include_archived=false`
+**3. Archived assets are excluded by default.** Leave `include_archived=false`
 unless the user asks about deleted assets.
 
-**6. Read the right name and description fields.** Label an asset by
+**4. Read the right name and description fields.** Label an asset by
 `displayName` when set, else `name` — `name` is the technical identifier
 (`INSTACART_BEVERAGES_ORDER_CUSTOMER`), `displayName` is what a human curated
 ("Beverage Orders"). For descriptions, prefer in this order:
 `userDescription` → AI-generated description → `description` (source-system).
 They are separate fields, not coalesced.
 
-**7. "Top", "most used", "popular" means `sort` on `popularityScore`
+**5. "Top", "most used", "popular" means `sort` on `popularityScore`
 descending.** It is also a good tiebreaker when several assets share a name.
 
-**8. Tags and custom metadata are not `conditions`.** Atlan tags go in the
+**6. Tags and custom metadata are not `conditions`.** Atlan tags go in the
 `tags` parameter. Custom metadata needs the set's exact display name, which
 you get from `resolve_metadata` first. Glossary terms go in
 `assigned_term_guids`, domains in `domain_guids`. Relationship attributes
 (`meanings`, `atlanTags`, `parentCategory`, `seeAlso`) are not searchable as
 conditions at all.
 
-**9. Get a table's columns from the table, not from a column search.**
+**7. Get a table's columns from the table, not from a column search.**
 `get_assets(guid=…, attributes=["columns"])`. Searching
 `asset_type="Column"` by parent name is slower and misses non-relational
 connectors.
 
-**10. Counting is a different call than listing.** `search_assets` with
+**8. Counting is a different call than listing.** `search_assets` with
 `return_count_only=true` gives the uncapped total; `aggregations` gives a
 breakdown. A `limit=100` page is not a count.
 
-**11. Paginate deliberately.** When `has_more` is true, call again with the
-same `user_query` and `offset=next_offset`. Do not re-search with different
-words to "get more".
-
-**12. Resolve a GUID before any tool that needs one.** `get_assets` and
+**9. Resolve a GUID before any tool that needs one.** `get_assets` and
 `traverse_lineage` take GUIDs from a prior search result — never a
 qualifiedName, never an invented one.
 

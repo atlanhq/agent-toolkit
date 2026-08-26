@@ -95,9 +95,10 @@ then filter:
 {"asset_type": "Table", "tags": ["PII"]}
 ```
 
-`directly_tagged=true` restricts to assets tagged on themselves, excluding
-tags inherited by propagation. Default (propagated included) is usually what a
-governance question means — be explicit about which you used.
+`directly_tagged` defaults to `true` — direct tags only, tags inherited by
+propagation excluded. Pass `directly_tagged=false` to include propagated tags,
+which is usually what a governance or compliance question means — be explicit
+about which you used.
 
 ## Custom metadata
 

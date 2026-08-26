@@ -22,9 +22,21 @@ Databricks, Redshift — and only some of them have lineage tracked.
 
 `traverse_lineage(guid=…, direction="upstream" | "downstream")`.
 
-Keep `size` small — 5 to 15. The response is a widget-ready graph and the
-lineage widget loads deeper levels on demand when the user expands a leaf.
-Requesting a whole graph at once is slow and usually unread.
+**One hop by default.** `immediate_neighbors=true` is the default, and `depth`
+is ignored while it is set. Nothing in the response flags that the traversal
+stopped at one hop — `has_more` stays false either way. For anything spanning
+more than direct parents or children, pass `immediate_neighbors=false` and set
+`depth` explicitly.
+
+- "what's upstream of this table?" — one hop is fine
+- "where does this data originate?", "does this feed the exec dashboard?",
+  "what breaks if we drop this column?" — `immediate_neighbors=false`,
+  `depth=5` or more
+
+Keep `limit` small — 5 to 15 (default 10, max 20). The response is a
+widget-ready graph and the lineage widget loads deeper levels on demand when
+the user expands a leaf. Requesting a whole graph at once is slow and usually
+unread.
 
 ## Reading the result
 
