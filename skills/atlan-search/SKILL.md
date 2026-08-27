@@ -70,21 +70,38 @@ you get from `resolve_metadata` first. Glossary terms go in
 (`meanings`, `atlanTags`, `parentCategory`, `seeAlso`) are not searchable as
 conditions at all.
 
-**7. Columns go both ways.** A table's columns come from the table:
+**7. Resolve the exact tag and custom-metadata *values* before filtering on
+them.** Rule 6 gets the slot right; this gets the value right, and a wrong
+value fails silently — an empty result reads as "nothing is tagged that way".
+Tenants use their own vocabulary, and the word the user says is usually not
+the value that is stored. Ask `resolve_metadata` for the tenant's actual tag
+names and custom-metadata sets first, filter on a value from that list, and if
+none matches, report which values *do* exist rather than answering zero.
+
+> Asked: *"assets tagged confidential owned by business unit logistics"*
+> Wrong: guess `bu:logistics`, then `bu:logistics_team`, then `bu:log_ops` —
+> each an empty result, none of them evidence that nothing is tagged.
+> Right: `resolve_metadata` → tenant has `bu:logistics_emea` and
+> `bu:logistics_apac` → filter on those, or ask the user which they meant.
+
+Never guess a governance value. "No PII assets in that business unit" is a
+dangerous thing to say when the real answer is that you spelled the unit wrong.
+
+**8. Columns go both ways.** A table's columns come from the table:
 `get_assets(guid=…, attributes=["columns"])` — not from a column search. But
 "which table has a `customer_email` column?" is the reverse: search
 `asset_type="Column"` on the column name, then read the parent from each hit's
 `tableName` / `qualifiedName` and pivot to that table.
 
-**8. Counting is a different call than listing.** `search_assets` with
+**9. Counting is a different call than listing.** `search_assets` with
 `return_count_only=true` gives the uncapped total; `aggregations` gives a
 breakdown. A `limit=100` page is not a count.
 
-**9. Resolve a GUID before any tool that needs one.** `get_assets` and
+**10. Resolve a GUID before any tool that needs one.** `get_assets` and
 `traverse_lineage` take GUIDs from a prior search result — never a
 qualifiedName, never an invented one.
 
-**10. Get the call shape right.** These fail on every tenant:
+**11. Get the call shape right.** These fail on every tenant:
 
 - The natural-language parameter is `user_query`. Not `query`, `search_query`,
   `query_text`, or `semantic_query`.
@@ -98,13 +115,13 @@ qualifiedName, never an invented one.
   `name2`, `name3` (that errors), and never one call per value:
   `{"name": {"operator": "within", "value": ["ORDERS", "ORDER_ITEMS"]}}`
 
-**11. Split a compound ask before you filter.** "who owns
+**12. Split a compound ask before you filter.** "who owns
 `db.schema.TABLE` and is it tagged PII?" is three steps: resolve the asset,
 then read `ownerUsers` / `ownerGroups` / tags off it via `get_assets`
 attributes. Ownership and tags are not expressible as one condition — see
 rule 6.
 
-**12. Not every question is a catalog question.** The catalog holds metadata
+**13. Not every question is a catalog question.** The catalog holds metadata
 about assets. Bulk metadata export, "what does this company do", vendor and
 tooling questions, and product how-tos are not searches — say so and point at
 `search_atlan_docs` or the right team instead of returning a bad match.
