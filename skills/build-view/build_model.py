@@ -17,7 +17,7 @@ hosted endpoint requires it; the local mock ignores it). Never prints the value.
 Usage:
   build_model.py --tables @tables.json --engine cortex --name gtm --out model.yaml
   # --tables entries are Atlan qualifiedNames WITH the connection prefix (not DB/SCHEMA/TABLE):
-  build_model.py --tables default/snowflake/<conn>/DB/SCHEMA/DIM_ACCOUNTS --engine cortex --name gtm --out model.yaml
+  build_model.py --tables default/snowflake/<conn>/<DATABASE>/<SCHEMA>/<TABLE> --engine cortex --name gtm --out model.yaml
 """
 
 import argparse

@@ -26,10 +26,10 @@ or eval here.
 ## Phase 1 — Resolve inputs
 
 - `tables[]` — the Atlan **`qualifiedName`** of each table, **including the
-  connection prefix** — e.g.
-  `default/snowflake/<connectionId>/GTM_OPERATIONS_PROD/MARTS/DIM_ACCOUNTS`, NOT the
-  short `DB/SCHEMA/TABLE` form (the short form fails with a 404). **Required.** If
-  missing or ambiguous, ask — never invent a table list.
+  connection prefix** — i.e.
+  `default/snowflake/<connectionId>/<DATABASE>/<SCHEMA>/<TABLE>`, NOT the
+  short `<DATABASE>/<SCHEMA>/<TABLE>` form (the short form fails with a 404).
+  **Required.** If missing or ambiguous, ask — never invent a table list.
   - **Close the join set.** A relationship renders only when **both** ends of a
     join are in `tables[]`. Picking tables by importance/density usually drops the
     reference/dimension tables your facts join to, and you get a joinless model with
