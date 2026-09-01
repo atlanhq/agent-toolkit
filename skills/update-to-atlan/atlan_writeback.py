@@ -142,8 +142,15 @@ def build_filter(p):
 
 def build_relationship(p):
     """SqlInsightJoin. Canonical QN = {srcTableQN}/join/md5("{joinedTableQN}|{sortedPairs}|{joinType}"),
-    where sortedPairs = ",".join(sorted("{srcColName}={joinedColName}")) over BARE column
-    names (last QN segment). The source table QN is the PREFIX, not part of the hash.
+    where sortedPairs joins BARE "{srcColName}={joinedColName}" with commas ORDERED BY
+    THE SOURCE COLUMN ONLY (not by the formatted pair string). That matches the miner --
+    `STRING_AGG(cp.source || '=' || cp.joined, ',' ORDER BY cp.source)` in the
+    sql_intelligence DAG -- and pyatlan's SqlInsightJoin.generate_qualified_name. Sorting
+    the formatted strings instead diverges whenever one source column is a prefix of
+    another followed by a digit (ORDER_ID / ORDER_ID2), because '=' is 0x3D and digits are
+    0x30-0x39; the md5 then differs and the write DUPLICATES the miner's row instead of
+    converging on it. The sort is stable, so pairs sharing a source column keep the
+    caller's order, as pyatlan does. The source table QN is the PREFIX, not part of the hash.
     payload: source_dataset_qn, joined_dataset_qn, join_type,
              column_pairs:[{source_column_qn, joined_column_qn}]; optional: name,
              cardinality, source_dataset_guid / joined_dataset_guid (objectIds; else
@@ -151,12 +158,16 @@ def build_relationship(p):
     src = p["source_dataset_qn"]
     jnd = p["joined_dataset_qn"]
     jtype = p["join_type"]
-    sorted_pairs = ",".join(
-        sorted(
-            f"{cp.get('source_column') or _bare(cp['source_column_qn'])}="
-            f"{cp.get('joined_column') or _bare(cp['joined_column_qn'])}"
-            for cp in p["column_pairs"]
+    _bare_pairs = [
+        (
+            cp.get("source_column") or _bare(cp["source_column_qn"]),
+            cp.get("joined_column") or _bare(cp["joined_column_qn"]),
         )
+        for cp in p["column_pairs"]
+    ]
+    sorted_pairs = ",".join(
+        f"{src_col}={jnd_col}"
+        for src_col, jnd_col in sorted(_bare_pairs, key=lambda pair: pair[0])
     )
     qn = p.get("qualifiedName") or f"{src}/join/{_md5(f'{jnd}|{sorted_pairs}|{jtype}')}"
     pairs = []
