@@ -35,7 +35,7 @@ DEFAULT_ENDPOINT = ""
 
 # The endpoint caps `tables` at 50 in its request schema (Pydantic `max_length`), so a
 # larger list is refused with a 422 before the build starts. Mirrored here only to name
-# the limit in errors and help text — the endpoint remains the authority.
+# the limit in the 422 error — the endpoint remains the authority.
 MAX_TABLES = 50
 
 UA = (
