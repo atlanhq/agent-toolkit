@@ -6,18 +6,18 @@ returned model YAML, and prints a one-line summary. This is the script the
 build-view skill runs, so the endpoint call, auth, timeout, and error handling are
 identical every time (not improvised by the model).
 
-Endpoint resolution (first that is set wins):
+Endpoint resolution (first that is set wins). One of the two is REQUIRED — there is
+no baked-in default, and the script exits saying so:
   --endpoint <url>                     explicit
-  $ATLAN_BUILD_ENDPOINT                override (e.g. the local mock)
-  DEFAULT_ENDPOINT constant below      the hosted governed endpoint (if baked)
+  $ATLAN_BUILD_ENDPOINT                your tenant's /semantic-model/build
 
 Auth: sends `Authorization: Bearer $ATLAN_API_KEY` when that env var is set (the
 hosted endpoint requires it; the local mock ignores it). Never prints the value.
 
 Usage:
-  build_model.py --tables @tables.json --engine cortex --name gtm --out model.yaml
+  build_model.py --tables @tables.json --engine cortex --name <use_case> --out model.yaml
   # --tables entries are Atlan qualifiedNames WITH the connection prefix (not DB/SCHEMA/TABLE):
-  build_model.py --tables default/snowflake/<conn>/<DATABASE>/<SCHEMA>/<TABLE> --engine cortex --name gtm --out model.yaml
+  build_model.py --tables default/snowflake/<conn>/<DATABASE>/<SCHEMA>/<TABLE> --engine cortex --name <use_case> --out model.yaml
 """
 
 import argparse
