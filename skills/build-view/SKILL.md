@@ -75,6 +75,12 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/build-view/build_model.py \
   --tables @tables.json --engine <cortex|databricks|genie|dbt> --name <use_case> --out model.yaml
 ```
 
+**A Genie target is two runs, not one.** When the stated target is a Genie space,
+run the script twice with the same `tables[]` — once `--engine databricks` and once
+`--engine genie` — and hand back both artifacts. One call returns one engine's
+artifact, and a Genie space needs the metric view as well (see Phase 1). Do not
+substitute one for the other, and do not ask the caller to choose between them.
+
 It POSTs `{tables, engine, name}` to the governed `/semantic-model/build`
 (store-nothing) endpoint and writes the returned model YAML to `--out`. Endpoint
 resolution: `--endpoint` › `$ATLAN_BUILD_ENDPOINT`. **One of the two is required** —
@@ -113,6 +119,11 @@ status that is fatal.
 
 Hand back the `--out` path with a one-line summary (engine + table count from the
 script's output). Nothing else — no deploy, no gap analysis.
+
+For a Genie target, hand back **both** paths — the metric view and the Genie config —
+and state the deploy order: the metric view is deployed first, then the space, because
+the space's `metric_view_fqn` is supplied at deploy time from a metric view that
+already exists.
 
 ## Style rules
 
