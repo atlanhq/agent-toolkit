@@ -42,18 +42,24 @@ or eval here.
   interchangeable, and a plausible-looking file for the wrong engine will not deploy:
   - `cortex` — Snowflake Cortex Analyst semantic model (`snowflake` is accepted too).
   - `genie` — the Databricks Genie space config. It carries only the cross-table
-    extras (joins, verified answers, filters, instructions, synonyms) and defers table
-    and column identity to the deploy, so **a small or near-empty config is normal**,
-    not a failed build — on a tenant with no observed joins and no analyst questions
-    every section is legitimately empty. The render always marks it `_partial` and the
-    endpoint returns a warning saying so; report that warning, do not treat it as an
-    error.
-  - `databricks` — the Databricks metric view. A separate render, not part of `genie`.
-    **Build order does not matter** — the Genie config's deploy-time fields (space
-    title, table identifiers, warehouse, metric-view name) are filled by the deploy,
-    not by the build, so building the metric view first does not change the Genie
-    output. A Genie space does need a metric view to point at, so build both; either
-    order.
+    extras (joins, verified answers, filters, instructions, synonyms); table and
+    column identity are filled at deploy. So **a small or near-empty config is
+    normal**, not a failed build — on a tenant with no observed joins and no analyst
+    questions every section is legitimately empty. The render always stamps
+    `_partial: true` and the endpoint returns a warning saying so. Report that
+    warning; it is not an error, and it does **not** mean anything is missing from
+    the build — the marker is unconditional.
+  - `databricks` — the Databricks metric view, rendered as a deployable bundle
+    (`metric_view.yaml` plus the `metric_view.deploy.yaml` a deploy actually reads).
+    **A Genie space needs this deployed first.** The Genie config's `metric_view_fqn`
+    is supplied at deploy time from the catalog / schema / view of a metric view that
+    already exists in Databricks, so end to end the order is: build the metric view →
+    deploy it → build the Genie config → deploy the space. If the target is Genie,
+    ask for **both** engines.
+
+  The two BUILDS are independent — asking for `databricks` first does not change the
+  `genie` output — but the DEPLOYS are ordered, because the space can only point at a
+  metric view that already exists.
   - `dbt` — dbt semantic model; validates offline against `dbt-semantic-interfaces`,
     the suite dbt-core and MetricFlow run.
 - `use_case` — labels intent; carried into naming/description.
