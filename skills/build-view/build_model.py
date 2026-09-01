@@ -73,11 +73,10 @@ def main():
     p.add_argument(
         "--engine",
         default="cortex",
-        # The five distinct engines the build endpoint renders. `databricks` and `genie`
-        # are NOT the same output: `databricks` is the metric view a deploy reads, `genie`
-        # is the Genie semantic model. `atlan` is the endpoint's own default (its canonical
-        # model). `snowflake` is accepted server-side as an alias for `cortex`.
-        choices=["atlan", "cortex", "databricks", "genie", "dbt"],
+        # Separate renders, not spellings of each other: `genie` emits the Genie
+        # config, `databricks` emits the metric view that config points at.
+        # `snowflake` is accepted server-side as an alias for `cortex`.
+        choices=["cortex", "databricks", "genie", "dbt"],
     )
     p.add_argument("--name", required=True)
     p.add_argument("--out", required=True, help="path to write the returned model YAML")
@@ -86,10 +85,7 @@ def main():
         "--timeout",
         type=int,
         default=1200,
-        help=(
-            "seconds. Build time scales with the table count: ~5 min for 5 tables, "
-            "~9 min for 14, and the endpoint accepts up to %d." % MAX_TABLES
-        ),
+        help="seconds; build time grows with the table count",
     )
     a = p.parse_args()
 

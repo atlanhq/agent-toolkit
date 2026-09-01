@@ -41,12 +41,12 @@ or eval here.
 - `engine` — which form to return. Ask if not implied; they are not
   interchangeable, and a plausible-looking file for the wrong engine will not deploy:
   - `cortex` — Snowflake Cortex Analyst semantic model (`snowflake` is accepted too).
-  - `databricks` — the Databricks metric view a deploy reads.
-  - `genie` — the Databricks Genie semantic model. **Not the same as `databricks`** —
-    same platform, different artifact.
+  - `genie` — the Databricks Genie config.
+  - `databricks` — the Databricks metric view. **Ask for this separately** — it is a
+    different artifact, not part of the `genie` render. The Genie config only
+    *references* a metric view by name, so a Genie space needs both.
   - `dbt` — dbt semantic model; validates offline against `dbt-semantic-interfaces`,
     the suite dbt-core and MetricFlow run.
-  - `atlan` — Atlan's own canonical model (the endpoint's default).
 - `use_case` — labels intent; carried into naming/description.
 
 ## Phase 2 — Build via the companion script
@@ -57,7 +57,7 @@ and error handling so the build is deterministic:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/build-view/build_model.py \
-  --tables @tables.json --engine <atlan|cortex|databricks|genie|dbt> --name <use_case> --out model.yaml
+  --tables @tables.json --engine <cortex|databricks|genie|dbt> --name <use_case> --out model.yaml
 ```
 
 It POSTs `{tables, engine, name}` to the governed `/semantic-model/build`
@@ -71,11 +71,10 @@ the mock ignores it). Do **NOT** use any superseded "generate" path.
 The build reads columns, descriptions, business rules (custom instructions),
 joins, and glossary from Atlan's catalog. No LLM authoring happens.
 
-**It blocks, and build time scales with the table count** — roughly 5 min for 5
-tables, 9 min for 14, and the endpoint accepts up to 50. The script's default timeout
-is 1200s. If you run it from a shell tool, raise that tool's timeout to match the
-table count — do not accept a 120s default, and do not background it (a backgrounded
-call loses the YAML).
+**It blocks, and build time grows with the table count.** The script's default
+timeout is 1200s. If you run it from a shell tool, raise that tool's timeout to match
+— do not accept a 120s default, and do not background it (a backgrounded call loses
+the YAML).
 
 **Read the exit as one of three outcomes.** Do not hand-author a model in any of
 them.
