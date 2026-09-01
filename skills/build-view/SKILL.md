@@ -41,10 +41,19 @@ or eval here.
 - `engine` — which form to return. Ask if not implied; they are not
   interchangeable, and a plausible-looking file for the wrong engine will not deploy:
   - `cortex` — Snowflake Cortex Analyst semantic model (`snowflake` is accepted too).
-  - `genie` — the Databricks Genie config.
-  - `databricks` — the Databricks metric view. **Ask for this separately** — it is a
-    different artifact, not part of the `genie` render. The Genie config only
-    *references* a metric view by name, so a Genie space needs both.
+  - `genie` — the Databricks Genie space config. It carries only the cross-table
+    extras (joins, verified answers, filters, instructions, synonyms) and defers table
+    and column identity to the deploy, so **a small or near-empty config is normal**,
+    not a failed build — on a tenant with no observed joins and no analyst questions
+    every section is legitimately empty. The render always marks it `_partial` and the
+    endpoint returns a warning saying so; report that warning, do not treat it as an
+    error.
+  - `databricks` — the Databricks metric view. A separate render, not part of `genie`.
+    **Build order does not matter** — the Genie config's deploy-time fields (space
+    title, table identifiers, warehouse, metric-view name) are filled by the deploy,
+    not by the build, so building the metric view first does not change the Genie
+    output. A Genie space does need a metric view to point at, so build both; either
+    order.
   - `dbt` — dbt semantic model; validates offline against `dbt-semantic-interfaces`,
     the suite dbt-core and MetricFlow run.
 - `use_case` — labels intent; carried into naming/description.
