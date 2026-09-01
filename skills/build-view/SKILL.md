@@ -35,7 +35,18 @@ or eval here.
     reference/dimension tables your facts join to, and you get a joinless model with
     nothing in the output signalling anything is missing. Include those referenced
     dimension tables. (Filters need only their own table; relationships need both ends.)
-- `engine` — `cortex` | `genie` | `databricks`. Ask if not implied.
+  - **At most 50 tables per build.** The endpoint caps the list in its request schema,
+    so 51+ is refused with a 422 before any build starts. Split the list, or narrow it
+    to the use case.
+- `engine` — which form to return. Ask if not implied; they are not
+  interchangeable, and a plausible-looking file for the wrong engine will not deploy:
+  - `cortex` — Snowflake Cortex Analyst semantic model (`snowflake` is accepted too).
+  - `databricks` — the Databricks metric view a deploy reads.
+  - `genie` — the Databricks Genie semantic model. **Not the same as `databricks`** —
+    same platform, different artifact.
+  - `dbt` — dbt semantic model; validates offline against `dbt-semantic-interfaces`,
+    the suite dbt-core and MetricFlow run.
+  - `atlan` — Atlan's own canonical model (the endpoint's default).
 - `use_case` — labels intent; carried into naming/description.
 
 ## Phase 2 — Build via the companion script
@@ -46,27 +57,43 @@ and error handling so the build is deterministic:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/build-view/build_model.py \
-  --tables @tables.json --engine <cortex|genie|databricks> --name <use_case> --out model.yaml
+  --tables @tables.json --engine <atlan|cortex|databricks|genie|dbt> --name <use_case> --out model.yaml
 ```
 
 It POSTs `{tables, engine, name}` to the governed `/semantic-model/build`
 (store-nothing) endpoint and writes the returned model YAML to `--out`. Endpoint
-resolution: `--endpoint` › `$ATLAN_BUILD_ENDPOINT` (override, e.g. the local mock)
-› the script's baked-in hosted default. Auth is automatic: it sends
+resolution: `--endpoint` › `$ATLAN_BUILD_ENDPOINT`. **One of the two is required** —
+there is no baked-in default, and the script exits telling you so. Auth is automatic:
+it sends
 `Authorization: Bearer $ATLAN_API_KEY` when set (the hosted endpoint requires it;
 the mock ignores it). Do **NOT** use any superseded "generate" path.
 
 The build reads columns, descriptions, business rules (custom instructions),
 joins, and glossary from Atlan's catalog. No LLM authoring happens.
 
-**It blocks (real builds take 4–5 min); the script's default timeout is 400s.** If
-you run it from a shell tool, raise that tool's timeout to match — do not accept a
-120s default, and do not background it (a backgrounded call loses the YAML).
+**It blocks, and build time scales with the table count** — roughly 5 min for 5
+tables, 9 min for 14, and the endpoint accepts up to 50. The script's default timeout
+is 1200s. If you run it from a shell tool, raise that tool's timeout to match the
+table count — do not accept a 120s default, and do not background it (a backgrounded
+call loses the YAML).
 
-**On failure the script exits non-zero with the HTTP code (never the credential)
-— STOP and surface it.** Do not hand-author a model to keep going. `validation:
-skipped` is NOT a failure (no engine was reachable to compile-check) — the script
-carries the model forward and says so.
+**Read the exit as one of three outcomes.** Do not hand-author a model in any of
+them.
+
+- **No model** — the script exits non-zero and no file is written (bad engine, no
+  tables, every table failed, assembly failed). STOP and surface its message.
+- **PARTIAL** — exits non-zero, *and the model is on disk*: some tables did not model
+  and the script names each one with its reason. The model covers the rest and is
+  deployable for those tables. Surface the failed tables and let the caller decide
+  whether to proceed or fix the list — do not silently treat it as clean.
+- **REJECTED** — exits non-zero with the model on disk, but the target engine's own
+  validator refused the file (`validation: invalid`). This is **not** a partial build:
+  the model is whole and **will not deploy**. Never present it as usable. Surface the
+  engine's error verbatim.
+
+`validation: skipped` is NOT a failure (no engine was reachable to compile-check) —
+the script carries the model forward and says so. `invalid` is the only validation
+status that is fatal.
 
 ## Phase 3 — Return the model
 

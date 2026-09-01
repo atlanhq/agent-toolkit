@@ -33,6 +33,11 @@ import urllib.error
 # auth is Bearer $ATLAN_API_KEY.
 DEFAULT_ENDPOINT = ""
 
+# The endpoint caps `tables` at 50 in its request schema (Pydantic `max_length`), so a
+# larger list is refused with a 422 before the build starts. Mirrored here only to name
+# the limit in errors and help text — the endpoint remains the authority.
+MAX_TABLES = 50
+
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -66,13 +71,25 @@ def main():
         help="comma list or @file.json (list or {tables:[...]})",
     )
     p.add_argument(
-        "--engine", default="cortex", choices=["cortex", "genie", "databricks"]
+        "--engine",
+        default="cortex",
+        # The five distinct engines the build endpoint renders. `databricks` and `genie`
+        # are NOT the same output: `databricks` is the metric view a deploy reads, `genie`
+        # is the Genie semantic model. `atlan` is the endpoint's own default (its canonical
+        # model). `snowflake` is accepted server-side as an alias for `cortex`.
+        choices=["atlan", "cortex", "databricks", "genie", "dbt"],
     )
     p.add_argument("--name", required=True)
     p.add_argument("--out", required=True, help="path to write the returned model YAML")
     p.add_argument("--endpoint", default=None)
     p.add_argument(
-        "--timeout", type=int, default=400, help="seconds; real build takes 4-5 min"
+        "--timeout",
+        type=int,
+        default=1200,
+        help=(
+            "seconds. Build time scales with the table count: ~5 min for 5 tables, "
+            "~9 min for 14, and the endpoint accepts up to %d." % MAX_TABLES
+        ),
     )
     a = p.parse_args()
 
@@ -96,16 +113,31 @@ def main():
         with urllib.request.urlopen(req, context=ctx, timeout=a.timeout) as r:
             resp = json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
+        if e.code == 422:
+            # The endpoint caps `tables` at MAX_TABLES in its request schema, so this
+            # fails Pydantic validation before any build starts. Naming the cap here
+            # because a bare 422 gives the caller no way to learn the limit exists.
+            sys.exit(
+                f"ERROR: build endpoint rejected the request (HTTP 422). "
+                f"You passed {len(tables)} tables and the endpoint accepts at most "
+                f"{MAX_TABLES}. Split the list, or narrow it to the use case."
+            )
         sys.exit(f"ERROR: build endpoint returned HTTP {e.code} (body withheld)")
     except Exception as e:
         sys.exit(f"ERROR: build call failed: {type(e).__name__}: {e}")
 
-    if not resp.get("success") or not resp.get("content"):
-        sys.exit(
-            f"ERROR: build did not return a model (message: {resp.get('message','?')})"
-        )
+    # Gate on `content`, never on `success`. Of the endpoint's return paths only the
+    # final one populates `content`, so empty content is the one true "no model" signal;
+    # every other path (unsupported engine, no tables, all tables failed, assembly
+    # failed) returns empty content and puts the actionable text in `message`.
+    content = resp.get("content") or ""
+    if not content:
+        sys.exit(f"ERROR: build returned no model: {resp.get('message', '?')}")
 
-    open(a.out, "w").write(resp["content"])
+    # A model came back. Write it before reporting, so a partial or rejected model is
+    # still on disk to inspect — the previous behaviour discarded a usable 16-table
+    # model when one table of seventeen failed.
+    open(a.out, "w").write(content)
     val = resp.get("validation", {})
 
     # `dropped` is a structured list (per-entry section / entry_name / reason).
@@ -138,6 +170,40 @@ def main():
         print(
             "  note: validation skipped (no engine reachable to compile-check) — carry forward"
         )
+
+    # `success` is False for two different reasons and they are not interchangeable:
+    # tables that failed to model (the model is PARTIAL but deployable for what it
+    # covers) and the engine's own validator refusing the file (the model is COMPLETE
+    # but will not deploy). Report them separately; `invalid` is the only validation
+    # status the endpoint treats as fatal.
+    failed = resp.get("tables_failed") or []
+    rejected = isinstance(val, dict) and val.get("status") == "invalid"
+
+    for w in resp.get("warnings") or []:
+        print(f"  warning: {w}")
+
+    if failed:
+        print(
+            f"  PARTIAL: {len(failed)} of {len(tables)} tables did not model. "
+            f"The model on disk covers the rest."
+        )
+        for f in failed:
+            if isinstance(f, dict):
+                print(f"    - {f.get('qualified_name', '?')}: {f.get('reason', '?')}")
+            else:
+                print(f"    - {f}")
+
+    if rejected:
+        # Not a partial build. The file is whole and the target engine refused it, so
+        # deploying it will fail. The endpoint puts the engine's own error in `message`.
+        print(f"  REJECTED by {resp.get('engine', a.engine)}: will not deploy as-is.")
+
+    if resp.get("message"):
+        print(f"  {resp['message']}")
+
+    if failed or rejected:
+        # Non-zero so this never reads as a clean build, while the model stays on disk.
+        sys.exit(1)
 
 
 if __name__ == "__main__":
