@@ -44,8 +44,10 @@ The result carries `guid`, `qualified_name`, `status` and `verbatim_ok`. Report 
 landed. If `verbatim_ok` is false, what came back is not what was sent: say so rather than
 reporting success.
 
-To undo one, use `manage_asset_lifecycle_tool` with `PURGE` on the guid. An archive alone
-leaves the row resolvable.
+To undo one, use `manage_asset_lifecycle_tool` with `operation="PURGE"` and
+`mode="execute"` on the guid. Without `mode="execute"` it returns a preview and removes
+nothing, which reads like success. Purge rather than archive: an archived row still
+resolves, so the identity stays taken and the next write updates it instead of creating.
 
 Write one fix per call. If several were found, take them one at a time so each gets its own
 approval.
