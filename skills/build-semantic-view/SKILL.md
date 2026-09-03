@@ -40,6 +40,11 @@ Create the directory if it is missing. Tell the user the path.
   space also needs a Databricks metric view deployed first, so build `engine=databricks`
   over the same tables as well and say the metric view is deployed before the space.
 
+If `content` comes back empty there is no file to write, and `summary` says why. The
+common case is asking for `dbt` over tables no dbt model manages: dbt semantic models need
+dbt-materialised tables, and the same tables build fine for cortex and databricks. Relay
+the reason and offer another engine rather than retrying the same one.
+
 Say once, at the end, that nothing was saved to Atlan and this file is theirs to commit.
 
 ## When the tool is not available
