@@ -12,8 +12,7 @@ The Atlan MCP server uses OAuth 2.1 authentication. Users authenticate via the `
 
 ### Search & Discovery
 - **`semantic_search_tool`** - Natural language search across all data assets using AI-powered semantic understanding.
-- **`search_assets_tool`** *(not enabled by default)* - Search assets using structured filters and conditions.
-- **`get_assets_by_dsl_tool`** *(not enabled by default)* - Query assets using Atlan's DSL (Domain Specific Language) for advanced filtering.
+- **`search_assets_tool`** *(not enabled by default)* - Search assets using structured filters and conditions, including `conditions`, `any_conditions`, `negative_conditions`, `aggregations` and `sort` for advanced filtering.
 
 ### Lineage
 - **`traverse_lineage_tool`** - Trace data flow upstream (where data comes from) or downstream (where data goes).
