@@ -3,7 +3,7 @@
 # that modifies code that they own.
 
 # Default owners for everything in the repo
-*       @Hk669 @firecast
+*       @Hk669 @firecast @abhinavmathur-atlan @ankitjaggi
 
 # Model Context Protocol specific files
-/modelcontextprotocol/  @Hk669 @firecast
+/modelcontextprotocol/  @Hk669 @firecast @abhinavmathur-atlan @ankitjaggi
