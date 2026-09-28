@@ -24,3 +24,21 @@ repos:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix]
     -   id: ruff-format
+
+-   repo: local
+    hooks:
+    # A skill that names a tool the server does not expose does not fail loudly:
+    # the model calls it, gets `unknown tool`, and that path stops working while
+    # the file still reads as correct. Stdlib only, so no extra dependency.
+    -   id: validate-skill-tools
+        name: skills and routing docs name real MCP tools
+        entry: python3 scripts/validate_skill_tools.py
+        language: system
+        pass_filenames: false
+        files: ^(skills/|cursor-plugin/|codex-plugin/|\.agents/|CLAUDE\.md|scripts/known_tools\.json)
+    -   id: validate-skill-tools-self-test
+        name: the skill-tool checker's own tests
+        entry: python3 scripts/validate_skill_tools.py --self-test
+        language: system
+        pass_filenames: false
+        files: ^scripts/validate_skill_tools\.py$
