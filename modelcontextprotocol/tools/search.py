@@ -120,11 +120,10 @@ def search_assets(
                 CompoundQuery.tagged(with_one_of=tags, directly=directly_tagged)
             )
 
-        # Apply domain GUIDs filter if provided
+        # Apply domain GUIDs filter if provided (OR logic: match any of the given GUIDs)
         if domain_guids and len(domain_guids) > 0:
             logger.debug(f"Filtering by domain GUIDs: {domain_guids}")
-            for guid in domain_guids:
-                search = search.where(Asset.DOMAIN_GUIDS.eq(guid))
+            search = search.where(Asset.DOMAIN_GUIDS.within(domain_guids))
 
         # Apply positive conditions
         if conditions:
