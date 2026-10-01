@@ -22,6 +22,7 @@ class UpdatableAttribute(str, Enum):
     CERTIFICATE_STATUS = "certificate_status"
     README = "readme"
     TERM = "term"
+    TAG = "tag"
 
 
 class TermOperation(str, Enum):
@@ -37,6 +38,25 @@ class TermOperations(BaseModel):
 
     operation: TermOperation
     term_guids: List[str]
+
+
+class TagOperation(str, Enum):
+    """Enum for tag operations on assets."""
+
+    ADD = "add"
+    REPLACE = "replace"
+    REMOVE = "remove"
+
+
+class TagOperations(BaseModel):
+    """Model for tag operations on assets."""
+
+    operation: TagOperation
+    tag_names: List[str]
+    propagate: Optional[bool] = False
+    remove_propagation_on_delete: Optional[bool] = True
+    restrict_lineage_propagation: Optional[bool] = False
+    restrict_propagation_through_hierarchy: Optional[bool] = False
 
 
 class UpdatableAsset(BaseModel):

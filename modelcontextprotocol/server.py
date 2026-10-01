@@ -23,6 +23,7 @@ from tools import (
     CertificateStatus,
     UpdatableAsset,
     TermOperations,
+    TagOperations,
 )
 from pyatlan.model.lineage import LineageDirection
 from utils.parameters import (
@@ -495,24 +496,25 @@ def update_assets_tool(
     attribute_values,
 ):
     """
-    Update one or multiple assets with different values for attributes or term operations.
+    Update one or multiple assets with different values for attributes, term operations, or tag operations.
 
     Args:
         assets (Union[Dict[str, Any], List[Dict[str, Any]]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAsset objects.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (str): Name of the attribute to update.
-            Supports "user_description", "certificate_status", "readme", and "term".
+            Supports "user_description", "certificate_status", "readme", "term", and "tag".
         attribute_values (List[Union[str, Dict[str, Any]]]): List of values to set for the attribute.
-            For certificateStatus, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
+            For certificate_status, only "VERIFIED", "DRAFT", or "DEPRECATED" are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a dict with "operation" and "term_guids" keys.
+            For tag, the value must be a dict with "operation" ("add", "replace", or "remove") and "tag_names" keys (plus optional "propagate", "remove_propagation_on_delete", "restrict_lineage_propagation", "restrict_propagation_through_hierarchy").
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
-            - operation: The operation that was performed (for term operations)
+            - operation: The operation that was performed (for term/tag operations)
 
     Examples:
         # Update certificate status for a single asset
@@ -624,6 +626,66 @@ def update_assets_tool(
                 "term_guids": ["term-guid-to-remove"]
             }]
         )
+
+        # Add classification tags to an asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Data Table",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_DATA"
+            },
+            attribute_name="tag",
+            attribute_values=[{
+                "operation": "add",
+                "tag_names": ["PII", "Confidential"],
+                "propagate": True
+            }]
+        )
+
+        # Replace classification tags on multiple assets
+        result = update_assets_tool(
+            assets=[
+                {
+                    "guid": "asset-guid-1",
+                    "name": "Table 1",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_1"
+                },
+                {
+                    "guid": "asset-guid-2",
+                    "name": "Table 2",
+                    "type_name": "Table",
+                    "qualified_name": "default/snowflake/123456/abc/TABLE_2"
+                }
+            ],
+            attribute_name="tag",
+            attribute_values=[
+                {
+                    "operation": "replace",
+                    "tag_names": ["Public"]
+                },
+                {
+                    "operation": "replace",
+                    "tag_names": ["Internal"]
+                }
+            ]
+        )
+
+        # Remove classification tags from an asset
+        result = update_assets_tool(
+            assets={
+                "guid": "asset-guid-here",
+                "name": "Customer Data Table",
+                "type_name": "Table",
+                "qualified_name": "default/snowflake/123456/abc/CUSTOMER_DATA"
+            },
+            attribute_name="tag",
+            attribute_values=[{
+                "operation": "remove",
+                "tag_names": ["PII"]
+            }]
+        )
     """
     try:
         # Parse JSON parameters
@@ -645,6 +707,18 @@ def update_assets_tool(
                         "updated_count": 0,
                     }
             parsed_attribute_values = term_operations
+        # Handle tag operations - convert dict to TagOperations object
+        elif attr_enum == UpdatableAttribute.TAG:
+            tag_operations = []
+            for value in parsed_attribute_values:
+                if isinstance(value, dict):
+                    tag_operations.append(TagOperations(**value))
+                else:
+                    return {
+                        "error": "Tag attribute values must be dictionaries with 'operation' and 'tag_names' keys",
+                        "updated_count": 0,
+                    }
+            parsed_attribute_values = tag_operations
         # For certificate status, convert values to enum
         elif attr_enum == UpdatableAttribute.CERTIFICATE_STATUS:
             parsed_attribute_values = [

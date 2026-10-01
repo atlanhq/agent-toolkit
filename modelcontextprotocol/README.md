@@ -217,7 +217,7 @@ You can restrict any of the following tools:
 - `search_assets_tool` - Asset search functionality
 - `get_assets_by_dsl_tool` - DSL query execution
 - `traverse_lineage_tool` - Lineage traversal
-- `update_assets_tool` - Asset updates (descriptions, certificates)
+- `update_assets_tool` - Asset updates (descriptions, certificates, README, terms, tags)
 - `create_glossaries` - Glossary creation
 - `create_glossary_categories` - Category creation
 - `create_glossary_terms` - Term creation

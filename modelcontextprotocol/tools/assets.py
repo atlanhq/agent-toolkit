@@ -7,6 +7,8 @@ from .models import (
     CertificateStatus,
     TermOperation,
     TermOperations,
+    TagOperation,
+    TagOperations,
 )
 from pyatlan.model.assets import Readme, AtlasGlossaryTerm, AtlasGlossaryCategory
 from pyatlan.model.fluent_search import CompoundQuery, FluentSearch
@@ -18,27 +20,28 @@ logger = logging.getLogger(__name__)
 def update_assets(
     updatable_assets: Union[UpdatableAsset, List[UpdatableAsset]],
     attribute_name: UpdatableAttribute,
-    attribute_values: List[Union[str, CertificateStatus, TermOperations]],
+    attribute_values: List[Union[str, CertificateStatus, TermOperations, TagOperations]],
 ) -> Dict[str, Any]:
     """
-    Update one or multiple assets with different values for attributes or term operations.
+    Update one or multiple assets with different values for attributes, term operations, or tag operations.
 
     Args:
         updatable_assets (Union[UpdatableAsset, List[UpdatableAsset]]): Asset(s) to update.
             Can be a single UpdatableAsset or a list of UpdatableAssets.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Supports userDescription, certificateStatus, readme, and term.
-        attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
+            Supports user_description, certificate_status, readme, term, and tag.
+        attribute_values (List[Union[str, CertificateStatus, TermOperations, TagOperations]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
             For term, the value must be a TermOperations object with operation and term_guids.
+            For tag, the value must be a TagOperations object with operation and tag_names.
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - updated_count: Number of assets successfully updated
             - errors: List of any errors encountered
-            - operation: The operation that was performed (for term operations)
+            - operation: The operation that was performed (for term/tag operations)
     """
     try:
         # Convert single asset to list for consistent handling
@@ -166,6 +169,96 @@ def update_assets(
 
                 except Exception as e:
                     error_msg = f"Error updating terms on asset {updatable_asset.qualified_name}: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+            elif attribute_name == UpdatableAttribute.TAG:
+                # Special handling for tag operations
+                tag_value = attribute_values[index]
+                if isinstance(tag_value, dict):
+                    try:
+                        tag_value = TagOperations(**tag_value)
+                    except Exception as e:
+                        error_msg = f"Invalid tag operation dictionary for asset {updatable_asset.qualified_name}: {str(e)}"
+                        logger.error(error_msg)
+                        result["errors"].append(error_msg)
+                        continue
+                elif not isinstance(tag_value, TagOperations):
+                    error_msg = f"Tag value must be a TagOperations object for asset {updatable_asset.qualified_name}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+                tag_operation = TagOperation(tag_value.operation.value if isinstance(tag_value.operation, TagOperation) else str(tag_value.operation).lower())
+                tag_names = tag_value.tag_names
+
+                if not tag_names and tag_operation in (TagOperation.ADD, TagOperation.REMOVE):
+                    error_msg = (
+                        f"At least one tag name must be provided for '{tag_operation.value}' operation on asset {updatable_asset.qualified_name}."
+                    )
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+                # Validate that all specified tags exist in the system
+                invalid_tags = []
+                for name in tag_names:
+                    try:
+                        tag_id = client.atlan_tag_cache.get_id_for_name(name)
+                        if not tag_id:
+                            invalid_tags.append(name)
+                    except Exception:
+                        invalid_tags.append(name)
+
+                if invalid_tags:
+                    error_msg = (
+                        f"The following tag(s) do not exist in the system: {', '.join(invalid_tags)}. "
+                        f"Please ensure tags exist before applying them to asset {updatable_asset.qualified_name}."
+                    )
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+                try:
+                    # Perform the appropriate tag operation
+                    if tag_operation == TagOperation.ADD:
+                        client.asset.add_atlan_tags(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            atlan_tag_names=tag_names,
+                            propagate=tag_value.propagate if tag_value.propagate is not None else False,
+                            remove_propagation_on_delete=tag_value.remove_propagation_on_delete if tag_value.remove_propagation_on_delete is not None else True,
+                            restrict_lineage_propagation=tag_value.restrict_lineage_propagation if tag_value.restrict_lineage_propagation is not None else False,
+                            restrict_propagation_through_hierarchy=tag_value.restrict_propagation_through_hierarchy if tag_value.restrict_propagation_through_hierarchy is not None else False,
+                        )
+                    elif tag_operation == TagOperation.REMOVE:
+                        client.asset.remove_atlan_tags(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            atlan_tag_names=tag_names,
+                        )
+                    elif tag_operation == TagOperation.REPLACE:
+                        client.asset._modify_tags(
+                            asset_type=asset_cls,
+                            qualified_name=updatable_asset.qualified_name,
+                            atlan_tag_names=tag_names,
+                            propagate=tag_value.propagate if tag_value.propagate is not None else False,
+                            remove_propagation_on_delete=tag_value.remove_propagation_on_delete if tag_value.remove_propagation_on_delete is not None else True,
+                            restrict_lineage_propagation=tag_value.restrict_lineage_propagation if tag_value.restrict_lineage_propagation is not None else False,
+                            restrict_propagation_through_hierarchy=tag_value.restrict_propagation_through_hierarchy if tag_value.restrict_propagation_through_hierarchy is not None else False,
+                            modification_type="replace",
+                            save_parameters={
+                                "replace_atlan_tags": True,
+                                "append_atlan_tags": False,
+                            },
+                        )
+
+                    result["updated_count"] += 1
+                    logger.info(
+                        f"Successfully performed '{tag_operation.value}' tag operation on asset: {updatable_asset.qualified_name}"
+                    )
+
+                except Exception as e:
+                    error_msg = f"Error updating tags on asset {updatable_asset.qualified_name}: {str(e)}"
                     logger.error(error_msg)
                     result["errors"].append(error_msg)
             else:
