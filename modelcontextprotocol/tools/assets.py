@@ -28,7 +28,7 @@ def update_assets(
             Can be a single UpdatableAsset or a list of UpdatableAssets.
             For asset of type_name=AtlasGlossaryTerm or type_name=AtlasGlossaryCategory, each asset dictionary MUST include a "glossary_guid" key which is the GUID of the glossary that the term belongs to.
         attribute_name (UpdatableAttribute): Name of the attribute to update.
-            Supports userDescription, certificateStatus, readme, and term.
+            Supports userDescription, certificateStatus, readme, term, and display_name.
         attribute_values (List[Union[str, CertificateStatus, TermOperations]]): List of values to set for the attribute.
             For certificateStatus, only VERIFIED, DRAFT, or DEPRECATED are allowed.
             For readme, the value must be a valid Markdown string.
