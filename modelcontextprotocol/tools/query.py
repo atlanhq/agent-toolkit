@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 
 from client import get_atlan_client
 from pyatlan.model.query import QueryRequest
+from utils.sql_validator import validate_read_only_sql
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -72,6 +73,18 @@ def query_asset(
                 "success": False,
                 "data": None,
                 "error": error_msg,
+                "query_info": {},
+            }
+
+        # Enforce the tool's documented read-only contract before we ever
+        # build or execute a QueryRequest.
+        is_read_only, validation_error = validate_read_only_sql(sql)
+        if not is_read_only:
+            logger.error(f"Rejected non-read-only SQL query: {validation_error}")
+            return {
+                "success": False,
+                "data": None,
+                "error": validation_error,
                 "query_info": {},
             }
 
