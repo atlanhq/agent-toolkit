@@ -78,6 +78,34 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
 }
 ```
 
+### Add to VS Code
+
+Create a `.vscode/mcp.json` file in your workspace (or run `MCP: Open User Configuration` from the Command Palette to set it up for all workspaces) and add:
+
+```json
+{
+  "servers": {
+    "atlan": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+"ATLAN_API_KEY=<redacted>
+        "-e",
+        "ATLAN_BASE_URL=https://<YOUR_INSTANCE>.atlan.com",
+        "-e",
+        "ATLAN_AGENT_ID=<YOUR_AGENT_ID>",
+        "ghcr.io/atlanhq/atlan-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+Then start the server from the `mcp.json` editor by clicking **Start** above the server entry, or by running `MCP: List Servers` from the Command Palette.
+
 ## Install via uv
 
 **Prerequisites:**
@@ -139,6 +167,28 @@ Open `Cursor > Settings > Tools & Integrations > New MCP Server` to include the 
   }
 }
 ```
+
+### Add to VS Code
+
+Create a `.vscode/mcp.json` file in your workspace (or run `MCP: Open User Configuration` from the Command Palette to set it up for all workspaces) and add:
+
+```json
+{
+  "servers": {
+    "atlan": {
+      "command": "uvx",
+      "args": ["atlan-mcp-server"],
+      "env": {
+        "ATLAN_API_KEY": "<YOUR_API_KEY>",
+        "ATLAN_BASE_URL": "https://<YOUR_INSTANCE>.atlan.com",
+        "ATLAN_AGENT_ID": "<YOUR_AGENT_ID>"
+      }
+    }
+  }
+}
+```
+
+Then start the server from the `mcp.json` editor by clicking **Start** above the server entry, or by running `MCP: List Servers` from the Command Palette.
 
 ## Available Tools
 
